@@ -1,0 +1,11 @@
+*.pro
+*.user
+*/*.pro
+*/*.user
+build/**/*
+execution/
+execution/**/*
+vspheroid_GUI-build/**/*
+/GUI/vspheroid_GUI.pro.user
+/GUI/vspheroid_GUI.pro
+VBA/**/*
