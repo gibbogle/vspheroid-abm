@@ -97,7 +97,7 @@ ccell_list(1)%anoxia_tag = .false.
 ccell_list(1)%aglucosia_tag = .false.
 ccell_list(1)%drug_tag = .false.
 ityp = ccell_list(1)%celltype
-ccell_list(1)%divide_volume = get_divide_volume(ityp,V0,Tdiv0)
+!ccell_list(1)%divide_volume = get_divide_volume(ityp,V0,Tdiv0)
 dt = DELTA_T
 ngaps = 0
 

@@ -26,17 +26,17 @@ contains
 ! dose is the Gy received, tmin is the duration (min) over which it is delivered.
 ! Krepair, Kmisrepair are Curtis's epsilon_PL, epsilon_2PL
 !--------------------------------------------------------------------------
-subroutine radiation_damage(cp, ccp, dose, SER, tmin)
+subroutine radiation_damage(cp, ccp, dose, SER_OER, tmin)
 type(cell_type), pointer :: cp
 type(cycle_parameters_type), pointer :: ccp
-real(REAL_KIND) :: dose, SER, tmin
+real(REAL_KIND) :: dose, SER_OER(2), tmin
 real(REAL_KIND) :: dDdt, rnL(2), rnPL, drnPLdt, drnLdt(2), dtmin, dthour, fraction, Krepair, Kmissum, dr, R
 integer :: nt, it, n, dn, k, ityp, kpar=0
 
 dtmin = 0.01
 dthour = dtmin/60
 nt = max(tmin/dtmin, 1.0)
-dDdt = SER*dose/(nt*dthour)     ! Gy/h
+dDdt = dose/(nt*dthour)     ! Gy/h
 rnPL = cp%NL1
 rnL = cp%NL2
 Kmissum = sum(ccp%Kmisrepair)
@@ -57,9 +57,9 @@ else
     Krepair = ccp%Krepair_base + fraction*(ccp%Krepair_max - ccp%Krepair_base)
 endif
 do it = 1,nt
-    drnPLdt = ccp%eta_PL*dDdt - Krepair*rnPL - Kmissum*rnPL**2
+    drnPLdt = ccp%eta_PL*SER_OER(1)*dDdt - Krepair*rnPL - Kmissum*rnPL**2
     rnPL = rnPL + drnPLdt*dthour
-    drnLdt = ccp%eta_L*dDdt + ccp%Kmisrepair*rnPL**2
+    drnLdt = ccp%eta_L*SER_OER(2)*dDdt + ccp%Kmisrepair*rnPL**2
     rnL = rnL + drnLdt*dthour
 enddo
 !write(*,'(4f8.2)') rnPL, rnL
