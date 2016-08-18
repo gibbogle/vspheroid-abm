@@ -1568,57 +1568,6 @@ izb = 1 + (site(3)-1)/NRF
 siteb = [ixb, iyb, izb]
 end subroutine
 
-!-----------------------------------------------------------------------------------------
-!-----------------------------------------------------------------------------------------
-subroutine make_perm_index(ok)
-logical :: ok
-integer :: np, kcell, kpar=0
-
-np = 0
-do kcell = 1,nlist
-	if (cell_list(kcell)%state == DEAD) cycle
-	np = np + 1
-	perm_index(np) = kcell
-enddo
-if (np /= ncells) then
-	write(logmsg,*) 'Error: make_perm_index: np /= Ncells: ',np,ncells,nlist
-	call logger(logmsg)
-	ok = .false.
-	return
-endif
-if (use_permute) then
-	call permute(perm_index,np,kpar)
-endif
-ok = .true.
-end subroutine
-
-
-
-!-----------------------------------------------------------------------------------------
-!-----------------------------------------------------------------------------------------
-subroutine rng_initialisation
-integer, allocatable :: zig_seed(:)
-integer :: i, n, R
-integer :: kpar = 0
-integer :: npar, grainsize = 32
-
-npar = Mnodes
-allocate(zig_seed(0:npar-1))
-do i = 0,npar-1
-    zig_seed(i) = seed(1)*seed(2)*(i+1)
-enddo
-call par_zigset(npar,zig_seed,grainsize)
-par_zig_init = .true.
-
-!n = 0
-!do i = 1,1000000000
-!	R = par_shr3(kpar)
-!	if (R == -2147483648) n = n+1
-!enddo
-!write(*,*) 'n = ',n
-!stop
-end subroutine
-
 !--------------------------------------------------------------------------------
 !--------------------------------------------------------------------------------
 subroutine get_dimensions(NX_dim, NY_dim, NZ_dim, nsteps_dim, deltat, maxchemo, nextra, cused, dfraction, deltax) BIND(C)

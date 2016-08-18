@@ -347,7 +347,7 @@ void MainWindow::on_checkBox_colony_toggled()
 
 //--------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------
-void MainWindow::on_lineEdit_colony_days_changed()
+void MainWindow::on_lineEdit_colony_days_textChanged()
 {
     Global::colony_days = lineEdit_colony_days->text().toDouble();
 }

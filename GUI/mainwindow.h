@@ -87,7 +87,7 @@ protected:
 private slots:
     void pushButton_colony_clicked();
     void on_checkBox_colony_toggled();
-    void on_lineEdit_colony_days_changed();
+    void on_lineEdit_colony_days_textChanged();
     void clickedGraph(QMouseEvent*);
 
     void on_action_show_gradient2D_triggered();

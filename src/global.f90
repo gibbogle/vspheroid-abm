@@ -652,6 +652,30 @@ end function
 !end subroutine
 
 !-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
+subroutine make_perm_index(ok)
+logical :: ok
+integer :: np, kcell, kpar=0
+
+np = 0
+do kcell = 1,nlist
+	if (cell_list(kcell)%state == DEAD) cycle
+	np = np + 1
+	perm_index(np) = kcell
+enddo
+if (np /= ncells) then
+	write(logmsg,*) 'Error: make_perm_index: np /= Ncells: ',np,ncells,nlist
+	call logger(logmsg)
+	ok = .false.
+	return
+endif
+if (use_permute) then
+	call permute(perm_index,np,kpar)
+endif
+ok = .true.
+end subroutine
+
+!-----------------------------------------------------------------------------------------
 ! ityp = cell type
 ! V0 = cell starting volume (after division) = %volume
 ! Two approaches:
