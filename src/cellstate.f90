@@ -473,7 +473,6 @@ do kcell = 1,nlist0
 	else
 	    prev_phase = cp%phase
         call timestep(cp, ccp, dt)
-!        if (kcell == 1) write(*,'(a,2i6,3f8.1)') 'grower: ',kcell,cp%phase,tnow,cp%G1_time,ccp%T_G1
         if (cp%phase >= M_phase) then
             if (prev_phase == Checkpoint2) then
                 mitosis_entry = .true.
@@ -481,7 +480,7 @@ do kcell = 1,nlist0
                 in_mitosis = .true.
             endif
         endif
-		if (cp%phase < Checkpoint2) then
+		if (cp%phase < Checkpoint2 .and. cp%phase /= Checkpoint1) then
 		    call growcell(cp,dt)
 		    cp%radius(1) = (3*cp%V/(4*PI))**(1./3.)
 		endif	
@@ -715,6 +714,11 @@ else
 	    endif
     endif
 endif
+if (cp%dVdt == 0) then
+    write(nflog,*) 'get_dVdt: = 0'
+    write(*,*) 'get_dVdt: dVdt = 0'
+    stop
+endif
 end function
 
 !-----------------------------------------------------------------------------------------
@@ -735,7 +739,7 @@ do kcell = 1,nlist
     endif
 	if (cp%state == DEAD) cycle
 	C_O2 = chemo(OXYGEN)%bdry_conc
-	C_glucose = cp%Cin(GLUCOSE)
+	C_glucose = chemo(GLUCOSE)%bdry_conc
 	if (oxygen_growth .and. glucose_growth) then
 	    metab_O2 = O2_metab(C_O2)
 		metab_glucose = glucose_metab(C_glucose)
@@ -906,12 +910,14 @@ logical :: ok
 integer :: kcell2, ityp, nbrs0
 real(REAL_KIND) :: r(3), c(3), cfse0, cfse2, V0, Tdiv
 type(cell_type), pointer :: cp1, cp2
+type(cycle_parameters_type), pointer :: ccp
 
 !write(*,*) 'divider:'
 !write(logmsg,*) 'divider: ',kcell1 
 !call logger(logmsg)
 ok = .true.
 !tnow = istep*DELTA_T
+ccp => cc_parameters
 !cp1 => cell_list(kcell1)
 if (colony_simulation) then
     cp1 => ccell_list(kcell1)
@@ -976,9 +982,11 @@ if (.not.colony_simulation) then
     cp1%nbrlist(cp1%nbrs)%contact = .false.
     cp1%nbrlist(cp1%nbrs)%contact(1,1) = .true.
 endif
+cp1%G2_M = .false.
 cp1%Iphase = .true.
 cp1%nspheres = 1
 cp1%phase = G1_phase
+cp1%G1_time = tnow + (max_growthrate(ityp)/cp1%dVdt)*ccp%T_G1(ityp)    ! time spend in G1 varies inversely with dV/dt
 
 ndoublings = ndoublings + 1
 doubling_time_sum = doubling_time_sum + tnow - cp1%t_divide_last

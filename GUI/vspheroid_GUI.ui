@@ -8643,7 +8643,7 @@ padding: 8px
             <property name="geometry">
              <rect>
               <x>380</x>
-              <y>390</y>
+              <y>420</y>
               <width>75</width>
               <height>23</height>
              </rect>
@@ -8663,6 +8663,35 @@ padding: 8px
             </property>
             <property name="text">
              <string>Simulate colony</string>
+            </property>
+           </widget>
+           <widget class="QLineEdit" name="lineEdit_colony_days">
+            <property name="geometry">
+             <rect>
+              <x>380</x>
+              <y>390</y>
+              <width>31</width>
+              <height>21</height>
+             </rect>
+            </property>
+            <property name="text">
+             <string>10</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+            </property>
+           </widget>
+           <widget class="QLabel" name="alabel_N_COLONY_DAYS">
+            <property name="geometry">
+             <rect>
+              <x>420</x>
+              <y>390</y>
+              <width>151</width>
+              <height>21</height>
+             </rect>
+            </property>
+            <property name="text">
+             <string>Colony growth period (days)</string>
             </property>
            </widget>
           </widget>

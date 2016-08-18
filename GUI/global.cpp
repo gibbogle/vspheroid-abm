@@ -81,6 +81,7 @@ namespace Global
     bool dropped;
 
     bool simulate_colony;
+    double colony_days;
     double dist[40];
     double ddist = 50;
     int ndist = 40;

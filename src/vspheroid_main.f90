@@ -4,13 +4,13 @@ use global
 implicit none
 integer :: ncpu, res, summarydata(100)
 character*(128) :: infile, outfile, runfile
-integer :: status, nlen, cnt, i, inbuflen, outbuflen, icolony
+integer :: status, nlen, cnt, i, inbuflen, outbuflen
 integer :: jstep, hour, ntot, ncog, inflow, irun, i_hypoxia_cutoff,i_growth_cutoff, nsumm_interval
 character*(128) :: b, c, progname
 real :: vasc
 logical :: update_vtk, simulate_colony
 integer :: idist, ndist=40
-real(REAL_KIND) :: centre(3), dist(40), ddist=50
+real(REAL_KIND) :: colony_days, centre(3), dist(40), ddist=50
 real(8) :: t1, t2
 integer count_0, count_1, count_rate, count_max
 
@@ -36,8 +36,8 @@ progname = c(1:nlen)
 cnt = command_argument_count ()
 !write (*,*) 'number of command arguments = ', cnt
 if (cnt < 3) then
-    write(*,*) 'Use: ',trim(progname),' num_cpu input_file colony_flag'
-    write(*,*) '   simulate colony if colony_flag = 1'
+    write(*,*) 'Use: ',trim(progname),' num_cpu input_file colony_days'
+    write(*,*) '   simulate colony if colony_days > 0'
     stop
 endif
 
@@ -55,9 +55,9 @@ do i = 1, cnt
         infile = c(1:nlen)																! --> infile
         write(*,*) 'Input file: ',infile
     elseif (i == 3) then
-        read(c(1:nlen),*) icolony															! --> icolony
-        simulate_colony = (icolony == 1)
-!        outfile = c(1:nlen)																! --> outfile
+        read(c(1:nlen),*) colony_days													! --> colony_days
+        simulate_colony = (colony_days > 0)
+!        outfile = c(1:nlen)															! --> outfile
 !        write(*,*) 'Output file: ',outfile
     endif
 end do
@@ -85,7 +85,7 @@ i_growth_cutoff = 2
 		endif
 	enddo
 	if (simulate_colony) then
-	    call make_colony_distribution(dist,ddist,ndist)
+	    call make_colony_distribution(colony_days,dist,ddist,ndist)
 !        do idist = 1,ndist
 !	        write(nfrun,'(i4,a,i4,f6.3)') int((idist-1)*ddist),'-',int(idist*ddist),dist(idist)
 !        enddo

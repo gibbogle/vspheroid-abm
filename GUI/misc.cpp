@@ -277,7 +277,7 @@ void ExecThread::run()
     sleep(100);
 
     if (Global::simulate_colony) {
-        make_colony_distribution(Global::dist, &Global::ddist, &Global::ndist);
+        make_colony_distribution(&Global::colony_days, Global::dist, &Global::ddist, &Global::ndist);
     }
 
 	LOG_MSG("ExecThread::run: call terminate_run");

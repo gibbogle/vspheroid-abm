@@ -947,9 +947,10 @@ cp%Iphase = .true.
 cp%nspheres = 1
 
 V0 = Vdivide0/2
+cp%divide_volume = get_divide_volume(ityp, V0, Tdiv)
+cp%divide_time = Tdiv
+cp%dVdt = max_growthrate(ityp)
 if (use_volume_method) then
-    cp%divide_volume = get_divide_volume(ityp, V0, Tdiv)
-    cp%divide_time = Tdiv
     !cp%divide_volume = Vdivide0
     if (initial_count == 1) then
 	    cp%V = 0.9*cp%divide_volume

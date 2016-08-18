@@ -6,7 +6,7 @@ use global
 use cellstate
 implicit none
 
-integer, parameter :: n_colony_days=10
+!integer, parameter :: n_colony_days=10
 integer :: nmax
 
 contains
@@ -25,10 +25,10 @@ contains
 ! N_delayed_cycles_left
 ! The new method simply continues the simulation from where it ended, for 10 days.
 !---------------------------------------------------------------------------------------------------
-subroutine make_colony_distribution(dist,ddist,ndist) bind(C)
+subroutine make_colony_distribution(n_colony_days,dist,ddist,ndist) bind(C)
 !DEC$ ATTRIBUTES DLLEXPORT :: make_colony_distribution
 use, intrinsic :: iso_c_binding
-real(c_double) :: dist(*), ddist
+real(c_double) :: n_colony_days, dist(*), ddist
 integer(c_int) :: ndist
 real(REAL_KIND) :: V0, dVdt, dt, t, tend
 real(REAL_KIND) :: tnow_save
@@ -42,7 +42,6 @@ nlist_save = nlist
 tnow_save = tnow
 ncycmax = 24*3600*n_colony_days/divide_time_mean(1) + 3
 nmax = 2**ncycmax
-write(*,*) 'nmax: ',nmax
 allocate(ccell_list(nmax))
 dist(1:ndist) = 0
 ntot = 0
@@ -100,7 +99,7 @@ ityp = ccell_list(1)%celltype
 !ccell_list(1)%divide_volume = get_divide_volume(ityp,V0,Tdiv0)
 dt = DELTA_T
 ngaps = 0
-
+!write(*,*) 'dVdt: ',ccell_list(1)%dVdt
 nlist = 1
 do while (tnow < tend)
 	tnow = tnow + dt
@@ -158,7 +157,7 @@ do kcell = 1,nlist0
 	    endif
 	else
 	    prev_phase = cp%phase
-!		write(*,'(a,i6,i2,4e12.3)') 'kcell, phase: ',kcell,cp%phase,tnow,cp%G2_time,cp%V,cp%divide_volume
+!		write(*,'(a,i6,i2,4e12.3)') 'kcell, phase (a): ',kcell,cp%phase,tnow,cp%G2_time,cp%V,cp%dVdt
         call timestep(cp, ccp, dt)
         if (cp%phase >= M_phase) then
             if (prev_phase == Checkpoint2) then
@@ -167,7 +166,7 @@ do kcell = 1,nlist0
                 in_mitosis = .true.
             endif
         endif
-		if (cp%phase < Checkpoint2) then
+		if (cp%phase < Checkpoint2 .and. cp%phase /= Checkpoint1) then
 		    call growcell(cp,dt)
 		endif	
 	endif

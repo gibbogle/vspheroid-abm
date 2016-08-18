@@ -378,7 +378,7 @@ logical :: use_integration = .false.
 logical :: use_packer = .true.
 logical :: use_volume_method
 logical :: use_cell_cycle
-logical :: use_constant_growthrate = .true. 
+logical :: use_constant_growthrate = .false. 
 logical :: colony_simulation
 logical :: dbug = .false.
 

@@ -95,6 +95,10 @@ real(REAL_KIND) :: cf_O2, cf_glucose, pcp_O2, pcp_glucose, pcp_starvation, R
 logical :: switch
 
 phase = cp%phase
+if (cp%dVdt == 0) then
+    write(*,*) 'timestep: dVdt=0: '
+    stop
+endif
 ityp = cp%celltype
 if (.not.colony_simulation .and. (phase == Checkpoint1)) then    ! check for starvation arrest
     cf_O2 = cp%Cin(OXYGEN)/anoxia_threshold
@@ -131,7 +135,7 @@ elseif (phase == Checkpoint1) then  ! this checkpoint combines the release from 
     cp%G1S_flag = (cp%NL1 == 0 .or. tnow > cp%G1S_time)
     if (cp%G1_flag .and. cp%G1S_flag) then
         cp%phase = S_phase
-        cp%S_time = tnow + ccp%T_S(ityp)    
+        cp%S_time = tnow + (max_growthrate(ityp)/cp%dVdt)*ccp%T_S(ityp)    
     endif
 elseif (phase == S_phase) then
     if (use_volume_based_transition) then
@@ -141,7 +145,7 @@ elseif (phase == S_phase) then
     endif
     if (switch) then
         cp%phase = G2_phase
-        cp%G2_time = tnow + ccp%T_G2(ityp)
+        cp%G2_time = tnow + (max_growthrate(ityp)/cp%dVdt)*ccp%T_G2(ityp)
     endif
 elseif (phase == G2_phase) then
     if (use_volume_based_transition) then
