@@ -1608,7 +1608,6 @@ integer :: kcell, nspheres, is
 real(REAL_KIND) :: centre(3)
 type(cell_type), pointer :: cp
 
-write(nflog,*) 'get_scene: is_dropped: ',is_dropped
 dropped = is_dropped
 droppedcentre = 0
 nTC_list = 0
@@ -1639,8 +1638,7 @@ do kcell = 1,nlist
 	enddo
 enddo
 droppedcentre = droppedcentre/nTC_list
-write(nflog,'(a,3f8.2)') 'droppedcentre: ',droppedcentre
-write(nflog,*) 'nTC_list: ',nTC_list
+!write(nflog,*) 'nTC_list: ',nTC_list
 end subroutine
 
 !-----------------------------------------------------------------------------------------
@@ -1654,17 +1652,14 @@ integer :: k
 
 dll_version = DLL_BUILD_VERSION
 gui_version = GUI_BUILD_VERSION
-write(nflog,*) 'get_DLL_build_version: ',dll_version
 do k = 1,12
 	version_array(k) = dll_version(k:k)
-!	write(nflog,'(i2,a,a)') k,' ',version_array(k)
 	if (version_array(k) == ' ') then
 		version_array(k) = char(0)
 		array_len = k
 		exit
 	endif
 enddo
-!write(nflog,*) 'array_len: ',array_len
 end subroutine
 
 !-----------------------------------------------------------------------------------------

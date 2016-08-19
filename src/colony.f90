@@ -8,7 +8,7 @@ implicit none
 
 !integer, parameter :: n_colony_days=10
 integer, parameter :: max_trials = 1000
-integer :: nmax, Ncells_save
+integer :: nmax
 logical :: use_permute_save
 
 contains
@@ -50,7 +50,7 @@ nmax = 2**ncycmax
 allocate(ccell_list(nmax))
 if (allocated(perm_index)) deallocate(perm_index)
 allocate(perm_index(nlist_save))
-if (Ncells_save > max_trials) then
+if (Ncells > max_trials) then
     use_permute = .true.
     ntrials = max_trials
 else
