@@ -762,6 +762,7 @@ call setup_react_diff(ok)
 call logger('did setup_react_diff')
 call SetInitialGrowthRate
 limit_stop = .false.
+medium_change_step = .false.
 call logger('completed Setup')
 end subroutine
 
@@ -1244,7 +1245,11 @@ if (ngaps > 2000 .or. mod(istep,nt_nbr) == 0) then
 endif
 
 ! Reaction-diffusion system
-nt_diff = 1
+if (medium_change_step) then
+	nt_diff = 6
+else
+	nt_diff = 1
+endif
 dt = DELTA_T/nt_diff
 do it_diff = 1,nt_diff
 	call setup_grid_cells
@@ -1260,6 +1265,8 @@ do it_diff = 1,nt_diff
 		return
 	endif
 enddo
+medium_change_step = .false.
+call set_bdry_conc()
 
 if (saveprofile%active) then
 	if (istep*DELTA_T >= saveprofile%it*saveprofile%dt) then
@@ -1292,7 +1299,6 @@ if (mod(istep,nt_hour) == 0) then
 		call get_concdata(nvars, ns, dxc, ex_conc)
 	!	write(*,'(a,3f8.4)') 'cell #1: ',cell_list(1)%Cex(1),cell_list(1)%Cin(1),cell_list(1)%Cex(1)-cell_list(1)%Cin(1) 
 	endif
-	call set_bdry_conc()
 !	call write_bdryconcs
     call showcells
 endif
@@ -1498,52 +1504,26 @@ do ichemo = 1,MAX_CHEMO
 	endif
 	write(nflog,'(a,i2,6f8.4)') 'MediumChange: exconc: ',ichemo,Ce(ichemo),Ve,fkeep,exmass(ichemo),Vm_new,exconc(ichemo)
 enddo
-! TESTING
-!do ixb = 1,NXB
-!	do iyb = 1,NYB
-!		if (zinrng(1,ixb,iyb) == 0) then
-!			do ichemo = 1,MAX_CHEMO
-!				if (.not.chemo(ichemo)%used) cycle
-!				chemo(ichemo)%Cave_b(ixb,iyb,1:NZB) = exconc(ichemo)
-!				chemo(ichemo)%Cprev_b(ixb,iyb,1:NZB) = exconc(ichemo)
-!			enddo
-!		else
-!			izb_1 = zinrng(1,ixb,iyb)
-!			izb_2 = zinrng(2,ixb,iyb)
-!			do izb = 1,NZB
-!				if ((izb >= izb_1 .and. izb <= izb_2)) cycle	! blob gridcells
-!				do ichemo = 1,MAX_CHEMO
-!					if (.not.chemo(ichemo)%used) cycle
-!					chemo(ichemo)%Cave_b(ixb,iyb,izb) = exconc(ichemo)
-!					chemo(ichemo)%Cprev_b(ixb,iyb,izb) = exconc(ichemo)
-!				enddo
-!			enddo
-!		endif
-!	enddo
-!enddo
-!do ic = 1,nchemo
-!	ichemo = chemomap(ic)
 do ichemo = 1,MAX_CHEMO
 	if (.not.chemo(ichemo)%used) cycle
 	write(nflog,*) 'Setting Cave_b: ',ichemo,exconc(ichemo)
 	chemo(ichemo)%Cave_b(:,:,:) = exconc(ichemo)
 	chemo(ichemo)%Cprev_b(:,:,:) = exconc(ichemo)
-	Caverage(:,:,:,ichemo) = exconc(ichemo)		! This is approximately OK, because themedium volume is so much greater than the blob volume
+	chemo(ichemo)%medium_Cbnd = exconc(ichemo)
+	Caverage(:,:,:,ichemo) = exconc(ichemo)		! This is approximately OK, because the medium volume is so much greater than the blob volume
 	! Try this
 	Cflux(:,:,:,ichemo) = 0
 	chemo(ichemo)%Fcurr_b = 0
 	call update_Cex(ichemo)
 enddo
+medium_change_step = .true.
 
+! This should happen only for grid pts outside the blob
 do ic = 1,nchemo
 	ichemo = chemomap(ic)
 	Cave => Caverage(:,:,:,ichemo)
 	call interpolate_Cave(ichemo, Cave, chemo(ichemo)%Cave_b)
 enddo
-
-!chemo(OXYGEN+1:)%medium_M = ((Vm - Vr)/Vm)*chemo(OXYGEN+1:)%medium_M + Vr*Ce(OXYGEN+1:)
-!chemo(OXYGEN+1:)%medium_Cext = chemo(OXYGEN+1:)%medium_M/(total_volume - Vblob)
-!chemo(OXYGEN)%medium_Cext = chemo(OXYGEN)%bdry_conc
 
 deallocate(ngcells)
 deallocate(zinrng)

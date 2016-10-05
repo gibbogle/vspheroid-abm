@@ -70,7 +70,7 @@ R = par_uni(kpar)
 dn = 0
 if (R < dr) dn = 1
 cp%NL1 = cp%NL1 + n + dn
-do k = 1,3
+do k = 1,2
     n = rnL(k)
     dr = rnL(k) - n
 !    call random_number(R)

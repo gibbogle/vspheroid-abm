@@ -100,6 +100,7 @@ do ichemo = 1,MAX_CHEMO
 	endif
 	Cextra_all(:,:,:,ichemo) = chemo(ichemo)%bdry_conc
 	Caverage(:,:,:,ichemo) = chemo(ichemo)%bdry_conc
+	chemo(ichemo)%medium_Cbnd = chemo(ichemo)%bdry_conc
 	write(nflog,*) 'ichemo, Caverage: ',ichemo,chemo(ichemo)%bdry_conc
 !	write(*,*) 'call update_Cex_Cin: ',ichemo
 	call update_Cex_Cin_const(ichemo)	! initialise with SS values
@@ -1186,7 +1187,7 @@ enddo
 do ic = 1,nchemo
 	ichemo = chemomap(ic)
 	chemo(ichemo)%medium_Cbnd = csum(ichemo)/n
-!	write(nflog,'(a,i2,f8.4)') 'medium_Cbnd: ',ichemo,chemo(ichemo)%medium_Cbnd
+	write(nflog,'(a,i2,f8.4)') 'medium_Cbnd: ',ichemo,chemo(ichemo)%medium_Cbnd
 enddo
 !write(nflog,'(a,e12.3,2x,3e12.3)') 'max O2 at: ',cmax,pmax
 end subroutine

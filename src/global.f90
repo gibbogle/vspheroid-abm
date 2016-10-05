@@ -380,6 +380,7 @@ logical :: use_volume_method
 logical :: use_cell_cycle
 logical :: use_constant_growthrate = .false. 
 logical :: colony_simulation
+logical :: medium_change_step
 logical :: dbug = .false.
 
 integer :: kcell_now
