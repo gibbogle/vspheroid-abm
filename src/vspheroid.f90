@@ -762,7 +762,7 @@ call setup_react_diff(ok)
 call logger('did setup_react_diff')
 call SetInitialGrowthRate
 limit_stop = .false.
-medium_change_step = .false.
+medium_change_step = .false.		! for startup
 call logger('completed Setup')
 end subroutine
 
@@ -1251,14 +1251,9 @@ else
 	nt_diff = 1
 endif
 dt = DELTA_T/nt_diff
+call setup_grid_cells
+call update_all_nbrlists
 do it_diff = 1,nt_diff
-	call setup_grid_cells
-!	if (ncells >= nshow) write(nflog,*) 'start setup_nbrlists'
-	call update_all_nbrlists
-!	if (Ncells > 0) then
-!		write(logmsg,'(a,5i8)') 'istep,Ncells,Nsteps,Nit,ndt: ',istep,Ncells,Nsteps,Nit,ndt 
-!		call logger(logmsg)
-!	endif
 	call diff_solver(dt,ok)
 	if (.not.ok) then
 		res = 7
@@ -1438,13 +1433,13 @@ subroutine MediumChange(Ve,Ce)
 real(REAL_KIND) :: Ve, Ce(:)
 real(REAL_KIND) :: R, Vm_old, Vm_new, Vr, Vkeep, Vblob, fkeep
 integer :: kcell, site(3), siteb(3), ixb, iyb, izb, izb_1, izb_2, ichemo, ic
-integer, allocatable :: zinrng(:,:,:)
+!integer, allocatable :: zinrng(:,:,:)
 real(REAL_KIND), allocatable :: exmass(:), exconc(:)
 real(REAL_KIND), pointer :: Cave(:,:,:)
 
 write(nflog,*) 'MediumChange: ',Ve,Ce
 allocate(ngcells(NXB,NYB,NZB))
-allocate(zinrng(2,NXB,NYB))
+!allocate(zinrng(2,NXB,NYB))
 allocate(exmass(MAX_CHEMO))
 allocate(exconc(MAX_CHEMO))
 exmass = 0
@@ -1479,7 +1474,7 @@ do ixb = 1,NXB
 				exmass(ichemo) = exmass(ichemo) + dxb3*chemo(ichemo)%Cave_b(ixb,iyb,izb)
 			enddo
 		enddo
-		zinrng(:,ixb,iyb) = [izb_1,izb_2]
+!		zinrng(:,ixb,iyb) = [izb_1,izb_2]
 	enddo
 enddo
 Vblob = dxb3*Vblob
@@ -1518,7 +1513,7 @@ do ichemo = 1,MAX_CHEMO
 enddo
 medium_change_step = .true.
 
-! This should happen only for grid pts outside the blob
+! Use interpolation to determine concentrations on the boundary of the fine grid
 do ic = 1,nchemo
 	ichemo = chemomap(ic)
 	Cave => Caverage(:,:,:,ichemo)
@@ -1526,7 +1521,7 @@ do ic = 1,nchemo
 enddo
 
 deallocate(ngcells)
-deallocate(zinrng)
+!deallocate(zinrng)
 deallocate(exmass)
 deallocate(exconc)
 end subroutine

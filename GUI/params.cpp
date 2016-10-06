@@ -672,7 +672,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
     {"hypoxicfraction",           0, 0,1,"","Fraction of cells with oxygen level below the specified threshold for hypoxia"},
     {"clonohypoxicfraction",      1, 0,1,"","Fraction of clonogenic cells with oxygen level below the specified threshold for hypoxia"},
     {"growthfraction",            1, 0,1,"","Percentage of cells that are growing at a rate less than the specified fraction of the mean growth rate with no nutrient limits"},
-    {"necroticfraction",          1, 0,1,"","Percentage of the spheroid that is necrotic = (number of vacant sites)/(number of sites taken up by the spheroid)"},
+    {"necroticfraction",          0, 0,1,"","Percentage of the spheroid that is necrotic = (number of vacant sites)/(number of sites taken up by the spheroid)"},
     {"platingefficiency",         1, 0,1,"","Percentage of live cells that are viable"},
     {"cellspermm3",               1, 0,1,"","Number of cells per mm3 in the blob"},
     {"mediumoxygen",              1, 0,1,"","Average concentration of oxygen in the medium (far-field)"},
@@ -680,7 +680,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
     {"mediumdrugA",               0, 0,1,"","Average concentration of drug A in the medium (far-field)"},
     {"mediumdrugB",               0, 0,1,"","Average concentration of drug B in the medium (far-field)"},
     {"bdryoxygen",                1, 0,1,"","Average concentration of oxygen at the blob boundary"},
-    {"bdryglucose",               0, 0,1,"","Average concentration of glucose at the blob boundary"},
+    {"bdryglucose",               1, 0,1,"","Average concentration of glucose at the blob boundary"},
     {"bdrydrugA",                 0, 0,1,"","Average concentration of drug A at the blob boundary"},
     {"bdrydrugB",                 0, 0,1,"","Average concentration of drug B at the blob boundary"},
 
