@@ -96,8 +96,7 @@ logical :: switch
 
 phase = cp%phase
 if (cp%dVdt == 0) then
-    write(*,*) 'timestep: dVdt=0: '
-    stop
+	if (phase == G1_phase .or. phase == S_phase .or. phase == G2_phase) return
 endif
 ityp = cp%celltype
 if (.not.colony_simulation .and. (phase == Checkpoint1)) then    ! check for starvation arrest
@@ -135,7 +134,11 @@ elseif (phase == Checkpoint1) then  ! this checkpoint combines the release from 
     cp%G1S_flag = (cp%NL1 == 0 .or. tnow > cp%G1S_time)
     if (cp%G1_flag .and. cp%G1S_flag) then
         cp%phase = S_phase
-        cp%S_time = tnow + (max_growthrate(ityp)/cp%dVdt)*ccp%T_S(ityp)    
+        if (cp%dVdt > 0) then
+	        cp%S_time = tnow + (max_growthrate(ityp)/cp%dVdt)*ccp%T_S(ityp)    
+	    else	! why does dVdt = 0 ?????
+	        cp%S_time = tnow + ccp%T_S(ityp)
+	    endif
     endif
 elseif (phase == S_phase) then
     if (use_volume_based_transition) then

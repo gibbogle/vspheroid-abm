@@ -24,9 +24,9 @@ real(REAL_KIND) :: c(3)
 integer :: kcell, ix, iy, iz
 type(cell_type), pointer :: cp
 
+!write(nflog,*) 'setup_grid_cells: istep: ',istep
 grid(:,:,:)%nc = 0
 do kcell = 1,nlist
-!	write(*,*) 'setup_grid_cells: kcell: ',kcell
 	cp => cell_list(kcell)
 	if (cp%state == DEAD) cycle
 	if (cp%nspheres == 1) then
@@ -37,13 +37,8 @@ do kcell = 1,nlist
 	ix = c(1)/DELTA_X + 1
 	iy = c(2)/DELTA_X + 1
 	iz = c(3)/DELTA_X + 1
-!	write(nflog,'(i5,4e12.3,3i4)'),kcell,c(:),DELTA_X,ix,iy,iz
 	grid(ix,iy,iz)%nc = grid(ix,iy,iz)%nc + 1
 	grid(ix,iy,iz)%cell(grid(ix,iy,iz)%nc) = kcell
-	if (grid(ix,iy,iz)%nc > 200) then
-		write(nflog,*) 'setup_grid_cells: gridcell has > 100 cells: ',ix,iy,iz,grid(ix,iy,iz)%nc
-		stop
-	endif 
 	cp%site = [ix,iy,iz]
 enddo
 end subroutine

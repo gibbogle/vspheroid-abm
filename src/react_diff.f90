@@ -1183,13 +1183,10 @@ do i = 1,n
 	    pmax = p
 	endif
 enddo
-!write(nflog,'(a,e12.3,2x,3e12.3)') 'set_bdry_conc: blob radius, centre: ',blobradius,blobcentre
 do ic = 1,nchemo
 	ichemo = chemomap(ic)
 	chemo(ichemo)%medium_Cbnd = csum(ichemo)/n
-	write(nflog,'(a,i2,f8.4)') 'medium_Cbnd: ',ichemo,chemo(ichemo)%medium_Cbnd
 enddo
-!write(nflog,'(a,e12.3,2x,3e12.3)') 'max O2 at: ',cmax,pmax
 end subroutine
 
 !--------------------------------------------------------------------------------------

@@ -79,7 +79,7 @@ padding: 8px
            <enum>QTabWidget::West</enum>
           </property>
           <property name="currentIndex">
-           <number>7</number>
+           <number>6</number>
           </property>
           <property name="elideMode">
            <enum>Qt::ElideNone</enum>
@@ -157,7 +157,7 @@ padding: 8px
              <rect>
               <x>660</x>
               <y>260</y>
-              <width>251</width>
+              <width>271</width>
               <height>91</height>
              </rect>
             </property>
@@ -380,7 +380,7 @@ padding: 8px
              <rect>
               <x>20</x>
               <y>10</y>
-              <width>341</width>
+              <width>361</width>
               <height>211</height>
              </rect>
             </property>
@@ -392,7 +392,7 @@ padding: 8px
               <rect>
                <x>10</x>
                <y>10</y>
-               <width>321</width>
+               <width>341</width>
                <height>191</height>
               </rect>
              </property>
@@ -683,7 +683,7 @@ padding: 8px
              <rect>
               <x>430</x>
               <y>260</y>
-              <width>201</width>
+              <width>221</width>
               <height>91</height>
              </rect>
             </property>
@@ -784,7 +784,7 @@ padding: 8px
              <rect>
               <x>30</x>
               <y>40</y>
-              <width>271</width>
+              <width>291</width>
               <height>201</height>
              </rect>
             </property>
@@ -796,7 +796,7 @@ padding: 8px
               <rect>
                <x>10</x>
                <y>10</y>
-               <width>251</width>
+               <width>271</width>
                <height>181</height>
               </rect>
              </property>
@@ -965,7 +965,7 @@ padding: 8px
              <rect>
               <x>30</x>
               <y>30</y>
-              <width>431</width>
+              <width>451</width>
               <height>321</height>
              </rect>
             </property>
@@ -977,7 +977,7 @@ padding: 8px
               <rect>
                <x>10</x>
                <y>10</y>
-               <width>411</width>
+               <width>431</width>
                <height>301</height>
               </rect>
              </property>
@@ -1750,7 +1750,7 @@ padding: 8px
              <rect>
               <x>10</x>
               <y>190</y>
-              <width>361</width>
+              <width>391</width>
               <height>321</height>
              </rect>
             </property>
@@ -1762,7 +1762,7 @@ padding: 8px
               <rect>
                <x>10</x>
                <y>15</y>
-               <width>352</width>
+               <width>371</width>
                <height>271</height>
               </rect>
              </property>
@@ -2115,7 +2115,7 @@ padding: 8px
               <rect>
                <x>10</x>
                <y>290</y>
-               <width>141</width>
+               <width>151</width>
                <height>18</height>
               </rect>
              </property>
@@ -2353,7 +2353,7 @@ padding: 8px
            <widget class="QGroupBox" name="groupBox_radiation_RMR">
             <property name="geometry">
              <rect>
-              <x>380</x>
+              <x>410</x>
               <y>190</y>
               <width>361</width>
               <height>281</height>
@@ -5381,7 +5381,7 @@ padding: 8px
                <widget class="QMyLabel" name="infolabel_PARENT_0">
                 <property name="minimumSize">
                  <size>
-                  <width>145</width>
+                  <width>150</width>
                   <height>0</height>
                  </size>
                 </property>
@@ -6553,8 +6553,8 @@ padding: 8px
              <rect>
               <x>10</x>
               <y>20</y>
-              <width>601</width>
-              <height>451</height>
+              <width>631</width>
+              <height>481</height>
              </rect>
             </property>
             <property name="title">
@@ -6891,9 +6891,9 @@ padding: 8px
            <widget class="QGroupBox" name="groupBox_run2">
             <property name="geometry">
              <rect>
-              <x>290</x>
+              <x>330</x>
               <y>20</y>
-              <width>261</width>
+              <width>291</width>
               <height>151</height>
              </rect>
             </property>
@@ -6905,7 +6905,7 @@ padding: 8px
               <rect>
                <x>10</x>
                <y>10</y>
-               <width>250</width>
+               <width>271</width>
                <height>131</height>
               </rect>
              </property>
@@ -7095,7 +7095,7 @@ padding: 8px
              <rect>
               <x>10</x>
               <y>20</y>
-              <width>271</width>
+              <width>311</width>
               <height>421</height>
              </rect>
             </property>
@@ -7107,7 +7107,7 @@ padding: 8px
               <rect>
                <x>10</x>
                <y>10</y>
-               <width>251</width>
+               <width>291</width>
                <height>408</height>
               </rect>
              </property>
@@ -7873,7 +7873,7 @@ padding: 8px
              <rect>
               <x>750</x>
               <y>320</y>
-              <width>131</width>
+              <width>151</width>
               <height>18</height>
              </rect>
             </property>
@@ -7886,7 +7886,7 @@ padding: 8px
              <rect>
               <x>750</x>
               <y>350</y>
-              <width>131</width>
+              <width>151</width>
               <height>18</height>
              </rect>
             </property>
@@ -8384,7 +8384,7 @@ padding: 8px
            <widget class="QLabel" name="alabel_case">
             <property name="geometry">
              <rect>
-              <x>290</x>
+              <x>330</x>
               <y>0</y>
               <width>61</width>
               <height>16</height>
@@ -8403,7 +8403,7 @@ padding: 8px
            <widget class="QLabel" name="alabel_casename">
             <property name="geometry">
              <rect>
-              <x>350</x>
+              <x>390</x>
               <y>0</y>
               <width>401</width>
               <height>16</height>
@@ -8416,9 +8416,9 @@ padding: 8px
            <widget class="QGroupBox" name="groupBox_O2solver">
             <property name="geometry">
              <rect>
-              <x>290</x>
+              <x>330</x>
               <y>240</y>
-              <width>261</width>
+              <width>291</width>
               <height>61</height>
              </rect>
             </property>
@@ -8428,7 +8428,7 @@ padding: 8px
             <widget class="QMyCheckBox" name="cbox_USE_PAR_RELAX">
              <property name="geometry">
               <rect>
-               <x>170</x>
+               <x>200</x>
                <y>30</y>
                <width>71</width>
                <height>21</height>
@@ -8446,7 +8446,7 @@ padding: 8px
               <rect>
                <x>10</x>
                <y>30</y>
-               <width>141</width>
+               <width>161</width>
                <height>20</height>
               </rect>
              </property>
@@ -8462,7 +8462,7 @@ padding: 8px
               <rect>
                <x>20</x>
                <y>10</y>
-               <width>131</width>
+               <width>151</width>
                <height>20</height>
               </rect>
              </property>
@@ -8480,9 +8480,9 @@ padding: 8px
            <widget class="QGroupBox" name="groupBox_farfield">
             <property name="geometry">
              <rect>
-              <x>290</x>
+              <x>330</x>
               <y>300</y>
-              <width>261</width>
+              <width>291</width>
               <height>41</height>
              </rect>
             </property>
@@ -8544,9 +8544,9 @@ padding: 8px
            <widget class="QGroupBox" name="groupBox_run3">
             <property name="geometry">
              <rect>
-              <x>290</x>
+              <x>330</x>
               <y>170</y>
-              <width>261</width>
+              <width>291</width>
               <height>71</height>
              </rect>
             </property>
@@ -8558,7 +8558,7 @@ padding: 8px
               <rect>
                <x>10</x>
                <y>0</y>
-               <width>241</width>
+               <width>271</width>
                <height>71</height>
               </rect>
              </property>
@@ -8657,7 +8657,7 @@ padding: 8px
              <rect>
               <x>380</x>
               <y>370</y>
-              <width>101</width>
+              <width>121</width>
               <height>17</height>
              </rect>
             </property>
@@ -8686,7 +8686,7 @@ padding: 8px
              <rect>
               <x>420</x>
               <y>390</y>
-              <width>151</width>
+              <width>171</width>
               <height>21</height>
              </rect>
             </property>
@@ -9575,7 +9575,7 @@ padding: 8px
      <x>0</x>
      <y>0</y>
      <width>1671</width>
-     <height>21</height>
+     <height>18</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">

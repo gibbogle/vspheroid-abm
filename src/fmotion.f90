@@ -127,11 +127,6 @@ do kpar = 0,tMnodes-1
 	if (cp1%Iphase) then
 		dx1 = dt_move*force(:,k1,1)/kdrag
 		cp1%centre(:,1) = cp1%centre(:,1) + dx1
-!		if (kcell == 1 .or. kcell == 16) then
-!			write(*,'(a,i6,7e12.3)') 'kcell, dx1: ',kcell,dt_move,force(:,k1,1),dx1
-!			write(*,'(a,3e12.3)') 'fmax, dt_move*fmax/kdrag, abs(dx1): ',fmax, dt_move*fmax/kdrag,sqrt(dot_product(dx1,dx1))
-!			write(*,'(a,i4,e12.3)') 'ndt, delta_max: ',ndt,delta_max
-!		endif
 	else
 		dx1 = dt_move*force(:,k1,1)/kdrag
 		dx2 = dt_move*force(:,k1,2)/kdrag
@@ -210,11 +205,8 @@ do k1 = 1,ncells
     t_moved = 0
     done = .false.
     do while (.not.done)
-!        if (kcell == 58) write(*,'(a,5e12.3,i4)') 'fmover: ', &
-!            dt_move,cell_fmax(kcell),kdrag,dt_move*cell_fmax(kcell)/kdrag,delta_max,cell_ndt
 	    if (dt_move*cell_fmax(kcell)/kdrag > delta_max) then
 		    cell_ndt = cell_ndt/2
-    !		write(*,'(a,5e12.3,i4)') 'fmover: -ndt: ',dt_move,fmax,kdrag,dt_move*fmax/kdrag,delta_min,ndt
 		    if (cell_ndt <= 1) then
 			    cell_ndt = 1
 			    dt_move = cell_ndt*delta_tmove
@@ -222,7 +214,6 @@ do k1 = 1,ncells
 		    endif
 	    elseif (dt_move*cell_fmax(kcell)/kdrag < delta_min) then
 		    cell_ndt = cell_ndt + 1
-    !		write(*,'(a,5e12.3,i4)') 'fmover: +ndt: ',dt_move,fmax,kdrag,dt_move*fmax/kdrag,delta_min,ndt
 		    if (cell_ndt >= ndt_max) then
 			    cell_ndt = ndt_max
 			    dt_move = cell_ndt*delta_tmove
@@ -234,16 +225,10 @@ do k1 = 1,ncells
 	        done = .true.
         endif
         cp1%ndt = cell_ndt
-!        if (kcell == 58) write(*,*) 'ndt: ',ndt
 
 	    if (cp1%Iphase) then
 		    dx1 = dt_move*force(:,k1,1)/kdrag
 		    cp1%centre(:,1) = cp1%centre(:,1) + dx1
-    !		if (kcell == 1 .or. kcell == 16) then
-    !			write(*,'(a,i6,7e12.3)') 'kcell, dx1: ',kcell,dt_move,force(:,k1,1),dx1
-    !			write(*,'(a,3e12.3)') 'fmax, dt_move*fmax/kdrag, abs(dx1): ',fmax, dt_move*fmax/kdrag,sqrt(dot_product(dx1,dx1))
-    !			write(*,'(a,i4,e12.3)') 'ndt, delta_max: ',ndt,delta_max
-    !		endif
 	    else
 		    dx1 = dt_move*force(:,k1,1)/kdrag
 		    dx2 = dt_move*force(:,k1,2)/kdrag
@@ -316,6 +301,7 @@ do kpar = 0,tMnodes-1
 	        stop
 	    endif
 	    call get_cell_force(kcell,F,pen,ok)
+!	    if (kcell == 75) write(*,'(a,3e12.3)') 'F: (a): ',F(:,1)
 	    if (.not.ok) then
 			badforce = .true.
 			exit
@@ -325,6 +311,7 @@ do kpar = 0,tMnodes-1
 		endif
 	    call get_random_dr(r)
 	    F(:,1) = F(:,1) + frandom*r + fwall_prev*[0,0,1]
+!	    if (kcell == 1) write(*,*) 'F: (b): ',F(:,1)
 	    force(:,k1,1) = F(:,1)
 	    amp = sqrt(dot_product(F(:,1),F(:,1)))
 	    cell_fmax(k1) = max(cell_fmax(k1),amp)
@@ -399,6 +386,14 @@ do k2 = 1,cp1%nbrs
 			v = v/d
 			incontact = cp1%nbrlist(k2)%contact(isphere1,isphere2)
 			dF = get_force(kcell,R1,R2,d,incontact,penetrated,ok)	! returns magnitude and sign of force 
+!			if (kcell == 75) then
+!				write(*,'(a,3i6,e12.3)') 'dF: ',knbr,isphere1,isphere2,dF
+!				write(*,'(6e12.3)') cp1%centre,cp2%centre
+!			endif
+			if (isnan(dF)) then
+				write(*,'(a,2i4,4e12.3)') 'dF: ',kcell,knbr,R1,R2,d,dF
+				stop
+			endif
 !			if (dF /= 0) then
 !				write(*,'(a,2i4,4e12.3)') 'dF: ',kcell,knbr,R1,R2,d,dF
 !				stop
@@ -427,7 +422,6 @@ if (Mphase) then	! compute force between separating spheres, based on deviation 
 	v = v/d
 	d_hat = max(cp1%mitosis*cp1%d_divide,small_d)
 	dF = get_separating_force(d,d_hat)
-!		write(*,'(a,3e12.3)') 'separating dF: ',d,d_hat,dF
 	F(:,1) = F(:,1) + dF*v	! dF acts in the direction of v on sphere #1 when dF > 0
 	F(:,2) = F(:,2) - dF*v	! dF acts in the direction of -v on sphere #2 when dF > 0 
 endif

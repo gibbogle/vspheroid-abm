@@ -263,7 +263,7 @@ subroutine CellDeath(dt,changed,ok)
 real(REAL_KIND) :: dt
 logical :: changed, ok
 integer :: kcell, nlist0, site(3), i, ichemo, idrug, im, ityp, killmodel, kpar=0 
-real(REAL_KIND) :: C_O2, C_glucose, kmet, Kd, dMdt, Cdrug, n_O2, kill_prob, dkill_prob, death_prob
+real(REAL_KIND) :: C_O2, C_glucose, kmet, Kd, dMdt, Cdrug, n_O2, kill_prob, dkill_prob, death_prob, survival_prob
 !logical :: use_TPZ_DRUG, use_DNB_DRUG
 logical :: anoxia_death, aglucosia_death
 type(cell_type), pointer :: cp
@@ -325,10 +325,13 @@ do kcell = 1,nlist
 	endif
 	
 	do idrug = 1,ndrugs_used	
+		ichemo = DRUG_A + 3*(idrug-1)	
+		if (.not.chemo(ichemo)%present) cycle
+		if (cp%drug_tag(idrug)) cycle	! don't tag more than once
 		dp => drug(idrug)
-		ichemo = TRACER + 1 + 3*(idrug-1)	
 		kill_prob = 0
 		death_prob = 0
+		survival_prob = 1
 		do im = 0,2
 			if (.not.dp%kills(ityp,im)) cycle
 			killmodel = dp%kill_model(ityp,im)		! could use %drugclass to separate kill modes
@@ -338,10 +341,12 @@ do kcell = 1,nlist
 			kmet = (1 - dp%C2(ityp,im) + dp%C2(ityp,im)*dp%KO2(ityp,im)**n_O2/(dp%KO2(ityp,im)**n_O2 + C_O2**n_O2))*dp%Kmet0(ityp,im)
 			dMdt = kmet*Cdrug
 			call getDrugKillProb(killmodel,Kd,dMdt,Cdrug,dt,dkill_prob)
-			kill_prob = kill_prob + dkill_prob
+!			kill_prob = kill_prob + dkill_prob
+			survival_prob = survival_prob*(1 - dkill_prob)
 			death_prob = max(death_prob,dp%death_prob(ityp,im))
 		enddo
-	    if (.not.cp%drug_tag(idrug) .and. par_uni(kpar) < kill_prob) then	! don't tag more than once
+		kill_prob = 1 - survival_prob
+	    if (par_uni(kpar) < kill_prob) then
 			cp%p_drug_death(idrug) = death_prob
 			cp%drug_tag(idrug) = .true.
             Ndrug_tag(idrug,ityp) = Ndrug_tag(idrug,ityp) + 1
@@ -414,11 +419,180 @@ gaplist(ngaps) = kcell
 end subroutine
 
 !-----------------------------------------------------------------------------------------
+! Cell growth, death and division are handled here.  Division occurs when cell volume 
+! exceeds the divide volume. 
+! As the cell grows we need to adjust both Cin and Cex to maintain mass conservation.
+! GROWTH DELAY
+! When a cell has received a dose of radiation (or possibly drug - not yet considered)
+! the cycle time is increased by an amount that depends on the dose.  The delay may be
+! transmitted to progeny cells.
+! 
+! NOTE: now the medium concentrations are not affected by cell growth
+!-----------------------------------------------------------------------------------------
+subroutine new_grower(dt, changed, ok)
+real(REAL_KIND) :: dt
+logical :: changed, ok
+integer :: k, kcell, nlist0, ityp, idrug, prev_phase, kpar=0
+type(cell_type), pointer :: cp
+type(cycle_parameters_type), pointer :: ccp
+real(REAL_KIND) :: R
+integer, parameter :: MAX_DIVIDE_LIST = 10000
+integer :: ndivide, divide_list(MAX_DIVIDE_LIST)
+logical :: drugkilled
+logical :: mitosis_entry, in_mitosis, divide
+
+ok = .true.
+changed = .false.
+ccp => cc_parameters
+nlist0 = nlist
+ndivide = 0
+!tnow = istep*DELTA_T !+ t_fmover
+!if (colony_simulation) write(*,*) 'grower: ',nlist0,use_volume_method,tnow
+
+do kcell = 1,nlist0
+	kcell_now = kcell
+	if (colony_simulation) then
+	    cp => ccell_list(kcell)
+	else
+    	cp => cell_list(kcell)
+    endif
+	if (cp%state == DEAD) cycle
+	ityp = cp%celltype
+	divide = .false.
+	mitosis_entry = .false.
+	in_mitosis = .false.
+	if (use_volume_method) then
+!        if (colony_simulation) then
+!            write(*,'(a,i6,L2,2e12.3)') 'kcell: ',kcell,cp%Iphase,cp%V,cp%divide_volume
+!        endif
+	    if (cp%Iphase) then
+		    call growcell(cp,dt)
+		    if (cp%V > cp%divide_volume) then	! time to enter mitosis
+!    	        mitosis_entry = .true.
+				cp%Iphase = .false.
+	            in_mitosis = .true.
+				cp%mitosis = 0
+				cp%t_start_mitosis = tnow
+	        endif
+	    else
+	        in_mitosis = .true.
+	    endif
+	else
+	    prev_phase = cp%phase
+!	    if (cp%dVdt == 0) then
+!			write(nflog,*) 'dVdt=0: kcell, phase: ',kcell,cp%phase
+!		endif
+        call timestep(cp, ccp, dt)
+        if (cp%phase >= M_phase) then
+            if (prev_phase == Checkpoint2) then
+!                mitosis_entry = .true.
+				write(*,*) 'mitosis_entry: ',kcell,cp%drug_tag(1)
+				cp%Iphase = .false.
+				cp%mitosis = 0
+				cp%t_start_mitosis = tnow
+	            in_mitosis = .true.
+!            else
+!                in_mitosis = .true.
+            endif
+            in_mitosis = .true.
+        endif
+		if (cp%phase < Checkpoint2 .and. cp%phase /= Checkpoint1) then
+		    call growcell(cp,dt)
+		endif	
+	endif
+!	if (mitosis_entry) then
+	if (in_mitosis) then
+		drugkilled = .false.
+!		write(*,*) 'mitosis_entry: ',kcell,cp%drug_tag(1)
+		do idrug = 1,ndrugs_used
+			if (cp%drug_tag(idrug)) then
+				call CellDies(kcell,cp)
+				changed = .true.
+				Ndrug_dead(idrug,ityp) = Ndrug_dead(idrug,ityp) + 1
+				drugkilled = .true.
+				exit
+			endif
+		enddo
+		if (drugkilled) cycle
+			
+		if (use_volume_method) then
+			if (cp%growth_delay) then
+				if (cp%G2_M) then
+					if (tnow > cp%t_growth_delay_end) then
+						cp%G2_M = .false.
+					else
+						cycle
+					endif
+				else
+					cp%t_growth_delay_end = tnow + cp%dt_delay
+					cp%G2_M = .true.
+					cycle
+				endif
+			endif
+			! try moving death prob test to here
+			if (cp%radiation_tag) then
+				R = par_uni(kpar)
+				if (R < cp%p_rad_death) then
+					call CellDies(kcell,cp)
+					changed = .true.
+					Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
+					cycle
+				endif
+			endif		
+		else
+		    ! Check for cell death by radiation lesions
+		    ! For simplicity: 
+		    !   cell death occurs only at mitosis entry
+		    !   remaining L1 lesions and L2c misrepair (non-reciprocal translocation) are treated the same way
+		    !   L2a and L2b are treated as non-fatal
+		    if (cp%NL1 > 0 .or. cp%NL2(2) > 0) then
+				call CellDies(kcell,cp)
+				changed = .true.
+				Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
+				cycle
+			endif		        
+		endif
+		
+!		cp%Iphase = .false.
+!		cp%mitosis = 0
+!		cp%t_start_mitosis = tnow
+!	elseif (in_mitosis) then
+		cp%mitosis = (tnow - cp%t_start_mitosis)/mitosis_duration
+        if (cp%mitosis >= 1) then
+			divide = .true.
+		endif
+	endif
+	if (divide) then
+		ndivide = ndivide + 1
+		if (ndivide > MAX_DIVIDE_LIST) then
+		    write(logmsg,*) 'Error: growcells: MAX_DIVIDE_LIST exceeded: ',MAX_DIVIDE_LIST
+		    call logger(logmsg)
+		    ok = .false.
+		    return
+		endif
+		divide_list(ndivide) = kcell
+	endif
+enddo
+do k = 1,ndivide
+	changed = .true.
+	kcell = divide_list(k)
+	if (colony_simulation) then
+	    cp => ccell_list(kcell)
+	else
+    	cp => cell_list(kcell)
+    endif
+	call divider(kcell, ok)
+	if (.not.ok) return
+enddo
+end subroutine
+
+!-----------------------------------------------------------------------------------------
 ! In the Iphase, the cell grows as a sphere.
 ! When V > Vdivide, the cell enters Mphase
 ! In the Mphase, V is constant, d increases and R decreases (R1 = R2)
 ! The level of mitosis grows at a constant rate, and d is proportional to mitosis
 ! When d > 2R cell division is completed, and two cells replace one.
+! This is the old code
 !-----------------------------------------------------------------------------------------
 subroutine grower(dt, changed, ok)
 real(REAL_KIND) :: dt
@@ -455,8 +629,8 @@ do kcell = 1,nlist0
     endif
 	if (cp%state == DEAD) cycle
 	ityp = cp%celltype
-	call getO2conc(cp,C_O2)
-	call getGlucoseconc(cp,C_glucose)
+!	call getO2conc(cp,C_O2)
+!	call getGlucoseconc(cp,C_glucose)
 	divide = .false.
 	mitosis_entry = .false.
 	in_mitosis = .false.
