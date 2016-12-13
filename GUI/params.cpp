@@ -103,6 +103,11 @@ Off-lattice model: Dimension of the fine grid (number of grid pts in X,Y and Z d
 "Length of main time step, for cell death, division, etc.  Should be a divisor of 3600. \n\
 [mins]"},
 
+    {"N_SUBSTEPS", 10, 0, 0,
+    "Time step subdivisions",
+    "Number of subdivisions of the time step when drugs are present or when there is a medium change event. \n\
+    [mins]"},
+
 {"NXB", 35, 0, 0,
 "Coarse grid NXB, NYB",
 "X and Y dimension of the coarse grid (number of grid pts in X and Y directions).  Grid spacing is 4 times fine grid spacing DXF.  Must be odd \n\
@@ -155,7 +160,7 @@ The parameter 'b' is calculated by setting the minimum value of F(x) (which occu
 The function F(x) is zero at two points, xc1 and xc2.  There should be a hysteresis loop for x > xc1: for two cells not in contact, the force is zero for x > xc1. \n\
 After contact is made the force is non-zero until x > xc2 - this is the effect of cell-cell adhesion."},
 
-{"KDRAG", 5, 0, 0,
+{"KDRAG", 10, 0, 0,
  "Drag factor",
  "Displacement = dt*F/drag"},
 
@@ -314,7 +319,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
 "Aglucosia death?",
 "Glucose controls death by aglucosia"},
 
-{"GLUCOSE_DIFF_COEF", 3.0e-7, 0, 0,
+{"GLUCOSE_DIFF_COEF", 5.0e-7, 0, 0,
  "Spheroid diffusion coeff",
  "GLUCOSE diffusion coefficient"},
 
@@ -515,7 +520,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "Lesion L2b creation rate",
      "Coefficient of rate of creation of L2b lesions: eta_L(1)"},
 
-     {"RMR_ETA_L_2_1", 0.14, 0, 0,
+     {"RMR_ETA_L_2_1", 0.01, 0, 0,
      "Lesion L2c creation rate",
      "Coefficient of rate of creation of L2c lesions: eta_L(2)"},
 
@@ -531,11 +536,11 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "Maximum lesion L1 repair rate",
      "Coefficient of rate of repair of L1 potentially lethal lesions: Krepair (Curtis's epsilon_PL)"},
 
-     {"RMR_KMIS_1_1", 0.0278, 0, 0,
+     {"RMR_KMIS_1_1", 0.02, 0, 0,
      "Lesion misrepair rate to L2b",
      "Coefficient of rate of misrepair of L1 potentially lethal lesions to L2b: (Curtis's epsilon_2PL)"},
 
-     {"RMR_KMIS_2_1", 0.0278, 0, 0,
+     {"RMR_KMIS_2_1", 0.02, 0, 0,
      "Lesion misrepair rate to L2c",
      "Coefficient of rate of misrepair of L1 potentially lethal lesions to L2c: (Curtis's epsilon_2PL)"},
 
@@ -659,25 +664,25 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
     {"nlive",                     1, 0,1,"","Number of live cells"},
     {"nanoxiadead",               1, 0,1,"","Total number of cells that have been killed by anoxia"},
     {"naglucosiadead",            0, 0,1,"","Total number of cells that have been killed by aglucosia"},
-    {"ndrugAdead",                0, 0,1,"","Total number of cells that have been killed by drugA"},
+    {"ndrugAdead",                1, 0,1,"","Total number of cells that have been killed by drugA"},
     {"ndrugBdead",                0, 0,1,"","Total number of cells that have been killed by drugB"},
     {"nradiationdead",            0, 0,1,"","Total number of cells that have been killed by radiation"},
     {"nanoxiatagged",             1, 0,1,"","Current number of cells tagged to die by anoxia"},
     {"naglucosiatagged",          0, 0,1,"","Current number of cells tagged to die by aglucosia"},
-    {"ndrugAtagged",              0, 0,1,"","Current number of cells tagged to die by drugA"},
+    {"ndrugAtagged",              1, 0,1,"","Current number of cells tagged to die by drugA"},
     {"ndrugBtagged",              0, 0,1,"","Current number of cells tagged to die by drugB"},
     {"nradiationtagged",          1, 0,1,"","Current number of cells tagged to die by radiation"},
-    {"diameter",                  1, 0,1,"","Spheroid diameter (um)"},
-    {"volume",                    1, 0,1,"","Spheroid volume (mm3)"},
+    {"diameter",                  0, 0,1,"","Spheroid diameter (um)"},
+    {"volume",                    0, 0,1,"","Spheroid volume (mm3)"},
     {"hypoxicfraction",           0, 0,1,"","Fraction of cells with oxygen level below the specified threshold for hypoxia"},
     {"clonohypoxicfraction",      1, 0,1,"","Fraction of clonogenic cells with oxygen level below the specified threshold for hypoxia"},
-    {"growthfraction",            1, 0,1,"","Percentage of cells that are growing at a rate less than the specified fraction of the mean growth rate with no nutrient limits"},
+    {"growthfraction",            0, 0,1,"","Percentage of cells that are growing at a rate less than the specified fraction of the mean growth rate with no nutrient limits"},
     {"necroticfraction",          0, 0,1,"","Percentage of the spheroid that is necrotic = (number of vacant sites)/(number of sites taken up by the spheroid)"},
     {"platingefficiency",         1, 0,1,"","Percentage of live cells that are viable"},
     {"cellspermm3",               1, 0,1,"","Number of cells per mm3 in the blob"},
     {"mediumoxygen",              1, 0,1,"","Average concentration of oxygen in the medium (far-field)"},
     {"mediumglucose",             1, 0,1,"","Average concentration of glucose in the medium (far-field)"},
-    {"mediumdrugA",               0, 0,1,"","Average concentration of drug A in the medium (far-field)"},
+    {"mediumdrugA",               1, 0,1,"","Average concentration of drug A in the medium (far-field)"},
     {"mediumdrugB",               0, 0,1,"","Average concentration of drug B in the medium (far-field)"},
     {"bdryoxygen",                1, 0,1,"","Average concentration of oxygen at the blob boundary"},
     {"bdryglucose",               1, 0,1,"","Average concentration of glucose at the blob boundary"},

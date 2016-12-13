@@ -47,7 +47,7 @@ end subroutine
 subroutine fmover(dt_move, done, ok)
 real(REAL_KIND) :: dt_move
 logical :: done, ok
-integer :: k1, kcell, kpar, nd, nr, nc(0:8), kfrom(0:8), kto(0:8), tMnodes
+integer :: k1, kcell, kpar, nd, nr, nc(0:8), kfrom(0:8), kto(0:8), tMnodes, ndt_start
 real(REAL_KIND), allocatable :: force(:,:,:)
 real(REAL_KIND) :: fmax, dx1(3), dx2(3)
 type(cell_type), pointer :: cp1
@@ -64,30 +64,27 @@ endif
 allocate(force(3,ncells,2))
 call forces(force,fmax,penetrated,ok)
 if (.not.ok) return
-
+!if (fmax > 100) then
+!	write(*,*) 'big fmax: ',istep,fmax
+!	stop
+!endif
+ndt_start = ndt
 if (fmax > 0) then
-do
 	if (dt_move*fmax/kdrag > delta_max .or. penetrated) then
-		ndt = ndt/2
-!		write(*,'(a,5e12.3,i4)') 'fmover: -ndt: ',dt_move,fmax,kdrag,dt_move*fmax/kdrag,delta_min,ndt
-		if (ndt <= 1) then
+!		ndt = ndt/2
+		ndt = 0.75*ndt
+!		write(*,'(a,5e11.3,2i4)') 'fmover: -ndt: ',dt_move,fmax,kdrag,dt_move*fmax/kdrag,delta_min,ndt_start,ndt
+		if (ndt < 1) then
 			ndt = 1
-			dt_move = ndt*delta_tmove
-			exit
 		endif
-!		cycle
 	elseif (dt_move*fmax/kdrag < delta_min) then
-		ndt = ndt + 1
-!		write(*,'(a,5e12.3,i4)') 'fmover: +ndt: ',dt_move,fmax,kdrag,dt_move*fmax/kdrag,delta_min,ndt
-		if (ndt >= ndt_max) then
+!		ndt = ndt + 1
+!		write(*,'(a,5e11.3,2i4)') 'fmover: +ndt: ',dt_move,fmax,kdrag,dt_move*fmax/kdrag,delta_min,ndt_start,ndt
+		if (ndt > ndt_max) then
 			ndt = ndt_max
-			dt_move = ndt*delta_tmove
-			exit
 		endif
-!		cycle
 	endif
-	exit
-enddo
+	dt_move = ndt*delta_tmove
 endif
 if (dt_move + t_fmover > DELTA_T) then
 	dt_move = DELTA_T - t_fmover
@@ -250,7 +247,7 @@ end subroutine
 subroutine forces(force,fmax,penetrated,ok)
 real(REAL_KIND) :: fmax, force(:,:,:)
 logical :: penetrated,ok
-integer :: k1, kcell, kpar, nd, nr, nc(0:8), kfrom(0:8), kto(0:8), tMnodes
+integer :: k1, kcell, kpar, nd, nr, nc(0:8), kfrom(0:8), kto(0:8), tMnodes, kmax
 real(REAL_KIND) :: F(3,2), r(3), amp, fsum, fwall_prev
 real(REAL_KIND),allocatable :: cell_fmax(:)
 logical :: badforce, pen
@@ -301,7 +298,7 @@ do kpar = 0,tMnodes-1
 	        stop
 	    endif
 	    call get_cell_force(kcell,F,pen,ok)
-!	    if (kcell == 75) write(*,'(a,3e12.3)') 'F: (a): ',F(:,1)
+!	    if (kcell == 530) write(*,'(a,3e12.3,1x,L)') 'F(1): (a) cell 530: ',F(:,1),cell_list(kcell)%Iphase
 	    if (.not.ok) then
 			badforce = .true.
 			exit
@@ -311,29 +308,30 @@ do kpar = 0,tMnodes-1
 		endif
 	    call get_random_dr(r)
 	    F(:,1) = F(:,1) + frandom*r + fwall_prev*[0,0,1]
-!	    if (kcell == 1) write(*,*) 'F: (b): ',F(:,1)
+!	    if (kcell == 530) write(*,'(a,3e12.3,1x,L)') 'F(1): (b): cell 530: ',F(:,1),cell_list(kcell)%Iphase
 	    force(:,k1,1) = F(:,1)
 	    amp = sqrt(dot_product(F(:,1),F(:,1)))
 	    cell_fmax(k1) = max(cell_fmax(k1),amp)
-!	    if (amp > 0) write(*,*) 'amp: ',k1,amp
 	    if (.not.cell_list(kcell)%Iphase) then
 			call get_random_dr(r)
 			F(:,2) = F(:,2) + frandom*r + fwall_prev*[0,0,1]
+!		    if (kcell == 530) write(*,'(a,3e12.3,1x,L)') 'F(2): (b) cell 530: ',F(:,2),cell_list(kcell)%Iphase
 		    force(:,k1,2) = F(:,2)
-		    cell_fmax(k1) = max(cell_fmax(k1),sqrt(dot_product(F(:,2),F(:,2))))
+			amp = sqrt(dot_product(F(:,2),F(:,2)))
+		    cell_fmax(k1) = max(cell_fmax(k1),amp)
         endif
     enddo
 enddo
 !omp end parallel do
-fmax = maxval(cell_fmax(:))
-!if (ncells > 50e10 ) then
-!	write(*,*) 'fsum: ',fsum
-!	write(*,'(5e12.3)') cell_fmax
-!	if (fmax == 0) then
-!		write(*,*) 'fmax = 0'
-!		stop
-!	endif
-!endif
+
+!fmax = maxval(cell_fmax(:))
+fmax = 0
+do k1 = 1,ncells
+	if (cell_fmax(k1) > fmax) then
+		fmax = cell_fmax(k1)
+		kmax = perm_index(k1)
+	endif
+enddo
 deallocate(cell_fmax)
 ok = .not.badforce
 end subroutine
@@ -386,27 +384,17 @@ do k2 = 1,cp1%nbrs
 			v = v/d
 			incontact = cp1%nbrlist(k2)%contact(isphere1,isphere2)
 			dF = get_force(kcell,R1,R2,d,incontact,penetrated,ok)	! returns magnitude and sign of force 
-!			if (kcell == 75) then
-!				write(*,'(a,3i6,e12.3)') 'dF: ',knbr,isphere1,isphere2,dF
-!				write(*,'(6e12.3)') cp1%centre,cp2%centre
-!			endif
 			if (isnan(dF)) then
 				write(*,'(a,2i4,4e12.3)') 'dF: ',kcell,knbr,R1,R2,d,dF
+				write(*,'(a,9f7.4)') 'c1,c2,v: ',c1,c2,v
 				stop
 			endif
-!			if (dF /= 0) then
-!				write(*,'(a,2i4,4e12.3)') 'dF: ',kcell,knbr,R1,R2,d,dF
-!				stop
-!			endif
             if (.not.ok) then
                 write(nflog,*) kcell,knbr,isphere1,isphere2
                 write(nflog,'(a,i6,3e12.3)') 'nbrlist: ',kcell,c1
                 write(nflog,'(10i6)') cp1%nbrlist(1:cp1%nbrs)%indx
                 write(nflog,'(a,i6,3e12.3)') 'nbrlist: ',knbr,c2
                 write(nflog,'(10i6)') cp2%nbrlist(1:cp2%nbrs)%indx
-!                write(*,'(a,3f8.3)') 'cell 10: ',cell_list(10)%centre(:,1)
-!                write(*,'(a,3f8.3)') 'cell 30: ',cell_list(30)%centre(:,1)
-!                write(*,'(a,3f8.3)') 'cell 44: ',cell_list(44)%centre(:,1)
                 return
             endif
 			if (isphere1 == 1) F(:,isphere1) = F(:,isphere1) + dF*v
@@ -424,6 +412,14 @@ if (Mphase) then	! compute force between separating spheres, based on deviation 
 	dF = get_separating_force(d,d_hat)
 	F(:,1) = F(:,1) + dF*v	! dF acts in the direction of v on sphere #1 when dF > 0
 	F(:,2) = F(:,2) - dF*v	! dF acts in the direction of -v on sphere #2 when dF > 0 
+!	if (kcell == 530) then
+!		write(*,'(a,3f7.4)') 'cell 530: c1: ',c1
+!		write(*,'(a,3f7.4)') 'cell 530: c2: ',c2
+!		write(*,'(a,3f7.4)') 'cell 530:  v: ',v
+!		write(*,'(a,4e11.3)') 'cell 530: d,mitosis,d_divide,d_hat:',d,cp1%mitosis,cp1%d_divide,d_hat
+!		write(*,'(a,e12.3)') 'dF: ',dF
+!		write(*,*)
+!	endif
 endif
 
 ! Check for wall force (bottom of the well) NOT USED
@@ -662,7 +658,7 @@ call logger(logmsg)
 !dt_min = 1.0
 !delta_min = 0.02e-4		! um -> cm
 !delta_max = 0.30e-4		! um -> cm
-dt_min = 2.0
+dt_min = 3.0
 delta_min = 0.05e-4		! um -> cm
 delta_max = 0.50e-4		! um -> cm
 delta_tmove = dt_min

@@ -69,6 +69,8 @@ integer, parameter :: N_EXTRA = O2_BY_VOL - MAX_CHEMO + 1	! = 4 = total # of var
 integer, parameter :: NCONST = MAX_CHEMO
 integer, parameter :: LIMIT_THRESHOLD = 1500
 
+integer, parameter :: nbr_list_max = 50
+
 integer, parameter :: MITOSIS_MODE = TERMINAL_MITOSIS
 
 logical, parameter :: OFF_LATTICE = .true.
@@ -142,7 +144,7 @@ type cell_type
 	real(REAL_KIND) :: wt(8)
 	
 	integer :: nbrs
-	type(neighbour_type) :: nbrlist(100)
+	type(neighbour_type) :: nbrlist(nbr_list_max)
 	real(REAL_KIND) :: Cin(NCONST)
 	real(REAL_KIND) :: Cex(NCONST)
 	real(REAL_KIND) :: dCdt(NCONST)
@@ -274,7 +276,7 @@ integer :: Ndrugs_used
 integer :: NX, NY, NZ, NXB, NYB, NZB, Nmm3
 integer :: Ndim(3)
 integer :: NT_CONC, NT_GUI_OUT, initial_count, ntries, Ncelltypes, Ncells_type(MAX_CELLTYPES)
-integer :: istep, ndt, ndtotal, ndtotal_last, ichemo_curr
+integer :: istep, ndt, ndtotal, ndtotal_last, ichemo_curr, n_substeps
 integer :: seed(2)
 integer :: jumpvec(3,27)
 integer :: diam_count_limit
@@ -373,8 +375,8 @@ logical :: suppress_growth = .false.
 logical :: use_hysteresis = .false.
 logical :: use_permute = .false.
 logical :: use_gaplist = .true.
-logical :: use_SS = .true.
-logical :: use_integration = .false.
+logical :: use_SS = .false.
+logical :: use_integration = .true.
 logical :: use_packer = .true.
 logical :: use_volume_method
 logical :: use_cell_cycle
@@ -860,6 +862,16 @@ do ix = -1,1
 	enddo
 enddo
 end subroutine
+
+!--------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------
+function mytimer result(t)
+real(REAL_KIND) :: t
+integer count_0, count_1, count_rate, count_max
+
+call system_clock(count_1, count_rate, count_max)
+t = count_1*1.0d0/count_rate
+end function
 
 !--------------------------------------------------------------------------------
 !     NON-RECURSIVE STACK VERSION OF QUICKSORT FROM N.WIRTH'S PASCAL

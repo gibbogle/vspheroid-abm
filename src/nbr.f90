@@ -56,7 +56,7 @@ do kcell = 1,nlist
 				d = sqrt(d2)
 				if (use_hysteresis) then
 					if (d < d_nbr_limit) then
-						if (dbug) write(*,'(5f8.2)') R1,R2,Rsum,d,d_nbr_limit
+						!if (dbug) write(*,'(5f8.2)') R1,R2,Rsum,d,d_nbr_limit
 						dfactor = 1
 						do k = 1,cp1%nbrs
 							if (cp1%nbrlist(k)%indx == k2) then
@@ -105,7 +105,7 @@ do kcell = 1,nlist
 	call qqsort(nbr_d,nbrs,t)     ! sort in increasing order
 	! Now the ith nearest is nbrlist(t(i))
 	! set cp1%nbrlist(:) as the closest #
-	cp1%nbrs = min(nbrs,100)
+	cp1%nbrs = min(nbrs,nbr_list_max)
 	do i = 1,cp1%nbrs
 		cp1%nbrlist(i)%indx = nbrlist(t(i))
 	enddo
@@ -179,7 +179,7 @@ enddo
 call qqsort(nbr_d,nbrs,t)     ! sort in increasing order
 ! Now the ith nearest is nbrlist(t(i))
 ! set cp1%nbrlist(:) as the closest #
-cp1%nbrs = min(nbrs,100)
+cp1%nbrs = min(nbrs,nbr_list_max)
 do i = 1,cp1%nbrs
 	cp1%nbrlist(i)%indx = nbrlist(t(i))
 enddo

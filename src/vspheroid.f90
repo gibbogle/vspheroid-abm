@@ -108,6 +108,7 @@ read(nfcell,*) days							! number of days to simulate
 read(nfcell,*) d_n_limit					! possible limit on diameter or number of cells
 diam_count_limit = d_n_limit
 read(nfcell,*) DELTA_T						! time step size (sec)
+read(nfcell,*) n_substeps					! # of time step subdivisions for drug solving
 read(nfcell,*) NXB							! size of coarse grid = NYB
 read(nfcell,*) NZB							! size of coarse grid
 read(nfcell,*) DELTA_X						! grid size (um)
@@ -630,6 +631,7 @@ do im = im1, im2
 	endif
 enddo
 end subroutine
+
 !-----------------------------------------------------------------------------------------
 ! d~ = d - (R1+R2)
 ! d_detach is the value of d~ at which V -> 0, i.e. it depends on R1+R2
@@ -696,7 +698,7 @@ call logger('did SetupChemo')
 Vdivide0 = (2.0/1.5)*(4.*PI/3.)*Raverage**3
 dVdivide = dVdivide*Vdivide0	
 Rdivide0 = Raverage*(2.0/1.5)**(1./3.)
-d_nbr_limit = 1.5*2*Rdivide0	! 1.5 is an arbitrary choice - was 1.2
+d_nbr_limit = 1.2*2*Rdivide0	! 1.5 is an arbitrary choice - was 1.2
 
 !test_growthrate = Vdivide0/(2*(divide_time_median(1) - mitosis_duration))	! um3/sec
 write(logmsg,'(a,2e12.3)') 'Raverage,Vdivide0: ',Raverage,Vdivide0
@@ -1116,7 +1118,7 @@ deallocate(sitelist)
 end subroutine
 
 !-----------------------------------------------------------------------------------------
-! Simulate through a full time step: DELTA_T
+! Simulate through a full time step: DELTA_T 
 !-----------------------------------------------------------------------------------------
 subroutine simulate_step(res) BIND(C)
 !DEC$ ATTRIBUTES DLLEXPORT :: simulate_step  
@@ -1129,15 +1131,18 @@ integer :: nshow = 100
 integer :: Nhop, nt_hour, nt_nbr
 integer :: nvars, ns
 real(REAL_KIND) :: dxc, ex_conc(35*O2_BY_VOL+1)		! just for testing
+real(REAL_KIND) :: t0, t1, tmover, tgrower, ave_cin(0:2), ave_cex(0:2)
 real(REAL_KIND), parameter :: FULL_NBRLIST_UPDATE_HOURS = 4
+type(cell_type), pointer :: cp
 logical :: ok, done, changed
-logical :: dbug
 
+!cp => cell_list(1)
 !Nhop = 10*(30/DELTA_T)
 Nhop = 1
 nt_hour = 3600/DELTA_T
 nt_nbr = nt_hour*FULL_NBRLIST_UPDATE_HOURS
-dbug = .false.
+tmover = 0
+tgrower = 0
 if (Ncells == 0) then
 	call logger('Ncells = 0')
     res = 2
@@ -1176,7 +1181,7 @@ if (radiation_dose > 0) then
 endif
 call SetupChemomap
 !dt = DELTA_T/NT_CONC
-! the idea is to accumulate time steps until DELTA_T is reached  
+! the idea is to accumulate time steps until DELTA_T is reached 
 call make_perm_index(ok)
 if (.not.ok) then
 	call logger('make_perm_index error')
@@ -1191,13 +1196,18 @@ else
 endif
 !nrepeat = 60
 !dt = DELTA_T/nrepeat
+ndt = ndt + 1
+!write(*,*) 'mover - grower: ndt: ',ndt
 do irepeat = 1,nrepeat
 t_fmover = 0
 nit = 0
 done = .false.
 do while (.not.done)
 	nit = nit + 1
+	t0 = mytimer()
 	call fmover(dt,done,ok)
+	t1 = mytimer()
+	tmover = tmover + t1 - t0
 	if (.not.ok) then
 		call logger('fmover error')
 		res = 1
@@ -1206,12 +1216,14 @@ do while (.not.done)
 	tnow = istep*DELTA_T + t_fmover
 	ncells0 = ncells
 !	if (ncells >= nshow) write(*,'(a,2i6,3f8.1)') 'growing: istep, ndt, dt, delta_tmove: ',istep,ndt,dt,delta_tmove,t_fmover
+
 	call GrowCells(radiation_dose,dt,changed,ok)
 	if (.not.ok) then
 		call logger('grower error')
 		res = 3
 		return
 	endif
+	tgrower = tgrower + mytimer() - t1
 	radiation_dose = 0
 	if (changed) then
 		call make_perm_index(ok)
@@ -1219,10 +1231,12 @@ do while (.not.done)
 	t_fmover = t_fmover + dt
 enddo
 enddo
+!write(*,'(a,2f8.2)') 't mover, grower: ',tmover,tgrower
+t0 = mytimer()
 call update_all_nbrlists
-
+!write(*,'(a,f8.2)') 't update_nbr_lists: ',mytimer() - t0
 !if (mod(istep,Nhop) == 0) then
-!	! determine cell death and tagging for death
+!	! determine cell death and tagging for death 
 !	call setup_grid_cells
 !	call update_all_nbrlists
 !	if (Ncells > 0) then
@@ -1245,8 +1259,8 @@ if (ngaps > 2000 .or. mod(istep,nt_nbr) == 0) then
 endif
 
 ! Reaction-diffusion system
-if (medium_change_step) then
-	nt_diff = 6
+if (medium_change_step .or. chemo(DRUG_A)%present) then
+	nt_diff = n_substeps
 else
 	nt_diff = 1
 endif
@@ -1288,8 +1302,26 @@ if (mod(istep,nt_hour) == 0) then
 	else
 	    t_ave_double = 0
 	endif
-	write(logmsg,'(a,3i8,a,f6.2)') 'istep, hour, Ncells: ',istep,istep/nt_hour,Ncells,'  doubling time: ',t_ave_double
+	write(logmsg,'(a,4i8,a,f5.2)') 'istep, hour, Ncells, ntagged: ',istep,istep/nt_hour,Ncells,Ndrug_tag(1,1),' t_double: ',t_ave_double
 	call logger(logmsg)
+	if (dbug) write(*,*) 'DRUG_A present: ',chemo(DRUG_A:DRUG_A+2)%present
+!	write(*,'(7e11.3)') Caverage(NX/2,NY/2,11:17,DRUG_A)
+!	write(*,'(7e11.3)') Caverage(NX/2,NY/2,11:17,DRUG_A+1)
+!	write(*,'(7e11.3)') Caverage(NX/2,NY/2,11:17,DRUG_A+2)
+	if (chemo(DRUG_A)%present) then
+		call get_average_concs(DRUG_A,ave_cin, ave_cex)
+		if (ave_cin(1) < 1.0e-6) then
+			call ClearDrug(DRUG_A)
+			chemo(DRUG_A:DRUG_A+2)%present = .false.
+		endif
+	endif
+	if (chemo(DRUG_B)%present) then
+		call get_average_concs(DRUG_B,ave_cin,ave_cex)
+		if (ave_cin(1) < 1.0e-6) then
+			call ClearDrug(DRUG_B)
+			chemo(DRUG_B:DRUG_B+2)%present = .false.
+		endif
+	endif
 	if (.not.use_TCP) then
 		call get_concdata(nvars, ns, dxc, ex_conc)
 	!	write(*,'(a,3f8.4)') 'cell #1: ',cell_list(1)%Cex(1),cell_list(1)%Cin(1),cell_list(1)%Cex(1)-cell_list(1)%Cin(1) 
@@ -1298,6 +1330,33 @@ if (mod(istep,nt_hour) == 0) then
     call showcells
 endif
 res = 0
+end subroutine
+
+!-----------------------------------------------------------------------------------------
+! Find average drug concs in cells
+!-----------------------------------------------------------------------------------------
+subroutine get_average_concs(ichemo,cin,cex)
+integer :: ichemo
+real(REAL_KIND) :: cin(0:2), cex(0:2)
+type(cell_type), pointer :: cp
+integer :: kcell, n
+
+n = 0
+cin = 0
+cex = 0
+do kcell = 1,nlist
+	cp => cell_list(kcell)
+	if (cp%state == DEAD) cycle
+	n = n+1
+	cin = cin + cp%Cin(ichemo:ichemo+2)
+	cex = cex + cp%Cex(ichemo:ichemo+2)
+enddo
+cin = cin/n
+cex = cex/n
+if (dbug) then
+	write(*,'(a,3e12.3)') 'Average IC drug concs: ',cin
+	write(*,'(a,3e12.3)') 'Average EC drug concs: ',cex
+endif
 end subroutine
 
 !-----------------------------------------------------------------------------------------
@@ -1489,7 +1548,7 @@ Vm_new = Ve + Vkeep				! new medium volume
 total_volume = Vm_new + Vblob	! new total volume
 !write(*,'(6f8.4)') total_volume,Vblob,Vm_old,Vkeep,fkeep,Vm_new
 ! Concentrations in the gridcells external to the blob (those with no cells) are set
-! to the values of the mixture of old values and added medium.
+! to the values of the mixture of old values and added medium. 
 do ichemo = 1,MAX_CHEMO
 	if (.not.chemo(ichemo)%used) cycle
 	if (Ce(ichemo) == 0) then
@@ -1519,7 +1578,6 @@ do ic = 1,nchemo
 	Cave => Caverage(:,:,:,ichemo)
 	call interpolate_Cave(ichemo, Cave, chemo(ichemo)%Cave_b)
 enddo
-
 deallocate(ngcells)
 !deallocate(zinrng)
 deallocate(exmass)

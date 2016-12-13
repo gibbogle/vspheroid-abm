@@ -28,7 +28,8 @@ if (dose > 0) then
 	if (.not.ok) return
 endif
 changed = .false.
-call grower(dt,changed,OK)
+!call grower(dt,changed,OK)
+call new_grower(dt,changed,OK)
 if (.not.ok) return
 if (use_death) then
 	call CellDeath(dt,changed, ok)
@@ -82,6 +83,9 @@ type(cell_type), pointer :: cp
 type(cycle_parameters_type), pointer :: ccp
 
 ok = .true.
+if (dose == 0) then
+	return
+endif
 call logger('Irradiation')
 !tnow = istep*DELTA_T	! seconds
 if (use_volume_method) then
@@ -121,7 +125,7 @@ if (use_volume_method) then
 	    kill_prob = 1 - p_recovery
 	    R = par_uni(kpar)
 	    if (R < kill_prob) then
-		    cp%radiation_tag = .true.
+		    cp%radiation_tag = .true.	! volume_method
 		    Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
 		    cp%p_rad_death = p_death
 		    if (LQ(ityp)%growth_delay_N > 0 .and. cp%Iphase) then
@@ -151,7 +155,7 @@ else
 	    if (cp%state == DEAD) cycle
 	    ityp = cp%celltype
 	    call getO2conc(cp,C_O2)
-	    ! Compute sensitisation SER
+	    ! Compute sensitisation SER 
 	    if (Ndrugs_used > 0) then
 	        SER = getSER(cp,C_O2)
 	    else
@@ -160,6 +164,10 @@ else
         SER_OER(1) = SER*(LQ(ityp)%OER_am*C_O2 + LQ(ityp)%K_ms)/(C_O2 + LQ(ityp)%K_ms)      ! OER_alpha
         SER_OER(2) = SER*(LQ(ityp)%OER_bm*C_O2 + LQ(ityp)%K_ms)/(C_O2 + LQ(ityp)%K_ms)      ! OER_beta
         call radiation_damage(cp, ccp, dose, SER_OER, tmin)
+!        write(*,*) 'damage: ',kcell,cp%NL1,cp%NL2(:)
+!        if (cp%NL2(1) == 0 .and. cp%NL2(2) == 0) then
+!			write(*,*) 'no lethal radiation damage NL2 = 0'
+!		endif
     enddo
 endif
 end subroutine
@@ -263,7 +271,7 @@ subroutine CellDeath(dt,changed,ok)
 real(REAL_KIND) :: dt
 logical :: changed, ok
 integer :: kcell, nlist0, site(3), i, ichemo, idrug, im, ityp, killmodel, kpar=0 
-real(REAL_KIND) :: C_O2, C_glucose, kmet, Kd, dMdt, Cdrug, n_O2, kill_prob, dkill_prob, death_prob, survival_prob
+real(REAL_KIND) :: C_O2, C_glucose, kmet, Kd, dMdt, Cdrug, n_O2, kill_prob, dkill_prob, death_prob, survival_prob, u
 !logical :: use_TPZ_DRUG, use_DNB_DRUG
 logical :: anoxia_death, aglucosia_death
 type(cell_type), pointer :: cp
@@ -334,7 +342,7 @@ do kcell = 1,nlist
 		survival_prob = 1
 		do im = 0,2
 			if (.not.dp%kills(ityp,im)) cycle
-			killmodel = dp%kill_model(ityp,im)		! could use %drugclass to separate kill modes
+			killmodel = dp%kill_model(ityp,im)		! could use %drugclass to separate kill modes 
 			Cdrug = cp%Cin(ichemo + im)
 			Kd = dp%Kd(ityp,im)
 			n_O2 = dp%n_O2(ityp,im)
@@ -343,11 +351,18 @@ do kcell = 1,nlist
 			call getDrugKillProb(killmodel,Kd,dMdt,Cdrug,dt,dkill_prob)
 !			kill_prob = kill_prob + dkill_prob
 			survival_prob = survival_prob*(1 - dkill_prob)
+!			if (kcell == 1) write(*,'(a,2i5,5f8.4)') 'CellDeath: ',istep,im,Cdrug,dt,dMdt,dkill_prob,survival_prob
 			death_prob = max(death_prob,dp%death_prob(ityp,im))
 		enddo
 		kill_prob = 1 - survival_prob
-	    if (par_uni(kpar) < kill_prob) then
+!		if (kcell == 1) write(*,'(a,f8.4)') 'kill_prob: ',kill_prob
+		u = par_uni(kpar)
+	    if (u < kill_prob) then
 			cp%p_drug_death(idrug) = death_prob
+!			if (kcell == 1) then
+!				write(*,'(a,i6,2f8.4)') 'drug_tagged: ',kcell,u,kill_prob
+!				stop
+!			endif
 			cp%drug_tag(idrug) = .true.
             Ndrug_tag(idrug,ityp) = Ndrug_tag(idrug,ityp) + 1
 		endif
@@ -435,7 +450,7 @@ logical :: changed, ok
 integer :: k, kcell, nlist0, ityp, idrug, prev_phase, kpar=0
 type(cell_type), pointer :: cp
 type(cycle_parameters_type), pointer :: ccp
-real(REAL_KIND) :: R
+real(REAL_KIND) :: rr(3), c(3), rad, d_desired, R
 integer, parameter :: MAX_DIVIDE_LIST = 10000
 integer :: ndivide, divide_list(MAX_DIVIDE_LIST)
 logical :: drugkilled
@@ -469,10 +484,23 @@ do kcell = 1,nlist0
 		    call growcell(cp,dt)
 		    if (cp%V > cp%divide_volume) then	! time to enter mitosis
 !    	        mitosis_entry = .true.
-				cp%Iphase = .false.
+!				cp%Iphase = .false.
 	            in_mitosis = .true.
+!				cp%mitosis = 0
+!				cp%t_start_mitosis = tnow
+				
+				cp%Iphase = .false.
+				cp%nspheres = 2
 				cp%mitosis = 0
 				cp%t_start_mitosis = tnow
+				ncells_mphase = ncells_mphase + 1
+				call get_random_vector3(rr)	! set initial axis direction
+				cp%d = 0.1*small_d
+				c = cp%centre(:,1)
+				cp%centre(:,1) = c + (cp%d/2)*rr
+				cp%centre(:,2) = c - (cp%d/2)*rr
+				cp%d_divide = 2.0**(2./3)*cp%radius(1)
+				
 	        endif
 	    else
 	        in_mitosis = .true.
@@ -480,19 +508,36 @@ do kcell = 1,nlist0
 	else
 	    prev_phase = cp%phase
 !	    if (cp%dVdt == 0) then
-!			write(nflog,*) 'dVdt=0: kcell, phase: ',kcell,cp%phase
+!			write(nflog,*) 'dVdt=0: kcell, phase: ',kcell,cp%phase 
 !		endif
         call timestep(cp, ccp, dt)
+        if (.not.cp%radiation_tag .and.(cp%NL2(1) > 0 .or. cp%NL2(2) > 0)) then	! irrepairable damage
+			! For now, tag for death at mitosis
+			cp%radiation_tag = .true.	! new_grower
+		    Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
+!			write(*,*) 'Tagged with NL2: ',istep,cp%NL2,Nradiation_tag(ityp)
+		endif
         if (cp%phase >= M_phase) then
-            if (prev_phase == Checkpoint2) then
-!                mitosis_entry = .true.
-				write(*,*) 'mitosis_entry: ',kcell,cp%drug_tag(1)
+            if (prev_phase == Checkpoint2) then		! this is mitosis entry
+!				write(*,*) 'mitosis_entry: kcell,istep: ',kcell,istep
+                if (.not.cp%radiation_tag .and. cp%NL1 > 0) then		! lesions still exist, no time for repair
+					cp%radiation_tag = .true.
+				    Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
+!				    write(*,*) 'Tagged with NL1: ',istep,cp%NL1,Nradiation_tag(ityp)
+				endif
+				
 				cp%Iphase = .false.
+				cp%nspheres = 2
 				cp%mitosis = 0
 				cp%t_start_mitosis = tnow
-	            in_mitosis = .true.
-!            else
-!                in_mitosis = .true.
+				ncells_mphase = ncells_mphase + 1
+				call get_random_vector3(rr)	! set initial axis direction
+				cp%d = 0.1*small_d
+				c = cp%centre(:,1)
+				cp%centre(:,1) = c + (cp%d/2)*rr
+				cp%centre(:,2) = c - (cp%d/2)*rr
+				cp%d_divide = 2.0**(2./3)*cp%radius(1)
+				
             endif
             in_mitosis = .true.
         endif
@@ -503,7 +548,6 @@ do kcell = 1,nlist0
 !	if (mitosis_entry) then
 	if (in_mitosis) then
 		drugkilled = .false.
-!		write(*,*) 'mitosis_entry: ',kcell,cp%drug_tag(1)
 		do idrug = 1,ndrugs_used
 			if (cp%drug_tag(idrug)) then
 				call CellDies(kcell,cp)
@@ -514,6 +558,21 @@ do kcell = 1,nlist0
 			endif
 		enddo
 		if (drugkilled) cycle
+
+		cp%mitosis = (tnow - cp%t_start_mitosis)/mitosis_duration
+		d_desired = max(cp%mitosis*cp%d_divide,small_d)
+		rr = cp%centre(:,2) - cp%centre(:,1)
+		cp%d = sqrt(dot_product(rr,rr))
+		rr = rr/cp%d	! axis direction
+		c = (cp%centre(:,1) + cp%centre(:,2))/2
+		cp%site = c/DELTA_X + 1
+		call cubic_solver(d_desired,cp%V,rad)
+		cp%radius = rad
+		if (cp%d > 2*rad) then	! completion of mitosis - note that this overrides cp%phase
+			write(logmsg,'(a,i6,2e12.3,f7.3)') 'divides: d > 2*rad: ',kcell,cp%d,rad,cp%mitosis
+			call logger(logmsg)
+			divide = .true.
+		endif
 			
 		if (use_volume_method) then
 			if (cp%growth_delay) then
@@ -541,11 +600,8 @@ do kcell = 1,nlist0
 			endif		
 		else
 		    ! Check for cell death by radiation lesions
-		    ! For simplicity: 
-		    !   cell death occurs only at mitosis entry
-		    !   remaining L1 lesions and L2c misrepair (non-reciprocal translocation) are treated the same way
-		    !   L2a and L2b are treated as non-fatal
-		    if (cp%NL1 > 0 .or. cp%NL2(2) > 0) then
+!		    if (cp%NL1 > 0 .or. cp%NL2(2) > 0) then
+			if (cp%radiation_tag) then
 				call CellDies(kcell,cp)
 				changed = .true.
 				Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
@@ -553,11 +609,7 @@ do kcell = 1,nlist0
 			endif		        
 		endif
 		
-!		cp%Iphase = .false.
-!		cp%mitosis = 0
-!		cp%t_start_mitosis = tnow
-!	elseif (in_mitosis) then
-		cp%mitosis = (tnow - cp%t_start_mitosis)/mitosis_duration
+!		write(*,*) 'istep, kcell, mitosis: ',istep,kcell,cp%mitosis
         if (cp%mitosis >= 1) then
 			divide = .true.
 		endif
@@ -647,9 +699,20 @@ do kcell = 1,nlist0
 	else
 	    prev_phase = cp%phase
         call timestep(cp, ccp, dt)
+        if (.not.cp%radiation_tag .and.(cp%NL2(1) > 0 .or. cp%NL2(2) > 0)) then	! irrepairable damage
+			! For now, tag for death at mitosis
+			cp%radiation_tag = .true.
+		    Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
+!			write(*,*) 'Tagged with NL2: ',istep,cp%NL2,Nradiation_tag(ityp)
+		endif
         if (cp%phase >= M_phase) then
             if (prev_phase == Checkpoint2) then
                 mitosis_entry = .true.
+                if (.not.cp%radiation_tag .and. cp%NL1 > 0) then		! lesions still exist, no time for repair
+					cp%radiation_tag = .true.
+				    Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
+!				    write(*,*) 'Tagged with NL1: ',istep,cp%NL1,Nradiation_tag(ityp)
+				endif
             else
                 in_mitosis = .true.
             endif
@@ -660,7 +723,7 @@ do kcell = 1,nlist0
 		endif	
 	endif
 	if (mitosis_entry) then
-!	    write(*,*) 'mitosis_entry: ',kcell
+!	    write(*,'(a,i6,2e12.3)') 'mitosis_entry: V,Vdivide0',kcell,cp%V,Vdivide0
 		drugkilled = .false.
 		do idrug = 1,ndrugs_used
 			if (cp%drug_tag(idrug)) then
@@ -699,11 +762,8 @@ do kcell = 1,nlist0
 			endif		
 		else
 		    ! Check for cell death by radiation lesions
-		    ! For simplicity: 
-		    !   cell death occurs only at mitosis entry
-		    !   remaining L1 lesions and L2c misrepair (non-reciprocal translocation) are treated the same way
-		    !   L2a and L2b are treated as non-fatal
-		    if (cp%NL1 > 0 .or. cp%NL2(2) > 0) then
+!		    if (cp%NL1 > 0 .or. cp%NL2(2) > 0) then
+			if (cp%radiation_tag) then
 				call CellDies(kcell,cp)
 				changed = .true.
 				Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
@@ -724,8 +784,8 @@ do kcell = 1,nlist0
 		cp%d_divide = 2.0**(2./3)*cp%radius(1)
 	elseif (in_mitosis) then
 		cp%mitosis = (tnow - cp%t_start_mitosis)/mitosis_duration
+!		write(*,*) 'mitosis: ',kcell,cp%mitosis
 		d_desired = max(cp%mitosis*cp%d_divide,small_d)
-!		d_desired = min(d_desired,cp%d_divide)
 		rr = cp%centre(:,2) - cp%centre(:,1)
 		cp%d = sqrt(dot_product(rr,rr))
 		rr = rr/cp%d	! axis direction
@@ -733,11 +793,8 @@ do kcell = 1,nlist0
 		cp%site = c/DELTA_X + 1
 		call cubic_solver(d_desired,cp%V,rad)
 		cp%radius = rad
-!	    if (kcell == 52) then
-!	        write(*,'(a,2i6,f8.0,f8.3,e12.3)') 'in_mitosis: ',kcell,cp%phase,cp%t_start_mitosis,cp%mitosis,max_growthrate
-!	        write(*,'(4e12.3)') cp%V,d_desired,cp%d,2*rad
-!	    endif
 		if (cp%d > 2*rad) then	! completion of mitosis - note that this overrides cp%phase
+!			write(*,'(a,i6,2e12.3)') 'divide: d > 2*rad: ',kcell,cp%d,rad
 			divide = .true.
 		endif
 	endif
@@ -888,11 +945,12 @@ else
 	    endif
     endif
 endif
-if (cp%dVdt == 0) then
-    write(nflog,*) 'get_dVdt: = 0'
-    write(*,*) 'get_dVdt: dVdt = 0'
-    stop
-endif
+!if (cp%dVdt == 0) then
+!    write(nflog,*) 'get_dVdt: = 0'
+!    write(*,*) 'get_dVdt: dVdt = 0'
+!    write(*,'(a,i6,4e12.3)') 'kcell, metab, Vdivide0: ',kcell_now, metab, Vdivide0,cp%Cin(OXYGEN),cp%Cin(GLUCOSE)
+!    stop
+!endif
 end function
 
 !-----------------------------------------------------------------------------------------

@@ -25,12 +25,25 @@ contains
 ! Damage from radiation dose following Curtis1986
 ! dose is the Gy received, tmin is the duration (min) over which it is delivered.
 ! Krepair, Kmisrepair are Curtis's epsilon_PL, epsilon_2PL
+! As modified according to Bill Wilson:
+! There are three classes of lesions:
+!	%NL1 = number of potentially lethal (i.e. repairable) lesions = Curtis's n_PL
+!	%NL2(1) = number of lethal lesions of type b
+!	%NL2(2) = number of lethal lesions of type c
+! During the radiation exposure, damage of different kinds occurs at a rate
+! that is given by the product dose intensity (Gy/h), eta, and SER_OER.
+! eta_PL and eta_L(:) are the rate constants for PL and L lesions
+! SER_OER is the product of the SER and OER, where
+! SER = Sensitivity Enhancement Ratio which is drug dependent
+! OER = Oxygen Enhancement Ratio which is a function of intracellular O2 conc.
+! Over the duration of the exposure repair is also occurring (this will be
+! insignificant if the duration is very short).
 !--------------------------------------------------------------------------
 subroutine radiation_damage(cp, ccp, dose, SER_OER, tmin)
 type(cell_type), pointer :: cp
 type(cycle_parameters_type), pointer :: ccp
 real(REAL_KIND) :: dose, SER_OER(2), tmin
-real(REAL_KIND) :: dDdt, rnL(2), rnPL, drnPLdt, drnLdt(2), dtmin, dthour, fraction, Krepair, Kmissum, dr, R
+real(REAL_KIND) :: dDdt, rnL(2), rnPL, drnPLdt, drnLdt, dtmin, dthour, fraction, Krepair, Kmissum, dr, R
 integer :: nt, it, n, dn, k, ityp, kpar=0
 
 dtmin = 0.01
@@ -59,13 +72,14 @@ endif
 do it = 1,nt
     drnPLdt = ccp%eta_PL*SER_OER(1)*dDdt - Krepair*rnPL - Kmissum*rnPL**2
     rnPL = rnPL + drnPLdt*dthour
-    drnLdt = ccp%eta_L*SER_OER(2)*dDdt + ccp%Kmisrepair*rnPL**2
-    rnL = rnL + drnLdt*dthour
+    do k = 1,2
+	    drnLdt = ccp%eta_L(k)*SER_OER(2)*dDdt + ccp%Kmisrepair(k)*rnPL**2
+	    rnL(k) = rnL(k) + drnLdt*dthour
+	enddo
 enddo
 !write(*,'(4f8.2)') rnPL, rnL
 n = rnPL
 dr = rnPL - n
-!call random_number(R)
 R = par_uni(kpar)
 dn = 0
 if (R < dr) dn = 1
@@ -73,7 +87,7 @@ cp%NL1 = cp%NL1 + n + dn
 do k = 1,2
     n = rnL(k)
     dr = rnL(k) - n
-!    call random_number(R)
+!    write(*,'(a,i2,f8.4,i4,f8.4)') 'k, rnL, n, dr: ',k, rnL(k), n, dr
     R = par_uni(kpar)
     dn = 0
     if (R < dr) dn = 1
@@ -215,6 +229,9 @@ end function
 
 !--------------------------------------------------------------------------
 ! Time unit = hour
+! This may need to be changed, because it implicitly assumes that no more
+! than one repair and one misrepair of each type can occur within a time step.
+! The fix would be to dubdivide the time step, as in the damage subroutine.
 !--------------------------------------------------------------------------
 subroutine repair(cp, ccp, dt)
 type(cell_type), pointer :: cp
