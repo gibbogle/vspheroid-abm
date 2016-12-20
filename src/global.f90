@@ -36,6 +36,7 @@ integer, parameter :: NRF = 4
 !real(REAL_KIND), parameter :: dxb = NRF*dx			! (cm) = 120 um
 
 real(REAL_KIND), parameter :: Vsite_cm3 = 2.0e-9	! from spheroid-abm, to scale Kin, Kout
+real(REAL_KIND), parameter :: Vcell_cm3 = Vsite_cm3/2
 real(REAL_KIND), parameter :: PI = 4*atan(1.d0)
 real(REAL_KIND), parameter :: BIG = 1.0d10
 real(REAL_KIND), parameter :: um3_cm3 = 1.0e-12
@@ -51,8 +52,9 @@ integer, parameter :: TERMINAL_MITOSIS   = 1
 integer, parameter :: CFSE = 0
 integer, parameter :: OXYGEN = 1
 integer, parameter :: GLUCOSE = 2
-integer, parameter :: TRACER = 3
-integer, parameter :: DRUG_A = 4
+integer, parameter :: LACTATE = 3
+integer, parameter :: TRACER = 4
+integer, parameter :: DRUG_A = 5
 integer, parameter :: TPZ_DRUG = DRUG_A
 integer, parameter :: TPZ_DRUG_METAB_1 = TPZ_DRUG + 1
 integer, parameter :: TPZ_DRUG_METAB_2 = TPZ_DRUG + 2
@@ -112,6 +114,24 @@ type, bind(C) :: fielddata_type
     type(c_ptr) :: cell_ptr
 end type
 
+type metabolism_type
+	real(REAL_KIND) :: HIF1
+	real(REAL_KIND) :: PDK1
+	real(REAL_KIND) :: I_rate_max
+	real(REAL_KIND) :: G_rate
+	real(REAL_KIND) :: PP_rate
+	real(REAL_KIND) :: P_rate 
+	real(REAL_KIND) :: L_rate
+	real(REAL_KIND) :: A_rate
+	real(REAL_KIND) :: I_rate
+	real(REAL_KIND) :: O_rate
+	real(REAL_KIND) :: Itotal	! total of intermediates pool
+	real(REAL_KIND) :: I2Divide	! intermediates total needed to divide
+	real(REAL_KIND) :: GA_rate
+	real(REAL_KIND) :: f_G
+	real(REAL_KIND) :: f_P
+	real(REAL_KIND) :: C_P
+end type
 
 type cell_type
 !	real(REAL_KIND) :: V_n          ! "normal" volume
@@ -168,6 +188,8 @@ type cell_type
     real(REAL_KIND) :: G1S_time, G2M_time, M_time
     real(REAL_KIND) :: doubling_time
     integer :: NL1, NL2(2)
+
+	type(metabolism_type) :: metab
 	
 	integer :: ndt
 end type
@@ -294,6 +316,7 @@ real(REAL_KIND) :: divide_time_median(MAX_CELLTYPES), divide_time_shape(MAX_CELL
 type(dist_type) :: divide_dist(MAX_CELLTYPES)
 real(REAL_KIND) :: execute_t1
 real(REAL_KIND) :: d_nbr_limit
+real(REAL_KIND) :: spcrad_value
 
 integer :: ndoublings
 real(REAL_KIND) :: doubling_time_sum
@@ -331,6 +354,19 @@ real(REAL_KIND) :: t_fmover, delta_tmove, dt_min, delta_min, delta_max
 real(REAL_KIND) :: C_O2_bdry
 !real(REAL_KIND) :: Kmemb(NCONST)
 real(REAL_KIND) :: total_dMdt
+
+! Metabolism parameters
+real(REAL_KIND) :: N_GA(MAX_CELLTYPES)		! number of ATP molecules generated per glucose molecule in glycosis
+real(REAL_KIND) :: N_GI(MAX_CELLTYPES)		! number of intermediate molecules generated per glucose molecule in glycosis
+!real(REAL_KIND) :: F_PO_BASE(MAX_CELLTYPES)	! base level of pyruvate oxidation (fraction of glycolysis rate)
+real(REAL_KIND) :: N_PA(MAX_CELLTYPES)		! number of ATP molecules generated per pyruvate molecule in pyruvate oxidation
+real(REAL_KIND) :: N_PI(MAX_CELLTYPES)		! number of intermediate molecules generated per pyruvate molecule in pyruvate oxidation
+real(REAL_KIND) :: N_PO(MAX_CELLTYPES)		! number of O2 molecules consumed per pyruvate molecule in pyruvate oxidation
+!real(REAL_KIND) :: f_ATPg(MAX_CELLTYPES)	! threshold ATP production rate fractions for cell growth, survival
+real(REAL_KIND) :: f_ATPs(MAX_CELLTYPES)	! threshold ATP production rate fractionss for cell growth, survival
+!real(REAL_KIND) :: ATPg(MAX_CELLTYPES)		! threshold ATP production rates for cell growth, survival
+real(REAL_KIND) :: ATPs(MAX_CELLTYPES)		! threshold ATP production rates for cell growth, survival
+type(metabolism_type), target :: metabolic(MAX_CELLTYPES)
 
 integer :: show_progeny
 logical :: use_V_dependence, randomise_initial_volume
@@ -380,12 +416,13 @@ logical :: use_integration = .true.
 logical :: use_packer = .true.
 logical :: use_volume_method
 logical :: use_cell_cycle
+logical :: use_metabolism
 logical :: use_constant_growthrate = .false. 
 logical :: colony_simulation
 logical :: medium_change_step
 logical :: dbug = .false.
 
-integer :: kcell_now
+integer :: kcell_now, kcell_test=-34
 
 !dec$ attributes dllexport :: nsteps, DELTA_T
 

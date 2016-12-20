@@ -863,28 +863,44 @@ real(REAL_KIND) :: dt
 real(REAL_KIND) :: Cin_0(NCONST), Cex_0(NCONST)		! at some point NCONST -> MAX_CHEMO
 real(REAL_KIND) :: dVdt,  Vin_0, dV, metab_O2, metab_glucose, metab, dVdt_new
 logical :: oxygen_growth, glucose_growth
+integer :: ityp
 integer :: C_option = 1	! we must use this
 
-if (colony_simulation) then
+if (colony_simulation) then		! FIX THIS LATER
     metab = 1
     dVdt = get_dVdt(cp,metab)
 else
-    oxygen_growth = chemo(OXYGEN)%controls_growth
-    glucose_growth = chemo(GLUCOSE)%controls_growth
-    Cin_0 = cp%Cin
-    metab_O2 = O2_metab(Cin_0(OXYGEN))	! Note that currently growth depends only on O2
-    metab_glucose = glucose_metab(Cin_0(GLUCOSE))
-    if (oxygen_growth .and. glucose_growth) then
-	    metab = metab_O2*metab_glucose
-    elseif (oxygen_growth) then
-	    metab = metab_O2
-    elseif (glucose_growth) then
-	    metab = metab_glucose
-    endif
-    dVdt = get_dVdt(cp,metab)
-    if (suppress_growth) then	! for checking solvers
-	    dVdt = 0
-    endif
+	if (use_metabolism) then
+		cp%metab%Itotal = cp%metab%Itotal + dt*cp%metab%I_rate
+		! need to set cp%dVdt from cp%metab%I_rate
+		ityp = cp%celltype
+		dVdt = max_growthrate(ityp)*cp%metab%I_rate/cp%metab%I_rate_max
+!		cp%dVdt = cp%growth_rate_factor*cp%dVdt
+!		cp%V = cp%V + cp%dVdt*dt
+		metab = 1
+		Cin_0 = cp%Cin
+!		if (kcell_now == 1) then
+!			write(*,'(a,4e12.3)') 'dVdt: ',max_growthrate(ityp),cp%metab%I_rate/cp%metab%I_rate_max,cp%dVdt,get_dVdt(cp,metab)
+!			write(*,'(a,i3,4e12.3)') 'phase,V,Vdivide,I..: ', cp%phase,cp%V,cp%divide_volume,cp%metab%Itotal,cp%metab%I2Divide
+!		endif
+	else
+		oxygen_growth = chemo(OXYGEN)%controls_growth
+		glucose_growth = chemo(GLUCOSE)%controls_growth
+		Cin_0 = cp%Cin
+		metab_O2 = O2_metab(Cin_0(OXYGEN))	! Note that currently growth depends only on O2
+		metab_glucose = glucose_metab(Cin_0(GLUCOSE))
+		if (oxygen_growth .and. glucose_growth) then
+			metab = metab_O2*metab_glucose
+		elseif (oxygen_growth) then
+			metab = metab_O2
+		elseif (glucose_growth) then
+			metab = metab_glucose
+		endif
+		dVdt = get_dVdt(cp,metab)
+		if (suppress_growth) then	! for checking solvers
+			dVdt = 0
+		endif
+	endif
     Cex_0 = cp%Cex
 endif
 cp%dVdt = dVdt

@@ -38,6 +38,8 @@ use sparse_map
 use par_zig_mod
 use chemokine
 use continuum
+use metabolism
+use ode_solver
 
 use, intrinsic :: iso_c_binding
 
@@ -482,6 +484,7 @@ enddo
 end subroutine
 
 !-------------------------------------------------------------------------------------------
+! Updates Cex for all constituents, Cin for all except drugs.
 !-------------------------------------------------------------------------------------------
 subroutine update_Cex(ichemo)
 integer :: ichemo
@@ -489,6 +492,7 @@ real(REAL_KIND) :: dt
 integer :: kcell, ix, iy, iz
 real(REAL_KIND) :: alfa(3)
 type(cell_type), pointer :: cp
+type(metabolism_type), pointer :: mp
 real(REAL_KIND), pointer :: Cextra(:,:,:)
 
 if (.not.chemo(ichemo)%present) return
@@ -529,11 +533,13 @@ enddo
 end subroutine
 
 !-------------------------------------------------------------------------------------------
+! Updates Cin and dMdt for drugs and metabolites.
 !-------------------------------------------------------------------------------------------
 subroutine integrate_Cin(dt)
 real(REAL_KIND) :: dt
 integer :: kcell
 
+!$omp parallel do
 do kcell = 1,nlist
 	if (cell_list(kcell)%state == DEAD) cycle
 	if (chemo(DRUG_A)%present) then
@@ -543,12 +549,14 @@ do kcell = 1,nlist
 		call integrate_cell_Cin(DRUG_B,kcell,dt)
 	endif
 enddo
+!$omp end parallel do
 end subroutine
 
 !-------------------------------------------------------------------------------------------
 ! The system quickly equilibrates.
-! It would be best to find the steady-state solution analytically.
-! 3 simultaneous quadratics... 
+! Would it be best to find the steady-state solution analytically?
+! 3 simultaneous quadratics... but this approach is wrong, I think.
+! Updates Cin and dMdt by integrating ODEs for drug and metabolites.
 !-------------------------------------------------------------------------------------------
 subroutine integrate_cell_Cin(ichemo_parent, kcell, dt)
 integer :: ichemo_parent, kcell
@@ -792,7 +800,7 @@ CO2 = cell_list(kcell)%Cin(OXYGEN)
 Kin = chemo(ichemo)%membrane_diff_in
 Kout = chemo(ichemo)%membrane_diff_out
 Kd = chemo(ichemo)%decay_rate
-if (ichemo <= GLUCOSE) then
+if (ichemo <= LACTATE) then
 	Kmax = chemo(ichemo)%max_cell_rate
 	VKdecay = Vin*Kd
 	C0 = chemo(ichemo)%MM_C0
@@ -1635,15 +1643,18 @@ do ic = 1,nfinemap
 		
 		Cflux_prev(:,:,:,ichemo) = Fcurr
 		
-		if (use_SS) then
-			call update_Cin_const_SS(ichemo)				! true steady-state
-			call getF_const(ichemo, Fcurr)
-		elseif (use_integration) then       ! uses SS for O2, glucose
-			call update_Cex(ichemo)
-		else
-			call update_Cex_Cin_dCdt_const(ichemo,dt)		! quasi steady-state
-			call getF_const(ichemo, Fcurr)
-		endif
+!		if (use_SS) then
+!			call update_Cin_const_SS(ichemo)				! true steady-state
+!			call getF_const(ichemo, Fcurr)
+!		elseif (use_integration) then       ! uses SS for O2, glucose. Now assume use_integration always
+			if (.not.use_metabolism) then
+				! This updates Cex and Cin
+				call update_Cex(ichemo)
+			endif
+!		else
+!			call update_Cex_Cin_dCdt_const(ichemo,dt)		! quasi steady-state
+!			call getF_const(ichemo, Fcurr)
+!		endif
 		Cprev = Cave
 							
 	enddo
@@ -1652,21 +1663,92 @@ do ic = 1,nfinemap
 enddo
 !$omp end parallel do
 
-if (use_integration) then
-	! solve for Cin for drug + metabolites by integrating them together
-	call integrate_Cin(dt)
-	do ic = 1,nchemo
-		ichemo = chemomap(ic)
-		Fcurr => Cflux(:,:,:,ichemo)
-		if (ichemo < DRUG_A) then
-			call getF_const(ichemo, Fcurr)
-		else
-			! use the previously computed cell fluxes
-			call make_grid_flux(ichemo,Fcurr)
-		endif
-	enddo
+! This updates Cex, Cin and dMdt, grid fluxes
+if (use_metabolism) then
+	call update_IC
 endif
 
+!return
+
+!if (use_integration) then	! always
+if (chemo(DRUG_A)%present) then
+	! solve for Cin and dMdt for drug + metabolites by integrating them together
+	call integrate_Cin(dt)
+endif
+do ic = 1,nchemo
+	ichemo = chemomap(ic)
+	Fcurr => Cflux(:,:,:,ichemo)
+	if (ichemo < DRUG_A) then
+		if (.not.use_metabolism) then
+			call getF_const(ichemo, Fcurr)	! this computes dMdt (SS cell fluxes) then calls make_grid_flux
+		endif
+	else
+		! use the cell fluxes dMdt previously computed in integrate_Cin
+		call make_grid_flux(ichemo,Fcurr)
+	endif
+enddo
+!endif
+
+end subroutine
+
+!-------------------------------------------------------------------------------------- 
+! Computes Cex, metabolic rates, updates SS Cin, dMdt for each cell, then grid fluxes
+! This is naive, fully explicit!
+!-------------------------------------------------------------------------------------- 
+subroutine update_IC
+integer :: kcell, ic, ichemo, ix, iy, iz, it, nt=10
+real(REAL_KIND) :: alfa(3), dCdt(3), Kin, Kout, dtt, area_factor, vol_cm3, tstart, y(3), rate(3)
+type(cell_type), pointer :: cp
+type(metabolism_type), pointer :: mp
+real(REAL_KIND), pointer :: Cextra(:,:,:), Fcurr(:,:,:)
+real(REAL_KIND) :: average_volume = 1.2
+logical :: ok
+
+write(*,*) 'update_IC: '
+area_factor = (average_volume)**(2./3.)
+
+!$omp parallel do private(cp, alfa, ix, iy, iz, ic, ichemo, Cextra, tstart, dtt, Kin, Kout, ok)
+do kcell = 1,nlist
+!	dbug = (kcell == 1 .and. istep >= 5)
+	cp => cell_list(kcell)
+	if (cp%state == DEAD) cycle
+	call grid_interp(kcell, alfa)
+	ix = cp%site(1)
+	iy = cp%site(2)
+	iz = cp%site(3)
+	do ic = 1,nchemo
+		ichemo = chemomap(ic)
+		Cextra => Caverage(:,:,:,ichemo)		! currently using the average concentration!	
+		cp%Cex(ichemo) = (1-alfa(1))*(1-alfa(2))*(1-alfa(3))*Cextra(ix,iy,iz)  &
+			+ (1-alfa(1))*alfa(2)*(1-alfa(3))*Cextra(ix,iy+1,iz)  &
+			+ (1-alfa(1))*alfa(2)*alfa(3)*Cextra(ix,iy+1,iz+1)  &
+			+ (1-alfa(1))*(1-alfa(2))*alfa(3)*Cextra(ix,iy,iz+1)  &
+			+ alfa(1)*(1-alfa(2))*(1-alfa(3))*Cextra(ix+1,iy,iz)  &
+			+ alfa(1)*alfa(2)*(1-alfa(3))*Cextra(ix+1,iy+1,iz)  &
+			+ alfa(1)*alfa(2)*alfa(3)*Cextra(ix+1,iy+1,iz+1)  &
+			+ alfa(1)*(1-alfa(2))*alfa(3)*Cextra(ix+1,iy,iz+1)
+	enddo
+!	write(nflog,'(i6,3e12.3)') kcell,cp%Cex(1:3)
+!	if (kcell == kcell_test) write(*,'(a,6f8.4)') 'update_IC: before f_metab: Cin,Cex: ',cp%Cin(1:3),cp%Cex(1:3)
+!	kcell_now = kcell
+	tstart = 0
+	dtt = 2
+	call OGLSolver(kcell,tstart,dtt,ok)	
+	do ichemo = OXYGEN,LACTATE
+		Kin = chemo(ichemo)%membrane_diff_in
+		Kout = chemo(ichemo)%membrane_diff_out
+		cp%dMdt(ichemo) = area_factor*(Kin*cp%Cex(ichemo) - Kout*cp%Cin(ichemo))
+	enddo
+!	if (kcell == kcell_test) then
+!		write(*,'(a,6f8.4)') 'update_IC: after Cin,Cex: ',cp%Cin(1:3),cp%Cex(1:3)
+!	endif
+enddo
+!$omp end parallel do
+
+do ichemo = OXYGEN,LACTATE
+	Fcurr => Cflux(:,:,:,ichemo)
+	call make_grid_flux(ichemo,Fcurr)
+enddo
 end subroutine
 
 !-------------------------------------------------------------------------------------- 

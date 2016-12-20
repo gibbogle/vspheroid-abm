@@ -283,9 +283,13 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
  "Medium diffusion coeff",
  "Constituent diffusion coefficient in the medium"},
 
-{"OXYGEN_CELL_DIFF", 600, 0, 0,
- "Membrane diff constant",
- "Cell membrane diffusion constant Kd"},
+    {"OXYGEN_CELL_DIFF_IN", 600, 0, 0,
+     "Cell influx parameter Kin",
+     "Cell membrane diffusion constant Kin"},
+
+    {"OXYGEN_CELL_DIFF_OUT", 600, 0, 0,
+     "Cell efflux parameter Kout",
+     "Cell membrane diffusion constant Kout"},
 
 {"OXYGEN_BDRY_CONC", 0.18, 0, 0,
  "Boundary concentration",
@@ -327,9 +331,13 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
  "Medium diffusion coeff",
  "Constituent diffusion coefficient in the medium"},
 
-{"GLUCOSE_CELL_DIFF", 100, 0, 0,
- "Membrane diff constant",
- "Cell membrane diffusion coefficient Kd"},
+    {"GLUCOSE_CELL_DIFF_IN", 100, 0, 0,
+     "Membrane diff constant",
+     "Cell membrane diffusion coefficient Kin"},
+
+    {"GLUCOSE_CELL_DIFF_OUT", 100, 0, 0,
+     "Membrane diff constant",
+     "Cell membrane diffusion coefficient Kout"},
 
 {"GLUCOSE_BDRY_CONC", 5.5, 0, 0,
  "Boundary concentration",
@@ -339,17 +347,49 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
  "Constant concentration",
  "Extracellular concentration to be held constant everywhere at the specified boundary value"},
 
-{"GLUCOSE_CONSUMPTION", 3.8e-17, 0, 0,
+{"GLUCOSE_CONSUMPTION", 6.8e-17, 0, 0,
  "Max consumption rate",
  "GLUCOSE consumption rate"},
 
-{"GLUCOSE_MM_KM", 1.33, 0, 0,
+{"GLUCOSE_MM_KM", 220, 0, 0,
  "Michaelis-Menten Km",
  "Michaelis-Menten Km (uM)"},
 
 {"GLUCOSE_HILL_N", 1, 1, 2,
  "Hill function N",
  "Glucose uptake rate Hill function N"},
+
+    {"LACTATE_DIFF_COEF", 3.0e-7, 0, 0,
+     "Spheroid diffusion coeff",
+     "LACTATE diffusion coefficient"},
+
+    {"LACTATE_MEDIUM_DIFF", 6.0e-6, 0, 0,
+     "Medium diffusion coeff",
+     "Constituent diffusion coefficient in the medium"},
+
+    {"LACTATE_CELL_DIFF_IN", 400, 0, 0,
+     "Membrane diff constant",
+     "Cell membrane diffusion coefficient Kin"},
+
+    {"LACTATE_CELL_DIFF_OUT", 400, 0, 0,
+     "Membrane diff constant",
+     "Cell membrane diffusion coefficient Kout"},
+
+    {"LACTATE_BDRY_CONC", 3, 0, 0,
+     "Boundary concentration",
+     "LACTATE boundary concentration"},
+
+    {"LACTATE_CONSUMPTION", 3.8e-17, 0, 0,
+     "Max consumption rate",
+     "LACTATE consumption rate"},
+
+    {"LACTATE_MM_KM", 20, 0, 0,
+     "Michaelis-Menten Km",
+     "Michaelis-Menten Km (uM)"},
+
+    {"LACTATE_HILL_N", 1, 1, 2,
+     "Hill function N",
+     "Lactate uptake rate Hill function N"},
 
 {"USE_TRACER", 0, 0, 1,
 "Use Tracer?",
@@ -551,6 +591,150 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      {"RMR_KCP_1", 0.13, 0, 0,
      "Checkpoint time limit factor",
      "Factor for computing maximum time spent in the checkpoint, as a function of # of L1 lesions"},
+
+     // Metabolism parameters
+
+           {"USE_METABOLISM", 0,0,1,
+            "Use glucose metabolism",
+            "If metabolism is turned on, cell cycle is used, and lactate is simulated.  If metabolism is turned off, lactate is not simulated"},
+
+           {"N_GA_1", 2, 0, 0,
+           "ATP moles produced per glucose mole",
+           "Number of ATP moles produced by the glycolysis of one glucose mole"},
+
+           {"N_PA_1", 18, 0, 0,
+           "ATP moles produced per pyruvate mole",
+           "Number of ATP moles produced by the oxidation of one pyruvate mole"},
+
+           {"N_GI_1", 0.4, 0, 0,
+           "Intermediate moles produced per glucose mole",
+           "Number of moles of anabolic intermediates produced the glycolysis of one glucose mole"},
+
+           {"N_PI_1", 0.4, 0, 0,
+           "Intermediate moles produced per pyruvate mole",
+           "Number of moles of anabolic intermediates produced the oxidation of one pyruvate mole"},
+
+           {"N_PO_1", 3, 0, 0,
+           "Oxygen moles consumed per pyruvate mole",
+           "Number of moles of oxygen consumed the oxidation of one pyruvate mole"},
+
+     //      {"F_PO_BASE_1", 0.1, 0, 0,
+     //      "Base level of pyruvate oxidation (fraction of glycolysis)",
+     //      "With no nutrient constraints, the fraction of pyruvate produced by glycolysis that goes to oxidation by TCA/ETC"},
+
+           {"K_H1_1", 140, 0, 0,
+           "K_H1",
+           "The rate of change of HIF-1 level H is given by: dH/dt = K_H2*(1 - H*exp(K_H1*C_O)), where C_O = oxygen concentration"},
+
+           {"K_H2_1", 0.001, 0, 0,
+           "K_H2",
+           "The rate of change of HIF-1 level H is given by: dH/dt = K_H2*(1 - H*exp(K_H1*C_O)), where C_O = oxygen concentration"},
+
+           {"K_HB_1", 0.2, 0, 0,
+           "K_HB",
+           "Glycolysis rate = K_HA*(1 + K_HB*H)*C_G^N/(C_G^N + Km^N)\n\
+             where: H = HIF-1 level, C_G = glucose concentration, HB is maximum glucose consumption rate, Km and N are the glucose consumption Hill function parameters"},
+
+           {"K_PDK_1", 4.63e-5, 0, 0,
+           "K_PDK",
+           "Representing PDK1 factor level by y in the range (0,1), the rate of change of y is: dy/dt = -K_PDK*(y - 1 + H) where H = HIF-1 level"},
+
+            {"PDKMIN_1", 0.3, 0, 0,
+            "PDKmin",
+            "Minimum value of the PDK1 factor"},
+
+//           {"ATP_G_1", 0.4, 0, 0,
+//           "ATP production threshold for growth (fraction of peak)",
+//           "Cell growth stops when the ATP production rate falls below the fraction ATP_G of the maximum (no nutrient constraints) production rate"},
+
+           {"ATP_S_1", 0.4, 0, 0,
+           "ATP production threshold for survival (fraction of peak)",
+           "Cell death occurs when the ATP production rate falls below the fraction ATP_S of the maximum (no nutrient constraints) production rate"},
+
+           {"K_PL_1", 0.1, 0, 0,
+           "Pyruvate -> lactate rate constant",
+           "The forward rate constant K_PL of the pyruvate-lactate reaction, i.e. the rate constant for conversion of pyruvate to lactate"},
+
+           {"K_LP_1", 0.1, 0, 0,
+           "Lactate -> pyruvate rate constant",
+           "The reverse rate constant K_LP of the pyruvate-lactate reaction, i.e. the rate constant for conversion of lactate to pyruvate"},
+
+            {"PYRUVATE_MM_KM_1", 20, 0, 0,
+            "Pyruvate Michaelis-Menten Km",
+            "Pyruvate Michaelis-Menten Km (uM). fMM = C_P/(Km + C_P) is a multiple of pyruvate oxidation rate, ensuring that the rate -> 0 as C_P -> 0"},
+
+            {"APOPTOSIS_RATE_1", 0.1, 0, 0,
+            "Apoptosis rate/hr",
+            "The rate of passage from state = DYING to state = DEAD, probability/hour"},
+
+            {"N_GA_2", 2, 0, 0,
+            "ATP moles produced per glucose mole",
+            "Number of ATP moles produced by the glycolysis of one glucose mole"},
+
+            {"N_PA_2", 18, 0, 0,
+            "ATP moles produced per pyruvate mole",
+            "Number of ATP moles produced by the oxidation of one pyruvate mole"},
+
+            {"N_GI_2", 0.4, 0, 0,
+            "Intermediate moles produced per glucose mole",
+            "Number of moles of anabolic intermediates produced the glycolysis of one glucose mole"},
+
+            {"N_PI_2", 0.4, 0, 0,
+            "Intermediate moles produced per pyruvate mole",
+            "Number of moles of anabolic intermediates produced the oxidation of one pyruvate mole"},
+
+            {"N_PO_2", 3, 0, 0,
+            "Oxygen moles consumed per pyruvate mole",
+            "Number of moles of oxygen consumed the oxidation of one pyruvate mole"},
+
+     //       {"F_PO_BASE_2", 0.1, 0, 0,
+     //       "Base level of pyruvate oxidation (fraction of glycolysis)",
+     //       "With no nutrient constraints, the fraction of pyruvate produced by glycolysis that goes to oxidation by TCA/ETC"},
+
+            {"K_H1_2", 140, 0, 0,
+            "K_H1",
+            "The rate of change of HIF-1 level H is given by: dH/dt = K_H2*(1 - H*exp(K_H1*C_O)), where C_O = oxygen concentration"},
+
+            {"K_H2_2", 0.001, 0, 0,
+            "K_H2",
+             "The rate of change of HIF-1 level H is given by: dH/dt = K_H2*(1 - H*exp(K_H1*C_O)), where C_O = oxygen concentration"},
+
+            {"K_HB_2", 0.2, 0, 0,
+            "K_HB",
+             "Glycolysis rate = K_HA*(1 + K_HB*H)*C_G^N/(C_G^N + Km^N)\n\
+              where: H = HIF-1 level, C_G = glucose concentration, HB is maximum glucose consumption rate, Km and N are the glucose consumption Hill function parameters"},
+
+            {"K_PDK_2", 4.63e-5, 0, 0,
+            "K_PDK",
+            "Representing PDK1 factor level by y in the range (0,1), the rate of change of y is: dy/dt = -K_PDK*(y - 1 + H) where H = HIF-1 level"},
+
+             {"PDKMIN_2", 0.3, 0, 0,
+             "PDKmin",
+             "Minimum value of the PDK1 factor"},
+
+//            {"ATP_G_2", 0.5, 0, 0,
+//            "ATP production threshold for growth (fraction of peak)",
+//             "Cell growth stops when the ATP production rate falls below the fraction ATP_G of the maximum (no nutrient constraints) production rate"},
+
+            {"ATP_S_2", 0.25, 0, 0,
+            "ATP production threshold for survival (fraction of peak)",
+             "Cell death occurs when the ATP production rate falls below the fraction ATP_S of the maximum (no nutrient constraints) production rate"},
+
+            {"K_PL_2", 0.2, 0, 0,
+            "Pyruvate -> lactate rate constant",
+            "The forward rate constant of the pyruvate-lactate reaction, i.e. the rate constant for conversion of pyruvate to lactate"},
+
+            {"K_LP_2", 0.1, 0, 0,
+            "Lactate -> pyruvate rate constant",
+             "The reverse rate constant of the pyruvate-lactate reaction, i.e. the rate constant for conversion of lactate to pyruvate"},
+
+             {"PYRUVATE_MM_KM_2", 20, 0, 0,
+             "Pyruvate Michaelis-Menten Km",
+             "Pyruvate Michaelis-Menten Km (uM). fMM = C_P/(Km + C_P) is a multiple of pyruvate oxidation rate, ensuring that the rate -> 0 as C_P -> 0"},
+
+             {"APOPTOSIS_RATE_2", 0.1, 0, 0,
+             "Apoptosis rate/hr",
+             "The rate of passage from state = DYING to state = DEAD, probability/hour"},
 
 {"HYPOXIA_1", 0.1, 0, 0,
 "Hypoxia threshold 1",

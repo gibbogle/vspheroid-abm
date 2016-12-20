@@ -76,7 +76,7 @@ integer :: iuse_oxygen, iuse_glucose, iuse_tracer, iuse_drug, iuse_metab, iV_dep
 integer :: iuse_extra, iuse_relax, iuse_par_relax, iuse_gd_all
 real(REAL_KIND) :: days, percent, fluid_fraction, d_layer, sigma(MAX_CELLTYPES), Vsite_cm3, bdry_conc, spcrad_value, d_n_limit
 real(REAL_KIND) :: anoxia_tag_hours, anoxia_death_hours, aglucosia_tag_hours, aglucosia_death_hours
-integer :: iuse_drop, isaveprofiledata, isaveslicedata, iusecellcycle
+integer :: iuse_drop, isaveprofiledata, isaveslicedata, iusecellcycle, iusemetabolism
 integer :: iconstant, ioxygengrowth, iglucosegrowth, ioxygendeath, iglucosedeath
 logical :: use_metabolites
 character*(12) :: drug_name
@@ -153,9 +153,10 @@ chemo(OXYGEN)%controls_death = (ioxygendeath == 1)
 read(nfcell,*) chemo(OXYGEN)%diff_coef
 read(nfcell,*) chemo(OXYGEN)%medium_diff_coef
 read(nfcell,*) chemo(OXYGEN)%membrane_diff_in
+read(nfcell,*) chemo(OXYGEN)%membrane_diff_out
 Vsite_cm3 = 2.0e-9		! this is from spheroid-abm, and the scaling here is for consistency with spheroid-abm
 chemo(OXYGEN)%membrane_diff_in = chemo(OXYGEN)%membrane_diff_in*Vsite_cm3/60		! /min -> /sec
-chemo(OXYGEN)%membrane_diff_out = chemo(OXYGEN)%membrane_diff_in
+chemo(OXYGEN)%membrane_diff_out = chemo(OXYGEN)%membrane_diff_out*Vsite_cm3/60		! /min -> /sec
 read(nfcell,*) chemo(OXYGEN)%bdry_conc
 read(nfcell,*) iconstant
 chemo(OXYGEN)%constant = (iconstant == 1)
@@ -171,8 +172,9 @@ chemo(GLUCOSE)%controls_death = (iglucosedeath == 1)
 read(nfcell,*) chemo(GLUCOSE)%diff_coef
 read(nfcell,*) chemo(GLUCOSE)%medium_diff_coef
 read(nfcell,*) chemo(GLUCOSE)%membrane_diff_in
+read(nfcell,*) chemo(GLUCOSE)%membrane_diff_out
 chemo(GLUCOSE)%membrane_diff_in = chemo(GLUCOSE)%membrane_diff_in*Vsite_cm3/60		! /min -> /sec
-chemo(GLUCOSE)%membrane_diff_out = chemo(GLUCOSE)%membrane_diff_in
+chemo(GLUCOSE)%membrane_diff_out = chemo(GLUCOSE)%membrane_diff_out*Vsite_cm3/60	! /min -> /sec
 read(nfcell,*) chemo(GLUCOSE)%bdry_conc
 read(nfcell,*) iconstant
 chemo(GLUCOSE)%constant = (iconstant == 1)
@@ -180,6 +182,20 @@ read(nfcell,*) chemo(GLUCOSE)%max_cell_rate
 chemo(GLUCOSE)%max_cell_rate = chemo(GLUCOSE)%max_cell_rate*1.0e6					! mol/cell/s -> mumol/cell/s
 read(nfcell,*) chemo(GLUCOSE)%MM_C0
 read(nfcell,*) chemo(GLUCOSE)%Hill_N
+
+read(nfcell,*) chemo(LACTATE)%diff_coef
+read(nfcell,*) chemo(LACTATE)%medium_diff_coef
+read(nfcell,*) chemo(LACTATE)%membrane_diff_in
+chemo(LACTATE)%membrane_diff_in = chemo(LACTATE)%membrane_diff_in*Vsite_cm3/60	! /min -> /sec
+read(nfcell,*) chemo(LACTATE)%membrane_diff_out
+chemo(LACTATE)%membrane_diff_out = chemo(LACTATE)%membrane_diff_out*Vsite_cm3/60	! /min -> /sec
+read(nfcell,*) chemo(LACTATE)%bdry_conc
+chemo(LACTATE)%bdry_conc = max(0.001,chemo(LACTATE)%bdry_conc)
+read(nfcell,*) chemo(LACTATE)%max_cell_rate
+chemo(LACTATE)%max_cell_rate = chemo(LACTATE)%max_cell_rate*1.0e6					! mol/cell/s -> mumol/cell/s
+read(nfcell,*) chemo(LACTATE)%MM_C0
+read(nfcell,*) chemo(LACTATE)%Hill_N
+
 read(nfcell,*) iuse_tracer		!chemo(TRACER)%used
 read(nfcell,*) chemo(TRACER)%diff_coef
 read(nfcell,*) chemo(TRACER)%medium_diff_coef
@@ -215,6 +231,9 @@ read(nfcell,*) iusecellcycle
 use_cell_cycle = (iusecellcycle == 1)
 ccp => cc_parameters
 call ReadCellCycleParameters(nfcell,ccp)
+read(nfcell,*) iusemetabolism
+use_metabolism = (iusemetabolism == 1)
+call ReadMetabolismParameters(nfcell)
 read(nfcell,*) O2cutoff(1)
 read(nfcell,*) O2cutoff(2)
 read(nfcell,*) O2cutoff(3)
@@ -280,6 +299,7 @@ chemo(GLUCOSE)%used = (iuse_glucose == 1)
 chemo(TRACER)%used = (iuse_tracer == 1)
 chemo(OXYGEN)%MM_C0 = chemo(OXYGEN)%MM_C0/1000		! uM -> mM
 chemo(GLUCOSE)%MM_C0 = chemo(GLUCOSE)%MM_C0/1000	! uM -> mM
+chemo(LACTATE)%MM_C0 = chemo(LACTATE)%MM_C0/1000	! uM -> mM
 if (.not.chemo(OXYGEN)%used) then
     chemo(OXYGEN)%controls_growth = .false.
     chemo(OXYGEN)%controls_death = .false.
@@ -401,6 +421,35 @@ end subroutine
 
 !-----------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------
+subroutine ReadMetabolismParameters(nf)
+integer :: nf
+integer :: ityp
+
+do ityp = 1,Ncelltypes
+	read(nf,*) N_GA(ityp)
+	read(nf,*) N_PA(ityp)
+	read(nf,*) N_GI(ityp)
+	read(nf,*) N_PI(ityp)
+	read(nf,*) N_PO(ityp)
+	read(nf,*) K_H1(ityp)
+	read(nf,*) K_H2(ityp)
+	read(nf,*) K_HB(ityp)
+	read(nf,*) K_PDK(ityp)
+	read(nf,*) PDKmin(ityp)
+!	read(nf,*) f_ATPg(ityp)
+	read(nf,*) f_ATPs(ityp)
+	read(nf,*) K_PL(ityp)
+	read(nf,*) K_LP(ityp)
+	read(nf,*) Hill_Km_P(ityp)
+	read(nf,*) Apoptosis_rate(ityp)
+enddo
+PDKmin(:) = 0.3
+Hill_N_P = 1
+Hill_Km_P = Hill_Km_P/1000	! uM -> mM
+end subroutine
+
+!-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine ReadDrugData(nf)
 integer :: nf
 integer :: idrug, im, ictyp, ival
@@ -515,7 +564,7 @@ do itime = 1,ntimes
 		drugname = trim(line)
 		do idrug = 1,ndrugs_used
 			if (drugname == drug(idrug)%name) then
-				ichemo = 4 + 3*(idrug-1)
+				ichemo = DRUG_A + 3*(idrug-1)
 				exit
 			endif
 		enddo
@@ -685,8 +734,12 @@ call logger('did ArrayInitialisation')
 
 !call create_stencil
 
+chemo(LACTATE)%used = use_metabolism
 call SetupChemo
 call logger('did SetupChemo')
+if (use_metabolism) then
+	call SetupMetabolism
+endif
 
 ! Assume that Raverage is for cells midway in growth, i.e. between 0.8 and 1.6, at 1.2
 ! as a fraction of the average cell volume, (or, equivalently, between 1.0 and 2.0, at 1.5)
@@ -766,6 +819,10 @@ call SetInitialGrowthRate
 limit_stop = .false.
 medium_change_step = .false.		! for startup
 call logger('completed Setup')
+
+!call testOGL
+!stop
+
 end subroutine
 
 !-----------------------------------------------------------------------------------------
@@ -945,6 +1002,11 @@ cp%state = ALIVE
 cp%generation = 1
 cp%celltype = random_choice(celltype_fraction,Ncelltypes,kpar)
 ityp = cp%celltype
+if (ityp == 2) then
+	write(logmsg,*) 'So far only cell type 1 is implemented'
+	call logger(logmsg)
+	stop
+endif
 Ncells_type(ityp) = Ncells_type(ityp) + 1
 cp%Iphase = .true.
 cp%nspheres = 1
@@ -1033,6 +1095,10 @@ cp%Cin = cp%Cex
 cp%CFSE = generate_CFSE(1.d0)
 
 cp%ndt = ndt
+
+if (use_metabolism) then
+	cp%metab = metabolic(1)
+endif
 end subroutine
 
 !--------------------------------------------------------------------------------
@@ -1136,7 +1202,11 @@ real(REAL_KIND), parameter :: FULL_NBRLIST_UPDATE_HOURS = 4
 type(cell_type), pointer :: cp
 logical :: ok, done, changed
 
-!cp => cell_list(1)
+if (kcell_test > 0) then
+	cp => cell_list(kcell_test)
+else
+	cp => cell_list(1)
+endif
 !Nhop = 10*(30/DELTA_T)
 Nhop = 1
 nt_hour = 3600/DELTA_T
@@ -1215,7 +1285,6 @@ do while (.not.done)
 	endif
 	tnow = istep*DELTA_T + t_fmover
 	ncells0 = ncells
-!	if (ncells >= nshow) write(*,'(a,2i6,3f8.1)') 'growing: istep, ndt, dt, delta_tmove: ',istep,ndt,dt,delta_tmove,t_fmover
 
 	call GrowCells(radiation_dose,dt,changed,ok)
 	if (.not.ok) then
@@ -1258,6 +1327,11 @@ if (ngaps > 2000 .or. mod(istep,nt_nbr) == 0) then
 	endif
 endif
 
+if (use_metabolism) then
+	call update_HIF1(DELTA_T)
+endif
+
+!write(*,'(a,3e12.3)') 'simulate_step: Cin: ',cp%Cin(1:3)
 ! Reaction-diffusion system
 if (medium_change_step .or. chemo(DRUG_A)%present) then
 	nt_diff = n_substeps
@@ -1330,6 +1404,29 @@ if (mod(istep,nt_hour) == 0) then
     call showcells
 endif
 res = 0
+end subroutine
+
+!-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
+subroutine update_HIF1(dt)
+real(REAL_KIND) :: dt
+real(REAL_KIND) :: HIF1, PDK1
+integer :: kcell, ityp
+type(metabolism_type), pointer :: mp
+type(cell_type), pointer :: cp
+
+do kcell = 1,nlist
+	cp => cell_list(kcell)
+	if (cp%state == DEAD) cycle
+	mp => cp%metab
+	HIF1 = mp%HIF1
+	ityp = cp%celltype
+	call analyticSetHIF1(ityp,cp%Cin(OXYGEN),HIF1,dt)
+	mp%HIF1 = HIF1
+	PDK1 = mp%PDK1
+	call analyticSetPDK1(ityp,HIF1,PDK1,dt)
+	mp%PDK1 = PDK1
+enddo
 end subroutine
 
 !-----------------------------------------------------------------------------------------

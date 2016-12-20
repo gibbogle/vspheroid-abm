@@ -41,6 +41,7 @@ end type
 type(chemokine_type), target :: chemo(MAX_CHEMO)
 
 integer :: nchemo, chemomap(MAX_CHEMO)
+real(REAL_KIND) :: C_OGL(3)				! 1=OXYGEN, 2=GLUCOSE, 3=LACTATE
 
 contains
 
@@ -74,9 +75,11 @@ integer :: ic, ichemo
 
 chemo(OXYGEN)%name = 'Oxygen'
 chemo(GLUCOSE)%name = 'Glucose'
+chemo(LACTATE)%name = 'Lactate'
 chemo(TRACER)%name = 'Tracer'
 chemo(OXYGEN)%decay_rate = 0
 chemo(GLUCOSE)%decay_rate = 0
+chemo(LACTATE)%decay_rate = 0
 chemo(TRACER)%decay_rate = 0
 
 !chemo(DRUG_A)%name = 'Drug_A'
@@ -84,7 +87,7 @@ chemo(TRACER)%decay_rate = 0
 do ichemo = 1,MAX_CHEMO
 	chemo(ichemo)%present = .false.
 	if (chemo(ichemo)%used) then
-		if (ichemo == OXYGEN .or. ichemo == GLUCOSE .or. ichemo == TRACER) then
+		if (ichemo == OXYGEN .or. ichemo == GLUCOSE .or. ichemo == LACTATE .or. ichemo == TRACER) then		!  
 			chemo(ichemo)%present = .true.
 		endif
 	endif
@@ -95,6 +98,7 @@ call SetupChemomap
 !	ichemo = chemomap(ic)
 do ichemo = 1,MAX_CHEMO
 	if (.not.chemo(ichemo)%used) cycle
+	write(*,*) 'SetupChemo: allocate for ichemo: ',ichemo
 	if (allocated(chemo(ichemo)%Cprev)) deallocate(chemo(ichemo)%Cprev)
 	if (allocated(chemo(ichemo)%Fprev)) deallocate(chemo(ichemo)%Fprev)
 	if (allocated(chemo(ichemo)%Cave_b)) deallocate(chemo(ichemo)%Cave_b)
