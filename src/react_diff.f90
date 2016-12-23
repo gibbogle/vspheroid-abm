@@ -332,24 +332,28 @@ do k = 1,nnz_b
 		endif
 	endif
 enddo
-!!$omp parallel do private(iyb, ixb, krow, Kr)
-do izb = 1,NZB
+
+! To make OMP useable, need to ensure that values of krow concurrently evaluated are well separated.
+! Using ixb as the loop variable should suffice.
+!$omp parallel do private(iyb, izb, krow, Kr)
+do ixb = 1,NXB
 	do iyb = 1,NYB
-		do ixb = 1,NXB
+		do izb = 1,NZB
 			krow = (ixb-1)*NYB*NZB + (iyb-1)*NZB + izb
 !			if (Fcurr_b(ixb,iyb,izb) > 0) then
 !			    Kdiff = Ktissue
 !			else
 !			    Kdiff = Kmedium
 !			endif
-		    Fsum = Fsum + Fcurr_b(ixb,iyb,izb)
+!		    Fsum = Fsum + Fcurr_b(ixb,iyb,izb)
 			Kr = dxb*dxb/Kdiff
 			rhs(krow) = Kr*((-2*Fcurr_b(ixb,iyb,izb) + Fprev_b(ixb,iyb,izb))/dxb3 + (1./(2*dt))*(4*Cave_b(ixb,iyb,izb) - Cprev_b(ixb,iyb,izb)))
 			if (rhs(krow) /= 0) zero = .false.
 		enddo
 	enddo
 enddo
-!!$omp end parallel do
+!$omp end parallel do
+
 if (ichemo == OXYGEN) then
 	Cbdry = chemo(ichemo)%bdry_conc
 	izb = NZB
@@ -508,7 +512,7 @@ Cextra => Caverage(:,:,:,ichemo)		! currently using the average concentration!
 !		write(*,'(10f7.4)') Cextra(ix,NY/2,:)
 !	enddo
 !endif
-!!$omp parallel do private(cp, ix, iy, iz, alfa)
+!$omp parallel do private(cp, ix, iy, iz, alfa)
 do kcell = 1,nlist
 	cp => cell_list(kcell)
 	if (cp%state == DEAD) cycle
@@ -529,7 +533,7 @@ do kcell = 1,nlist
 	endif
 !	if (ichemo == DRUG_A+1) write(*,'(i6,e12.3)') kcell,cp%Cex(ichemo)
 enddo
-!!$omp end parallel do
+!$omp end parallel do
 end subroutine
 
 !-------------------------------------------------------------------------------------------
@@ -708,14 +712,14 @@ Kout = chemo(ichemo)%membrane_diff_out
 ! Compute cell fluxes cp%dMdt
 total_flux = 0
 zmax = 0
-!!$omp parallel do private(cp)
+!$omp parallel do private(cp)
 do kcell = 1,nlist
 	cp => cell_list(kcell)
 	if (cp%state == DEAD) cycle
 	cp%dMdt(ichemo) = Kin*cp%Cex(ichemo) - Kout*cp%Cin(ichemo)
-	total_flux = total_flux + cp%dMdt(ichemo)
+!	total_flux = total_flux + cp%dMdt(ichemo)
 enddo
-!!$omp end parallel do
+!$omp end parallel do
 !write(nflog,'(a,i6,e12.3)') 'kcellmax, zmax: ',kcellmax,zmax
 
 ! Estimate grid pt flux values F
@@ -755,6 +759,7 @@ subroutine make_grid_flux_weights
 integer :: ic, ix, iy, iz, kcell
 type(cell_type), pointer :: cp
 
+!$omp parallel do private(cp,ix,iy,iz)
 do kcell = 1,nlist
 	cp => cell_list(kcell)
 	if (cp%state == DEAD) cycle
@@ -1295,47 +1300,24 @@ integer :: ix, iy, iz, grid(3), i
 real(REAL_KIND) :: alfa(3)
 real(REAL_KIND), pointer :: Cextra(:,:,:,:)
 
-! changed 31/05/2016 from:
-!ixb = cb(1)/DXB + 1
-!iyb = cb(2)/DXB + 1
-!izb = cb(3)/DXB + 1
-!grid = [ixb, iyb, izb]
-!do i = 1,3
-!	alfa(i) = (cb(i) - (grid(i)-1)*DXB)/DXB
-!enddo
-
 ix = cb(1)/DXF + 1
 iy = cb(2)/DXF + 1
 iz = cb(3)/DXF + 1
 grid = [ix, iy, iz]
-!write(*,'(a,3f8.4)') 'cb:  ',cb
-!write(*,'(a,3i8)') 'grid: ',grid
 do i = 1,3
 	alfa(i) = (cb(i) - (grid(i)-1)*DXF)/DXF
 enddo
 
-! from grid_interp
-!ix = cp%site(1)
-!iy = cp%site(2)
-!iz = cp%site(3)
-!do i = 1,3
-!	alfa(i) = (centre(i) - (cp%site(i)-1)*DELTA_X)/DELTA_X
-!enddo
-
 c = 0
-!do ic = 1,nchemo
-!	ichemo = chemomap(ic)
-!	Cextra => chemo(ichemo)%Cave_b  ! changed 31/05/2016
-    Cextra => Caverage(:,:,:,:)
-	c(:) = (1-alfa(1))*(1-alfa(2))*(1-alfa(3))*Cextra(ix,iy,iz,:)  &
-			+ (1-alfa(1))*alfa(2)*(1-alfa(3))*Cextra(ix,iy+1,iz,:)  &
-			+ (1-alfa(1))*alfa(2)*alfa(3)*Cextra(ix,iy+1,iz+1,:)  &
-			+ (1-alfa(1))*(1-alfa(2))*alfa(3)*Cextra(ix,iy,iz+1,:)  &
-			+ alfa(1)*(1-alfa(2))*(1-alfa(3))*Cextra(ix+1,iy,iz,:)  &
-			+ alfa(1)*alfa(2)*(1-alfa(3))*Cextra(ix+1,iy+1,iz,:)  &
-			+ alfa(1)*alfa(2)*alfa(3)*Cextra(ix+1,iy+1,iz+1,:)  &
-			+ alfa(1)*(1-alfa(2))*alfa(3)*Cextra(ix+1,iy,iz+1,:)
-!enddo
+Cextra => Caverage(:,:,:,:)
+c(:) = (1-alfa(1))*(1-alfa(2))*(1-alfa(3))*Cextra(ix,iy,iz,:)  &
+		+ (1-alfa(1))*alfa(2)*(1-alfa(3))*Cextra(ix,iy+1,iz,:)  &
+		+ (1-alfa(1))*alfa(2)*alfa(3)*Cextra(ix,iy+1,iz+1,:)  &
+		+ (1-alfa(1))*(1-alfa(2))*alfa(3)*Cextra(ix,iy,iz+1,:)  &
+		+ alfa(1)*(1-alfa(2))*(1-alfa(3))*Cextra(ix+1,iy,iz,:)  &
+		+ alfa(1)*alfa(2)*(1-alfa(3))*Cextra(ix+1,iy+1,iz,:)  &
+		+ alfa(1)*alfa(2)*alfa(3)*Cextra(ix+1,iy+1,iz+1,:)  &
+		+ alfa(1)*(1-alfa(2))*alfa(3)*Cextra(ix+1,iy,iz+1,:)
 end subroutine
 
 !--------------------------------------------------------------------------------------
@@ -1343,7 +1325,7 @@ end subroutine
 !
 ! Time for 20 iterations with NX=1000
 ! ILUtype=1 33 sec
-! ILUtype=2 is hoplessly slow with the parameters specified
+! ILUtype=2 is hopelessly slow with the parameters specified
 ! ILUtype=3 56 sec
 ! ILUtype=4 197 sec
 !
@@ -1693,7 +1675,8 @@ end subroutine
 
 !-------------------------------------------------------------------------------------- 
 ! Computes Cex, metabolic rates, updates SS Cin, dMdt for each cell, then grid fluxes
-! This is naive, fully explicit!
+! Although the solution time is only 2 sec, this has been shown to be sufficient to 
+! reach steady state.
 !-------------------------------------------------------------------------------------- 
 subroutine update_IC
 integer :: kcell, ic, ichemo, ix, iy, iz, it, nt=10
@@ -1704,12 +1687,11 @@ real(REAL_KIND), pointer :: Cextra(:,:,:), Fcurr(:,:,:)
 real(REAL_KIND) :: average_volume = 1.2
 logical :: ok
 
-write(*,*) 'update_IC: '
+!write(*,*) 'update_IC: '
 area_factor = (average_volume)**(2./3.)
 
 !$omp parallel do private(cp, alfa, ix, iy, iz, ic, ichemo, Cextra, tstart, dtt, Kin, Kout, ok)
 do kcell = 1,nlist
-!	dbug = (kcell == 1 .and. istep >= 5)
 	cp => cell_list(kcell)
 	if (cp%state == DEAD) cycle
 	call grid_interp(kcell, alfa)
@@ -1728,9 +1710,6 @@ do kcell = 1,nlist
 			+ alfa(1)*alfa(2)*alfa(3)*Cextra(ix+1,iy+1,iz+1)  &
 			+ alfa(1)*(1-alfa(2))*alfa(3)*Cextra(ix+1,iy,iz+1)
 	enddo
-!	write(nflog,'(i6,3e12.3)') kcell,cp%Cex(1:3)
-!	if (kcell == kcell_test) write(*,'(a,6f8.4)') 'update_IC: before f_metab: Cin,Cex: ',cp%Cin(1:3),cp%Cex(1:3)
-!	kcell_now = kcell
 	tstart = 0
 	dtt = 2
 	call OGLSolver(kcell,tstart,dtt,ok)	
@@ -1739,9 +1718,6 @@ do kcell = 1,nlist
 		Kout = chemo(ichemo)%membrane_diff_out
 		cp%dMdt(ichemo) = area_factor*(Kin*cp%Cex(ichemo) - Kout*cp%Cin(ichemo))
 	enddo
-!	if (kcell == kcell_test) then
-!		write(*,'(a,6f8.4)') 'update_IC: after Cin,Cex: ',cp%Cin(1:3),cp%Cex(1:3)
-!	endif
 enddo
 !$omp end parallel do
 

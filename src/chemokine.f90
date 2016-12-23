@@ -98,7 +98,6 @@ call SetupChemomap
 !	ichemo = chemomap(ic)
 do ichemo = 1,MAX_CHEMO
 	if (.not.chemo(ichemo)%used) cycle
-	write(*,*) 'SetupChemo: allocate for ichemo: ',ichemo
 	if (allocated(chemo(ichemo)%Cprev)) deallocate(chemo(ichemo)%Cprev)
 	if (allocated(chemo(ichemo)%Fprev)) deallocate(chemo(ichemo)%Fprev)
 	if (allocated(chemo(ichemo)%Cave_b)) deallocate(chemo(ichemo)%Cave_b)

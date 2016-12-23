@@ -365,8 +365,11 @@ f_hypox(1) f_hypox(2) f_hypox(3) &
 f_clonohypox(1) f_clonohypox(2) f_clonohypox(3) &
 f_growth(1) f_growth(2) f_growth(3) &
 f_necrot plating_efficiency(1) plating_efficiency(2) &
-medium_oxygen medium_glucose medium_drugA medium_drugB &
-bdry_oxygen bdry_glucose bdry_drugA bdry_drugB'
+medium_oxygen medium_glucose medium_lactate &
+medium_drugA medium_drugA_metab1 medium_drugA_metab2 medium_drugB medium_drugB_metab1 medium_drugB_metab2 &
+bdry_oxygen bdry_glucose bdry_lactate &
+bdry_drugA bdry_drugA_metab1 bdry_drugA_metab2 bdry_drugB bdry_drugB_metab1 bdry_drugB_metab2 &
+doubling_time glycolysis_rate pyruvate_oxidation_rate ATP_rate intermediates_rate Ndivided pyruvate_oxidised_fraction'
 
 write(logmsg,*) 'Opened nfout: ',outputfile
 call logger(logmsg)
@@ -436,6 +439,9 @@ do ityp = 1,Ncelltypes
 	read(nf,*) K_HB(ityp)
 	read(nf,*) K_PDK(ityp)
 	read(nf,*) PDKmin(ityp)
+	read(nf,*) C_O2_norm(ityp)
+	read(nf,*) C_G_norm(ityp)
+	read(nf,*) C_L_norm(ityp)
 !	read(nf,*) f_ATPg(ityp)
 	read(nf,*) f_ATPs(ityp)
 	read(nf,*) K_PL(ityp)
@@ -810,11 +816,13 @@ k_detach = k_v*alpha_v/2
 call setup_nbrlists(ok)
 if (.not.ok) return
 call logger('did setup_nbrlists')
+
 call setup_react_diff(ok)
 ! For simple testing...
 !cell_list(:)%Cin(OXYGEN) = chemo(OXYGEN)%bdry_conc
 !cell_list(:)%Cin(GLUCOSE) = chemo(GLUCOSE)%bdry_conc
 call logger('did setup_react_diff')
+
 call SetInitialGrowthRate
 limit_stop = .false.
 medium_change_step = .false.		! for startup

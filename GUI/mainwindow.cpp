@@ -3535,7 +3535,7 @@ void MainWindow::setupGraphSelector()
     for (int i=0; i<grph->n_tsGraphs; i++) {
         int itype = grph->tsGraphs[i].type;
         if (itype == 0) {
-            if (i < 16)
+            if (i < 24)
                 col = 0;
             else
                 col = 1;

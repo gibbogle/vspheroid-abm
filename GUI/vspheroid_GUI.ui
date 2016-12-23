@@ -1941,7 +1941,7 @@ padding: 8px
               <x>550</x>
               <y>10</y>
               <width>421</width>
-              <height>451</height>
+              <height>511</height>
              </rect>
             </property>
             <property name="title">
@@ -1953,7 +1953,7 @@ padding: 8px
                <x>10</x>
                <y>10</y>
                <width>401</width>
-               <height>431</height>
+               <height>491</height>
               </rect>
              </property>
              <layout class="QGridLayout" name="gridLayout_4">
@@ -2158,36 +2158,10 @@ padding: 8px
                </widget>
               </item>
               <item row="11" column="1">
-               <widget class="QLineEdit" name="line_ATP_G_1">
+               <widget class="QLineEdit" name="line_C_O2_NORM_1">
                 <property name="enabled">
-                 <bool>false</bool>
+                 <bool>true</bool>
                 </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item row="12" column="1">
-               <widget class="QLineEdit" name="line_ATP_S_1">
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item row="13" column="1">
-               <widget class="QLineEdit" name="line_K_PL_1">
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
@@ -2200,6 +2174,32 @@ padding: 8px
                </widget>
               </item>
               <item row="14" column="1">
+               <widget class="QLineEdit" name="line_ATP_S_1">
+                <property name="maximumSize">
+                 <size>
+                  <width>60</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="15" column="1">
+               <widget class="QLineEdit" name="line_K_PL_1">
+                <property name="maximumSize">
+                 <size>
+                  <width>60</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="16" column="1">
                <widget class="QLineEdit" name="line_K_LP_1">
                 <property name="maximumSize">
                  <size>
@@ -2213,30 +2213,30 @@ padding: 8px
                </widget>
               </item>
               <item row="11" column="0">
-               <widget class="QMyLabel" name="label_ATP_G_1">
+               <widget class="QMyLabel" name="label_C_O2_NORM_1">
                 <property name="enabled">
-                 <bool>false</bool>
+                 <bool>true</bool>
                 </property>
                 <property name="text">
-                 <string>ATP production threshold for growth (fraction of peak)</string>
+                 <string>Nominal normal IC O2 concentration</string>
                 </property>
                </widget>
               </item>
-              <item row="12" column="0">
+              <item row="14" column="0">
                <widget class="QMyLabel" name="label_ATP_S_1">
                 <property name="text">
                  <string>ATP production threshold for death (fraction of peak)</string>
                 </property>
                </widget>
               </item>
-              <item row="13" column="0">
+              <item row="15" column="0">
                <widget class="QMyLabel" name="label_K_PL_1">
                 <property name="text">
                  <string>Pyruvate -&gt; lactate rate constant</string>
                 </property>
                </widget>
               </item>
-              <item row="14" column="0">
+              <item row="16" column="0">
                <widget class="QMyLabel" name="label_K_LP_1">
                 <property name="text">
                  <string>Lactate -&gt; pyruvate rate constant</string>
@@ -2335,36 +2335,10 @@ padding: 8px
                </widget>
               </item>
               <item row="11" column="2">
-               <widget class="QLineEdit" name="line_ATP_G_2">
+               <widget class="QLineEdit" name="line_C_O2_NORM_2">
                 <property name="enabled">
-                 <bool>false</bool>
+                 <bool>true</bool>
                 </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item row="12" column="2">
-               <widget class="QLineEdit" name="line_ATP_S_2">
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item row="13" column="2">
-               <widget class="QLineEdit" name="line_K_PL_2">
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
@@ -2377,6 +2351,32 @@ padding: 8px
                </widget>
               </item>
               <item row="14" column="2">
+               <widget class="QLineEdit" name="line_ATP_S_2">
+                <property name="maximumSize">
+                 <size>
+                  <width>60</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="15" column="2">
+               <widget class="QLineEdit" name="line_K_PL_2">
+                <property name="maximumSize">
+                 <size>
+                  <width>60</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="16" column="2">
                <widget class="QLineEdit" name="line_K_LP_2">
                 <property name="maximumSize">
                  <size>
@@ -2422,7 +2422,7 @@ padding: 8px
                 </property>
                </widget>
               </item>
-              <item row="16" column="1">
+              <item row="18" column="1">
                <widget class="QLineEdit" name="line_APOPTOSIS_RATE_1">
                 <property name="maximumSize">
                  <size>
@@ -2435,7 +2435,7 @@ padding: 8px
                 </property>
                </widget>
               </item>
-              <item row="16" column="2">
+              <item row="18" column="2">
                <widget class="QLineEdit" name="line_APOPTOSIS_RATE_2">
                 <property name="maximumSize">
                  <size>
@@ -2448,14 +2448,14 @@ padding: 8px
                 </property>
                </widget>
               </item>
-              <item row="16" column="0">
+              <item row="18" column="0">
                <widget class="QMyLabel" name="label_APOPTOSIS_RATE_1">
                 <property name="text">
                  <string>Rate of apoptosis</string>
                 </property>
                </widget>
               </item>
-              <item row="15" column="0">
+              <item row="17" column="0">
                <widget class="QMyLabel" name="label_PYRUVATE_MM_KM_1">
                 <property name="font">
                  <font>
@@ -2468,7 +2468,7 @@ padding: 8px
                 </property>
                </widget>
               </item>
-              <item row="15" column="1">
+              <item row="17" column="1">
                <widget class="QLineEdit" name="line_PYRUVATE_MM_KM_1">
                 <property name="maximumSize">
                  <size>
@@ -2481,7 +2481,7 @@ padding: 8px
                 </property>
                </widget>
               </item>
-              <item row="15" column="2">
+              <item row="17" column="2">
                <widget class="QLineEdit" name="line_PYRUVATE_MM_KM_2">
                 <property name="maximumSize">
                  <size>
@@ -2524,6 +2524,90 @@ padding: 8px
                 </property>
                 <property name="alignment">
                  <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="12" column="1">
+               <widget class="QLineEdit" name="line_C_G_NORM_1">
+                <property name="enabled">
+                 <bool>true</bool>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>60</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="12" column="2">
+               <widget class="QLineEdit" name="line_C_G_NORM_2">
+                <property name="enabled">
+                 <bool>true</bool>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>60</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="12" column="0">
+               <widget class="QMyLabel" name="label_C_G_NORM_1">
+                <property name="enabled">
+                 <bool>true</bool>
+                </property>
+                <property name="text">
+                 <string>Nominal normal IC glucose concentration</string>
+                </property>
+               </widget>
+              </item>
+              <item row="13" column="1">
+               <widget class="QLineEdit" name="line_C_L_NORM_1">
+                <property name="enabled">
+                 <bool>true</bool>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>60</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="13" column="2">
+               <widget class="QLineEdit" name="line_C_L_NORM_2">
+                <property name="enabled">
+                 <bool>true</bool>
+                </property>
+                <property name="maximumSize">
+                 <size>
+                  <width>60</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                </property>
+               </widget>
+              </item>
+              <item row="13" column="0">
+               <widget class="QMyLabel" name="label_C_L_NORM_1">
+                <property name="enabled">
+                 <bool>true</bool>
+                </property>
+                <property name="text">
+                 <string>Nominal normal IC lactate concentration</string>
                 </property>
                </widget>
               </item>

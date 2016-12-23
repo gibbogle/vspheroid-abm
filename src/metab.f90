@@ -37,11 +37,15 @@ real(REAL_KIND) :: K_H2(MAX_CELLTYPES)     ! HIF-1 k2
 real(REAL_KIND) :: K_Hb(MAX_CELLTYPES)     ! HIF-1 kb
 real(REAL_KIND) :: K_PDK(MAX_CELLTYPES)    ! K_PDK
 real(REAL_KIND) :: PDKmin(MAX_CELLTYPES)   ! PDKmin
+real(REAL_KIND) :: C_O2_norm(MAX_CELLTYPES)
+real(REAL_KIND) :: C_G_norm(MAX_CELLTYPES)
+real(REAL_KIND) :: C_L_norm(MAX_CELLTYPES)
 real(REAL_KIND) :: K_PL(MAX_CELLTYPES)     ! P -> L
 real(REAL_KIND) :: K_LP(MAX_CELLTYPES)     ! L -> P
 real(REAL_KIND) :: Apoptosis_rate(MAX_CELLTYPES)     
 
-real(REAL_KIND) :: f_G_norm, f_P_norm, r_P_norm, r_G_norm, r_A_norm, r_I_norm, C_P_norm, C_L_norm, G_maxrate, O2_maxrate
+real(REAL_KIND) :: f_G_norm, f_P_norm, r_P_norm, r_G_norm, r_A_norm, r_I_norm, C_P_norm
+real(REAL_KIND) :: G_maxrate, O2_maxrate
 
 real(REAL_KIND) :: A_rate_base(MAX_CELLTYPES)	! total rate of production of ATP under full nutrition
 
@@ -89,18 +93,20 @@ Hill_N_P = 1
 N_PO = 3
 ityp = 1
 V = Vcell_cm3
-C_L_norm = 3.0
+!C_O2_norm = 0.02
+!C_G_norm = 0.5
+!C_L_norm = 3.0
 
 metabolic%HIF1 = 0
 metabolic%PDK1 = 1
 
 Km_O2 = chemo(OXYGEN)%MM_C0
 N_O2 = chemo(OXYGEN)%Hill_N
-MM_O2 = f_MM(0.10d0,Km_O2,N_O2)
 O2_maxrate = chemo(OXYGEN)%max_cell_rate
 G_maxrate = chemo(GLUCOSE)%max_cell_rate
 
 do ityp = 1,1
+	MM_O2 = f_MM(C_O2_norm(ityp),Km_O2,N_O2)
     mp => metabolic(ityp)
 	K1 = K_PL(ityp)
 	K2 = K_LP(ityp)
@@ -110,12 +116,12 @@ do ityp = 1,1
 	f_Pn = N_PI(ityp)
 	f_PO = N_PO(ityp)
 	f_PA = N_PA(ityp)
-	C_L = C_L_norm
+	C_L = C_L_norm(ityp)
 	C_P = C_L
 
 	do it = 1,10
 		MM_P = f_MM(C_P,Km_P,N_P)
-		r_Gn = get_glycosis_rate(ityp,0.0d0,5.5d0)
+		r_Gn = get_glycosis_rate(ityp,0.0d0,C_G_norm(ityp))
 		r_Ln = 2*(1-f_Gn)*r_Gn - MM_P*MM_O2*(O2_maxrate-base_O_rate)/(f_PO*(1-f_Pn))
 		r_Pn = 2*(1-f_Gn)*r_Gn - r_Ln
 		r_An = 2*(1-f_Gn)*r_Gn + f_PA*(1-f_Pn)*r_Pn
@@ -247,32 +253,32 @@ end subroutine
 ! same type have the same metabolic state.
 ! NOT USED YET
 !--------------------------------------------------------------------------
-subroutine update_metabolism
-type(metabolism_type), pointer :: mp
-integer :: kcell, ityp
-real(REAL_KIND) :: Itotal, I2Divide
-type(cell_type), pointer :: cp
-
-do ityp = 1,Ncelltypes
-	mp => metabolic(ityp)
-!	call get_metab_rates(ityp, mp, Caverage(1:MAX_CHEMO))
-enddo
-
-do kcell = 1,nlist
-    if (colony_simulation) then
-        cp => ccell_list(kcell)
-    else
-        cp => cell_list(kcell)
-    endif
-    if (cp%state == DEAD) cycle
-    Itotal = cp%metab%Itotal	! The only fields we don't want to change are Itotal and I2Divide, which are cell-specific
-    I2Divide = cp%metab%I2Divide
-    cp%metab = metabolic(cp%celltype)
-    cp%metab%Itotal = Itotal
-    cp%metab%I2Divide = I2Divide
-enddo
-
-end subroutine
+!subroutine update_metabolism
+!type(metabolism_type), pointer :: mp
+!integer :: kcell, ityp
+!real(REAL_KIND) :: Itotal, I2Divide
+!type(cell_type), pointer :: cp
+!
+!do ityp = 1,Ncelltypes
+!	mp => metabolic(ityp)
+!!	call get_metab_rates(ityp, mp, Caverage(1:MAX_CHEMO))
+!enddo
+!
+!do kcell = 1,nlist
+!    if (colony_simulation) then
+!        cp => ccell_list(kcell)
+!    else
+!        cp => cell_list(kcell)
+!    endif
+!    if (cp%state == DEAD) cycle
+!    Itotal = cp%metab%Itotal	! The only fields we don't want to change are Itotal and I2Divide, which are cell-specific
+!    I2Divide = cp%metab%I2Divide
+!    cp%metab = metabolic(cp%celltype)
+!    cp%metab%Itotal = Itotal
+!    cp%metab%I2Divide = I2Divide
+!enddo
+!
+!end subroutine
 
 
 !--------------------------------------------------------------------------
@@ -364,7 +370,7 @@ else
 	it = 0
 	do
 		it = it + 1
-		if (it > 20) then
+		if (it > 30) then
 			write(*,*) 'f_metab: it,kcell: ',it,kcell_now
 			write(*,'(a,3f9.6)') 'C O2,G,L: ',C_O2, C_G, C_L
 			write(*,'(a,2f9.6)') 'HIF1,fPDK: ',mp%HIF1,fPDK
@@ -407,6 +413,9 @@ else
 			cycle
 		endif
 	enddo
+!if (kcell_now == 8000 .and. C_O2 == 0) then
+!	write(*,'(a,3i6,2f8.4)') 'kcell,istep,it,C_O2,C_G: ',kcell_now,istep,it,C_O2,C_G
+!endif
 	! I think this has no function when ATPg = ATPs
 !	if (r_A < ATPg(ityp)) then
 !		f_G = 0

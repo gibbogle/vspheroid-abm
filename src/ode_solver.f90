@@ -62,9 +62,9 @@ real(REAL_KIND) :: rtol, atol(1)
 type(rkc_comm) :: comm_rkc(1)
 real(REAL_KIND) :: work_rkc(8+5*3*2)
 
-if (kcell_now == kcell_test) write(*,'(a,6f8.4)') 'OGLSolver: Cin,Cex: ',cp%Cin(1:3),cp%Cex(1:3)
 cp => cell_list(kcell)
-!ict = 1 ! for now just a single cell type
+!if (kcell == 8000) write(*,'(a,i6,6f8.4)') 'OGLSolver: Cin,Cex: ',kcell,cp%Cin(1:3),cp%Cex(1:3)
+kcell_now = kcell
 ! Try using icase for kcell
 Cin(1:3) = cp%Cin(1:3)
 neqn = 3
@@ -76,7 +76,7 @@ info(1) = 1
 info(2) = 1		! = 1 => use spcrad() to estimate spectral radius, != 1 => let rkc do it
 info(3) = 1
 info(4) = 0
-rtol = 1d-4
+rtol = 1d-2
 atol = rtol
 
 idid = 0
