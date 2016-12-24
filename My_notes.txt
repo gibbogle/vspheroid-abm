@@ -1,0 +1,162 @@
+Login:
+------
+Putty
+    Session
+        Hostname: mbog002@login.uoa.nesi.org.nz
+        Port: 22
+        Connection type: SSH
+        Open
+    password: (usual password)
+
+File transfer:
+--------------
+FileZilla
+    Host: login.uoa.nesi.org.nz
+    Username: mbog002
+    Password: (usual password)
+    Port: 22
+
+ ____________________________________________________________________________________
+| Project                              | Directory                      | Disk quota |
+|--------------------------------------|---------------------------------------------|
+| Home directory                       | /home/mbog002                  |       2 GB |
+| Development of simulation models     | /gpfs1m/projects/uoa00014      |      30 GB |
+|______________________________________|________________________________|____________|
+
+
+GitHub code update:
+-------------------
+cd /home/mbog002/spheroid-abm
+git pull
+
+Modules
+-------
+module avail
+
+cmake load:
+----------
+module load CMake/3.0.0-intel-2015a
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+NOTE: spheroid-abm needs to be built on /projects/uoa00014/spheroid-abm/Build
+on a build node:
+ssh build-wm
+or
+ssh build-sb
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+cd /projects/uoa00014/spheroid-abm/Build
+
+ifort build:
+------------
+module load intel/2015a
+(cmake -G "Unix Makefiles")
+make
+
+Then install spheroid_main and libspheroid-abm.so in the appropriate DLL directory, e.g. DLL1.2
+
+gcc build:
+----------
+cmake -G "Unix Makefiles"
+make
+
+ITK:
+----
+ITK_DIR=/share/apps/ITK is set in .bash_profile
+(also from: module load ITK)
+
+Text editor:
+------------
+In FileZilla:
+Right click, edit (uses PFE32)
+or
+Copy file to Windows, edit, copy back
+
+Profiling:
+----------
+set (CMAKE_Fortran_FLAGS_RELEASE " -O2 -fpp -prof-dir/home/mbog002/spheroid-abm/execution/ -profile-functions -profile-loops=all")
+
+This is what I used in your CMakeList.txt
+
+The run your code and then run this java code:
+
+/share/apps/intel/2011/composer_xe_2011_sp1.10.319/bin/loopprofileviewer.jar
+
+Choose the resulted XML file in your executing directory and it will give you the profile data 
+
+Submit a job
+------------
+griclish -f run.txt
+
+where run.txt is the script file with gricli commands.
+
+---------------------------------------------------------------------------------------
+REVISION:
+
+Dear Researcher,
+
+A change to job submission will be made during the outage tomorrow (February 13 2014). The change will require you to 
+provide your project code for all jobs submitted via LoadLeveler. Grisu users and researchers with NeSI allocations 
+can proceed as normal. All other researchers should see the instructions below on viewing and setting the correct 
+project code.
+
+All researchers can view their associated projects on the Login node as follows:
+
+1. Connect to the Login node via SSH using your terminal:
+
+ssh login.uoa.nesi.org.nz
+
+2. Run the following command:
+
+show_my_projects
+
+This will show all of your current projects and their associated project codes.
+
+When submitting a job, you must select from one of your project codes and populate the LoadLeveler field account_no.
+
+Example:
+
+Suppose you have a project with the code uoa12345. You would set your LoadLeveler description to include the following statement:
+
+#@ account_no = uoa12345
+
+The full job description may look like this:
+
+--------------------------------------------------------------------------
+
+#@ shell = /bin/bash
+#@ job_name = test
+#@ class = default
+#@ group = nesi
+#@ account_no = uoa12345
+#@ wall_clock_limit = 00:30:00
+#@ resources = ConsumableMemory(4096mb) ConsumableVirtualMemory(4096mb)
+#@ job_type = serial
+#@ initialdir = /gpfs1m/projects/uoa12345
+#@ output = stdout.txt
+#@ error = stderr.txt
+#@ queue
+
+# Enforce memory constraints for jobs running on single nodes. Value is in KB
+let "limit = 4096 * 1024"
+ulimit -v ${limit} -m ${limit}
+
+echo hello
+
+--------------------------------------------------------------------------
+
+Note that the project code also appears in the initialdir path, which is set so that the job will run in the project directory
+
+If you have any questions or issues please reply to this email.
+
+Kind regards
+
+-- 
+Sina Masoud-Ansari 
+Centre for eResearch 
+409.G21 24 Symonds Street 
+University of Auckland 
+
+e: s.ansari@auckland.ac.nz 
+p: +64 9 3737599 ext 89369 
+w: http://www.eresearch.auckland.ac.nz

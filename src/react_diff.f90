@@ -1356,6 +1356,7 @@ logical :: zeroF(MAX_CHEMO), zeroC(MAX_CHEMO)
 logical :: done
 logical :: do_fine = .true.
 logical :: use_const = .true.
+real(REAL_KIND) :: tdiff, tmetab, t0, t1
 
 if (dbug) write(*,'(a,L2,f8.2)') 'diff_solver: medium_change_step,dt: ',medium_change_step,dt
 ok = .true.
@@ -1401,6 +1402,7 @@ maxits = 50
 
 ! Compute all steady-state grid point fluxes in advance from Cextra(:,:,:,:): Cflux(:,:,:,:)
 
+t0 = mytimer()
 !$omp parallel do private(Cave, Fcurr, Cave_b, Cprev_b, Fprev_b, Fcurr_b, a_b, x, rhs, ix, iy, iz, ixb, iyb, izb, it, done, ichemo, icc, k, dCsum, msum, iters, ierr)
 do ic = 1,nchemo
 	ichemo = chemomap(ic)
@@ -1645,12 +1647,16 @@ do ic = 1,nfinemap
 enddo
 !$omp end parallel do
 
+t1 = mytimer()
+tdiff = t1 - t0
+
 ! This updates Cex, Cin and dMdt, grid fluxes
 if (use_metabolism) then
 	call update_IC
 endif
 
-!return
+tmetab = mytimer() - t1
+!write(*,'(a,3f8.4)') 'tdiff,tmetab,tmetab/(tdiff+tmetab): ',tdiff,tmetab,tmetab/(tdiff+tmetab)
 
 !if (use_integration) then	! always
 if (chemo(DRUG_A)%present) then

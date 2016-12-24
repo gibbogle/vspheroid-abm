@@ -10,7 +10,7 @@
 !     volume			cm^3
 !     mass				micromole = 10^-6 mol = mumol
 !     flux				mumol/s
-!     concentration		mumol/cm^3 = mM
+!     concentration		mumol/cm^3 = mM 
 !---------------------------------------------------------------------------------------------------------------
 module vspheroid
 
