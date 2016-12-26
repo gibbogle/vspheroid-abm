@@ -1,4 +1,4 @@
-! Modified for parallel use (OMP)
+! Modified for parallel use (OMP) then restored to serial
 
 module rkc_90
 
