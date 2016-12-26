@@ -3,6 +3,7 @@
 module cellstate
 use global
 use chemokine
+use metabolism
 use nbr
 use cycle_mod
 
@@ -272,8 +273,8 @@ real(REAL_KIND) :: dt
 logical :: changed, ok
 integer :: kcell, nlist0, site(3), i, ichemo, idrug, im, ityp, killmodel, kpar=0 
 real(REAL_KIND) :: C_O2, C_glucose, kmet, Kd, dMdt, Cdrug, n_O2, kill_prob, dkill_prob, death_prob, survival_prob, u
-!logical :: use_TPZ_DRUG, use_DNB_DRUG
 logical :: anoxia_death, aglucosia_death
+real(REAL_KIND) :: delayed_death_prob(MAX_CELLTYPES)
 type(cell_type), pointer :: cp
 type(drug_type), pointer :: dp
 
@@ -286,52 +287,70 @@ endif
 !tnow = istep*DELTA_T	! seconds
 anoxia_death = chemo(OXYGEN)%controls_death
 aglucosia_death = chemo(GLUCOSE)%controls_death
+delayed_death_prob = apoptosis_rate*DELTA_T/3600
 nlist0 = nlist
 do kcell = 1,nlist
     cp => cell_list(kcell)
 	if (cp%state == DEAD) cycle
+	if (cp%state == DYING) then
+	    if (par_uni(kpar) < delayed_death_prob(ityp)) then	
+			call CellDies(kcell,cp)
+		endif
+		cycle
+	endif	
 	ityp = cp%celltype
 	call getO2conc(cp,C_O2)
-	if (cp%anoxia_tag) then
-		if (tnow >= cp%t_anoxia_die) then
-			call CellDies(kcell,cp)
-			changed = .true.
-			Nanoxia_dead(ityp) = Nanoxia_dead(ityp) + 1
+	if (use_metabolism) then
+		if (cp%metab%A_rate*cp%V < cp%ATP_rate_factor*ATPs(ityp)*Vcell_cm3) then
+!			write(*,'(a,2e12.3)') 'A_rate: ',cp%metab%A_rate,ATPs(ityp)
+!			call CellDies(kcell)
+			cp%state = DYING
+			cp%dVdt = 0
+			Ncells_dying(ityp) = Ncells_dying(ityp) + 1
 			cycle
-		endif
+		endif	
 	else
-		if (anoxia_death .and. C_O2 < anoxia_threshold) then
-			cp%t_anoxia = cp%t_anoxia + dt
-			if (cp%t_anoxia > t_anoxia_limit) then
-				cp%anoxia_tag = .true.						! tagged to die later
-				cp%t_anoxia_die = tnow + anoxia_death_delay	! time that the cell will die
-				Nanoxia_tag(ityp) = Nanoxia_tag(ityp) + 1
+		if (cp%anoxia_tag) then
+			if (tnow >= cp%t_anoxia_die) then
+			write(*,*) 'CellDeath: dies from anoxia: ',kcell
+				call CellDies(kcell,cp)
+				changed = .true.
+				Nanoxia_dead(ityp) = Nanoxia_dead(ityp) + 1
+				cycle
 			endif
 		else
-			cp%t_anoxia = 0
+			if (anoxia_death .and. C_O2 < anoxia_threshold) then
+				cp%t_anoxia = cp%t_anoxia + dt
+				if (cp%t_anoxia > t_anoxia_limit) then
+					cp%anoxia_tag = .true.						! tagged to die later
+					cp%t_anoxia_die = tnow + anoxia_death_delay	! time that the cell will die
+					Nanoxia_tag(ityp) = Nanoxia_tag(ityp) + 1
+				endif
+			else
+				cp%t_anoxia = 0
+			endif
 		endif
-	endif
-	call getGlucoseconc(cp,C_glucose)
-	if (cp%aglucosia_tag) then
-		if (tnow >= cp%t_aglucosia_die) then
-			call CellDies(kcell,cp)
-			changed = .true.
-			Naglucosia_dead(ityp) = Naglucosia_dead(ityp) + 1
-			cycle
-		endif
-	else
-		if (aglucosia_death .and. C_O2 < aglucosia_threshold) then
-			cp%t_aglucosia = cp%t_aglucosia + dt
-			if (cp%t_aglucosia > t_aglucosia_limit) then
-				cp%aglucosia_tag = .true.						    ! tagged to die later
-				cp%t_aglucosia_die = tnow + aglucosia_death_delay	! time that the cell will die
-				Naglucosia_tag(ityp) = Naglucosia_tag(ityp) + 1
+		call getGlucoseconc(cp,C_glucose)
+		if (cp%aglucosia_tag) then
+			if (tnow >= cp%t_aglucosia_die) then
+				call CellDies(kcell,cp)
+				changed = .true.
+				Naglucosia_dead(ityp) = Naglucosia_dead(ityp) + 1
+				cycle
 			endif
 		else
-			cp%t_aglucosia = 0
+			if (aglucosia_death .and. C_O2 < aglucosia_threshold) then
+				cp%t_aglucosia = cp%t_aglucosia + dt
+				if (cp%t_aglucosia > t_aglucosia_limit) then
+					cp%aglucosia_tag = .true.						    ! tagged to die later
+					cp%t_aglucosia_die = tnow + aglucosia_death_delay	! time that the cell will die
+					Naglucosia_tag(ityp) = Naglucosia_tag(ityp) + 1
+				endif
+			else
+				cp%t_aglucosia = 0
+			endif
 		endif
 	endif
-	
 	do idrug = 1,ndrugs_used	
 		ichemo = DRUG_A + 3*(idrug-1)	
 		if (.not.chemo(ichemo)%present) cycle
@@ -407,6 +426,9 @@ integer :: ityp, idrug
 
 cp%state = DEAD
 ityp = cp%celltype
+if (cp%state == DYING) then
+	Ncells_dying(ityp) = Ncells_dying(ityp) - 1
+endif
 Ncells = Ncells - 1
 Ncells_type(ityp) = Ncells_type(ityp) - 1
 if (cp%anoxia_tag) then
@@ -679,7 +701,7 @@ do kcell = 1,nlist0
 	else
     	cp => cell_list(kcell)
     endif
-	if (cp%state == DEAD) cycle
+	if (cp%state == DEAD .or. cp%state == DYING) cycle
 	ityp = cp%celltype
 !	call getO2conc(cp,C_O2)
 !	call getGlucoseconc(cp,C_glucose)
@@ -1164,9 +1186,7 @@ type(cycle_parameters_type), pointer :: ccp
 !write(logmsg,*) 'divider: ',kcell1 
 !call logger(logmsg)
 ok = .true.
-!tnow = istep*DELTA_T
 ccp => cc_parameters
-!cp1 => cell_list(kcell1)
 if (colony_simulation) then
     cp1 => ccell_list(kcell1)
 else
@@ -1205,6 +1225,10 @@ cp1%birthtime = tnow
 cp1%divide_volume = get_divide_volume(ityp,V0,Tdiv)
 cp1%divide_time = Tdiv
 cp1%d_divide = (3*cp1%divide_volume/PI)**(1./3.)
+if (use_metabolism) then	! Fraction of I needed to divide = fraction of volume needed to divide
+	cp1%metab%I2Divide = get_I2Divide(cp1)
+	cp1%metab%Itotal = 0
+endif
 cp1%mitosis = 0
 cfse0 = cp1%CFSE
 cp1%CFSE = generate_CFSE(cfse0/2)
@@ -1219,9 +1243,12 @@ cp1%t_aglucosia = 0
 if (cp1%growth_delay) then
 	cp1%N_delayed_cycles_left = cp1%N_delayed_cycles_left - 1
 	cp1%growth_delay = (cp1%N_delayed_cycles_left > 0)
-!	write(*,*) 'growth_delay cell divides: ',kcell1,kcell2,cp1%N_delayed_cycles_left
 endif
-cp1%G2_M = .false.
+if (use_metabolism) then
+    cp1%G1_time = tnow + (cp1%metab%I_rate_max/cp1%metab%I_rate)*ccp%T_G1(ityp)
+else
+	cp1%G1_time = tnow + (max_growthrate(ityp)/cp1%dVdt)*ccp%T_G1(ityp)    ! time spend in G1 varies inversely with dV/dt
+endif
 
 if (.not.colony_simulation) then
     nbrs0 = cp1%nbrs
@@ -1246,6 +1273,12 @@ cp2 = cp1
 ! These are the variations from cp1
 cp2%divide_volume = get_divide_volume(ityp,V0,Tdiv)
 cp2%divide_time = Tdiv
+if (use_metabolism) then	! Fraction of I needed to divide = fraction of volume needed to divide
+	cp2%metab%I2Divide = get_I2Divide(cp2)
+	cp2%metab%Itotal = 0
+	cp2%growth_rate_factor = get_growth_rate_factor()
+	cp2%ATP_rate_factor = get_ATP_rate_factor()
+endif
 cp2%CFSE = cfse2
 if (cp2%radiation_tag) then
 	Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
@@ -1261,6 +1294,30 @@ if (.not.colony_simulation) then
 endif
 ! Note: any cell that has kcell1 in its nbrlist now needs to add kcell2 to the nbrlist.
 end subroutine
+
+!----------------------------------------------------------------------------------
+! This is used to adjust a cell's growth rate to introduce some random variability
+! into divide times.
+!----------------------------------------------------------------------------------
+function get_growth_rate_factor() result(r)
+real(REAL_KIND) :: r
+real(REAL_KIND) :: dr = 0.2
+integer :: kpar = 0
+
+r = 1 + (par_uni(kpar) - 0.5)*dr
+end function
+
+!----------------------------------------------------------------------------------
+! This is used to adjust a cell's ATP thresholds to introduce some random variability
+! into transitions to no-growth and death.
+!----------------------------------------------------------------------------------
+function get_ATP_rate_factor() result(r)
+real(REAL_KIND) :: r
+real(REAL_KIND) :: dr = 0.2
+integer :: kpar = 0
+
+r = 1 + (par_uni(kpar) - 0.5)*dr
+end function
 
 !-----------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------

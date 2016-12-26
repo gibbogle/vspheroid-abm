@@ -945,17 +945,19 @@ subroutine getNviable(Nviable, Nlive)
 integer :: Nviable(:), Nlive(:)
 integer :: kcell, ityp, idrug
 logical :: tag
+type(cell_type), pointer :: cp
 
 Nviable = 0
 Nlive = 0
 do kcell = 1,nlist
-	if (cell_list(kcell)%state == DEAD) cycle
-    ityp = cell_list(kcell)%celltype
+	cp => cell_list(kcell)
+	if (cp%state == DEAD) cycle
+    ityp = cp%celltype
     Nlive(ityp) = Nlive(ityp) + 1
-	if (cell_list(kcell)%anoxia_tag .or. cell_list(kcell)%aglucosia_tag .or. cell_list(kcell)%radiation_tag) cycle
+	if (cp%anoxia_tag .or. cp%aglucosia_tag .or. cp%radiation_tag .or. cp%state == DYING) cycle
     tag = .false.
     do idrug = 1,ndrugs_used
-		if (cell_list(kcell)%drug_tag(idrug)) tag = .true.
+		if (cp%drug_tag(idrug)) tag = .true.
 	enddo
 	if (tag) cycle
 	Nviable(ityp) = Nviable(ityp) + 1
@@ -990,6 +992,7 @@ logical :: tagged
 nclonohypoxic = 0
 do kcell = 1,nlist
 	if (cell_list(kcell)%state == DEAD) cycle
+	if (cell_list(kcell)%state == DYING) cycle
 	if (cell_list(kcell)%anoxia_tag) cycle
 	if (cell_list(kcell)%aglucosia_tag) cycle
 	if (cell_list(kcell)%radiation_tag) cycle

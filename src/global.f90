@@ -44,11 +44,10 @@ real(REAL_KIND), parameter :: small_d = 0.1e-4		! 0.1 um -> cm
 real(REAL_KIND), parameter :: CFSE_std = 0.05
 real(REAL_KIND), parameter :: Vcell_pL = 1.0e09
 
-integer, parameter :: ALIVE = 0
-integer, parameter :: DEAD = 1
+integer, parameter :: ALIVE = 1
+integer, parameter :: DYING = 2
+integer, parameter :: DEAD = 3
 integer, parameter :: TERMINAL_MITOSIS   = 1
-!integer, parameter :: CONTINUOUS_MITOSIS = 2
-!integer, parameter :: MAX_CHEMO = 5
 integer, parameter :: CFSE = 0
 integer, parameter :: OXYGEN = 1
 integer, parameter :: GLUCOSE = 2
@@ -149,6 +148,8 @@ type cell_type
 	real(REAL_KIND) :: centre(3,2)  ! sphere centre positions
 	real(REAL_KIND) :: d			! centre separation distance (um) -> cm
 	real(REAL_KIND) :: birthtime
+	real(REAL_KIND) :: growth_rate_factor	! to introduce some random variation 
+	real(REAL_KIND) :: ATP_rate_factor	! to introduce some random variation 
 	real(REAL_KIND) :: divide_volume ! actual volume (cm3)
 	real(REAL_KIND) :: divide_time
 	real(REAL_KIND) :: t_divide_last
@@ -297,7 +298,7 @@ integer :: Mnodes, ncpu_input, ncells, ncells_mphase, nlist, nsteps, nevents
 integer :: Ndrugs_used
 integer :: NX, NY, NZ, NXB, NYB, NZB, Nmm3
 integer :: Ndim(3)
-integer :: NT_CONC, NT_GUI_OUT, initial_count, ntries, Ncelltypes, Ncells_type(MAX_CELLTYPES)
+integer :: NT_CONC, NT_GUI_OUT, initial_count, ntries, Ncelltypes, Ncells_type(MAX_CELLTYPES), Ncells_dying(MAX_CELLTYPES)
 integer :: istep, ndt, ndtotal, ndtotal_last, ichemo_curr, n_substeps
 integer :: seed(2)
 integer :: jumpvec(3,27)
@@ -396,6 +397,7 @@ type(event_type), allocatable :: event(:)
 integer, allocatable :: gaplist(:)
 integer :: ngaps
 integer, parameter :: max_ngaps = 10000
+integer :: nspeedtest
 
 type(drug_type), allocatable, target :: drug(:)
 type(LQ_type) :: LQ(MAX_CELLTYPES)
@@ -774,6 +776,22 @@ case (LOGNORMAL_DIST)
 case (CONSTANT_DIST)
 	DivideTime = p1
 end select
+end function
+
+!--------------------------------------------------------------------------
+!--------------------------------------------------------------------------
+function get_I2Divide(cp) result(I2div)
+type(cell_type), pointer :: cp
+real(REAL_KIND) :: I2div
+integer :: ityp
+type(cycle_parameters_type), pointer :: ccp
+
+ccp => cc_parameters
+
+ityp = cp%celltype
+!I2div = cp%divide_time*metabolic(ityp)%I_rate_max
+I2div = (ccp%T_G1(ityp) + ccp%T_S(ityp) + ccp%T_G2(ityp)) &
+		*metabolic(ityp)%I_rate_max
 end function
 
 !--------------------------------------------------------------------------------

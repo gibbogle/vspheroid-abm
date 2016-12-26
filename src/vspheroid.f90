@@ -828,6 +828,7 @@ limit_stop = .false.
 medium_change_step = .false.		! for startup
 call logger('completed Setup')
 
+nspeedtest = 10000
 !call testOGL
 !stop
 

@@ -1653,6 +1653,10 @@ tdiff = t1 - t0
 ! This updates Cex, Cin and dMdt, grid fluxes
 if (use_metabolism) then
 	call update_IC
+	if (Ncells > nspeedtest) then
+		call speedtest
+		nspeedtest = nspeedtest + 10000
+	endif
 endif
 
 tmetab = mytimer() - t1
@@ -1699,7 +1703,7 @@ area_factor = (average_volume)**(2./3.)
 !$omp parallel do private(cp, alfa, ix, iy, iz, ic, ichemo, Cextra, tstart, dtt, Kin, Kout, ok)
 do kcell = 1,nlist
 	cp => cell_list(kcell)
-	if (cp%state == DEAD) cycle
+	if (cp%state == DEAD .or. cp%state == DYING) cycle
 	call grid_interp(kcell, alfa)
 	ix = cp%site(1)
 	iy = cp%site(2)
@@ -1731,6 +1735,42 @@ do ichemo = OXYGEN,LACTATE
 	Fcurr => Cflux(:,:,:,ichemo)
 	call make_grid_flux(ichemo,Fcurr)
 enddo
+end subroutine
+
+!-------------------------------------------------------------------------------------- 
+! The aim is to see how time to solve OGL for all cells varies with num_threads
+!-------------------------------------------------------------------------------------- 
+subroutine speedtest
+type(cell_type), allocatable :: cell_save(:)
+integer :: kcell, nthreads, ntmax, npr
+real(REAL_KIND) :: dtt, tstart, t0
+logical :: ok
+
+allocate(cell_save(nlist))
+do kcell = 1,nlist
+	cell_save(kcell) = cell_list(kcell)
+enddo
+
+npr = omp_get_num_procs()
+ntmax = omp_get_max_threads()
+do nthreads = 1,npr
+	do kcell = 1,nlist
+		cell_list(kcell) = cell_save(kcell)
+	enddo
+	call omp_set_num_threads(nthreads)
+	t0 = mytimer()
+!$omp parallel do private(tstart, dtt, ok)
+	do kcell = 1,nlist
+		tstart = 0
+		dtt = 2
+		call OGLSolver(kcell,tstart,dtt,ok)	
+	enddo
+!$omp end parallel do
+	write(logmsg,'(a,i2,e12.4)') 'OGLsolver speed test: nthreads,time: ',nthreads,mytimer() - t0
+	call logger(logmsg)
+enddo
+deallocate(cell_save)
+call omp_set_num_threads(ntmax)
 end subroutine
 
 !-------------------------------------------------------------------------------------- 
