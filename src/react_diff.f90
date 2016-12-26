@@ -1744,6 +1744,7 @@ subroutine speedtest
 type(cell_type), allocatable :: cell_save(:)
 integer :: kcell, nthreads, ntmax, npr
 real(REAL_KIND) :: dtt, tstart, t0
+type(cell_type), pointer :: cp
 logical :: ok
 
 allocate(cell_save(nlist))
@@ -1761,6 +1762,8 @@ do nthreads = 1,npr
 	t0 = mytimer()
 !$omp parallel do private(tstart, dtt, ok)
 	do kcell = 1,nlist
+		cp => cell_list(kcell)
+		if (cp%state == DEAD .or. cp%state == DYING) cycle
 		tstart = 0
 		dtt = 2
 		call OGLSolver(kcell,tstart,dtt,ok)	
