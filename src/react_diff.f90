@@ -335,7 +335,7 @@ enddo
 
 ! To make OMP useable, need to ensure that values of krow concurrently evaluated are well separated.
 ! Using ixb as the loop variable should suffice.
-!$omp parallel do private(iyb, izb, krow, Kr)
+!!$omp parallel do private(iyb, izb, krow, Kr)
 do ixb = 1,NXB
 	do iyb = 1,NYB
 		do izb = 1,NZB
@@ -352,7 +352,7 @@ do ixb = 1,NXB
 		enddo
 	enddo
 enddo
-!$omp end parallel do
+!!$omp end parallel do
 
 if (ichemo == OXYGEN) then
 	Cbdry = chemo(ichemo)%bdry_conc
@@ -512,7 +512,7 @@ Cextra => Caverage(:,:,:,ichemo)		! currently using the average concentration!
 !		write(*,'(10f7.4)') Cextra(ix,NY/2,:)
 !	enddo
 !endif
-!$omp parallel do private(cp, ix, iy, iz, alfa)
+!!$omp parallel do private(cp, ix, iy, iz, alfa)
 do kcell = 1,nlist
 	cp => cell_list(kcell)
 	if (cp%state == DEAD) cycle
@@ -533,7 +533,7 @@ do kcell = 1,nlist
 	endif
 !	if (ichemo == DRUG_A+1) write(*,'(i6,e12.3)') kcell,cp%Cex(ichemo)
 enddo
-!$omp end parallel do
+!!$omp end parallel do
 end subroutine
 
 !-------------------------------------------------------------------------------------------
@@ -712,14 +712,14 @@ Kout = chemo(ichemo)%membrane_diff_out
 ! Compute cell fluxes cp%dMdt
 total_flux = 0
 zmax = 0
-!$omp parallel do private(cp)
+!!$omp parallel do private(cp)
 do kcell = 1,nlist
 	cp => cell_list(kcell)
 	if (cp%state == DEAD) cycle
 	cp%dMdt(ichemo) = Kin*cp%Cex(ichemo) - Kout*cp%Cin(ichemo)
 !	total_flux = total_flux + cp%dMdt(ichemo)
 enddo
-!$omp end parallel do
+!!$omp end parallel do
 !write(nflog,'(a,i6,e12.3)') 'kcellmax, zmax: ',kcellmax,zmax
 
 ! Estimate grid pt flux values F
@@ -759,7 +759,7 @@ subroutine make_grid_flux_weights
 integer :: ic, ix, iy, iz, kcell
 type(cell_type), pointer :: cp
 
-!$omp parallel do private(cp,ix,iy,iz)
+!!$omp parallel do private(cp,ix,iy,iz)
 do kcell = 1,nlist
 	cp => cell_list(kcell)
 	if (cp%state == DEAD) cycle
@@ -777,6 +777,7 @@ do kcell = 1,nlist
 !	write(*,*) 'make_grid_flux_weights: ',kcell,cp%state
 	call grid_flux_weights(kcell, cp%cnr, cp%wt)
 enddo
+!!$omp end parallel do
 end subroutine
 
 !-------------------------------------------------------------------------------------------
