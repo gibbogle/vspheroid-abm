@@ -292,13 +292,13 @@ nlist0 = nlist
 do kcell = 1,nlist
     cp => cell_list(kcell)
 	if (cp%state == DEAD) cycle
+	ityp = cp%celltype
 	if (cp%state == DYING) then
 	    if (par_uni(kpar) < delayed_death_prob(ityp)) then	
 			call CellDies(kcell,cp)
 		endif
 		cycle
 	endif	
-	ityp = cp%celltype
 	call getO2conc(cp,C_O2)
 	if (use_metabolism) then
 		if (cp%metab%A_rate*cp%V < cp%ATP_rate_factor*ATPs(ityp)*Vcell_cm3) then
@@ -888,6 +888,11 @@ logical :: oxygen_growth, glucose_growth
 integer :: ityp
 integer :: C_option = 1	! we must use this
 
+!if (use_cell_cycle .and. .not.(cp%phase == G1_phase .or. cp%phase == S_phase .or. cp%phase == G2_phase)) then
+!	write(*,*) 'no growth - phase'
+!	return
+!endif
+ityp = cp%celltype
 if (colony_simulation) then		! FIX THIS LATER
     metab = 1
     dVdt = get_dVdt(cp,metab)
@@ -895,9 +900,8 @@ else
 	if (use_metabolism) then
 		cp%metab%Itotal = cp%metab%Itotal + dt*cp%metab%I_rate
 		! need to set cp%dVdt from cp%metab%I_rate
-		ityp = cp%celltype
 		dVdt = max_growthrate(ityp)*cp%metab%I_rate/cp%metab%I_rate_max
-!		cp%dVdt = cp%growth_rate_factor*cp%dVdt
+		dVdt = cp%growth_rate_factor*dVdt
 !		cp%V = cp%V + cp%dVdt*dt
 		metab = 1
 		Cin_0 = cp%Cin
