@@ -145,6 +145,9 @@ do ityp = 1,1
 !	ATPg(ityp) = f_ATPg(ityp)*r_A_norm
 	ATPs(ityp) = f_ATPs(ityp)*r_A_norm
 	mp%I_rate_max = r_I_norm
+	mp%A_rate = r_A_norm
+	mp%I_rate = r_I_norm
+	mp%G_rate = r_G_norm
 enddo
 
 end subroutine

@@ -115,9 +115,6 @@ conc = (1-alfa(1))*(1-alfa(2))*(1-alfa(3))*Cextra(ix,iy,iz)  &
         + alfa(1)*alfa(2)*(1-alfa(3))*Cextra(ix+1,iy+1,iz)  &
         + alfa(1)*alfa(2)*alfa(3)*Cextra(ix+1,iy+1,iz+1)  &
         + alfa(1)*(1-alfa(2))*alfa(3)*Cextra(ix+1,iy,iz+1)
-if (kcell == 4593) then
-    write(nflog,'(a,e12.3,2x,3e12.3,2x,3f6.3)') 'extra_concs_const: kcell=4593: conc, centre, alfa: ',conc,centre,alfa
-endif
 end subroutine
 
 !-----------------------------------------------------------------------------------------

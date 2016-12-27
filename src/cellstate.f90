@@ -302,8 +302,6 @@ do kcell = 1,nlist
 	call getO2conc(cp,C_O2)
 	if (use_metabolism) then
 		if (cp%metab%A_rate*cp%V < cp%ATP_rate_factor*ATPs(ityp)*Vcell_cm3) then
-!			write(*,'(a,2e12.3)') 'A_rate: ',cp%metab%A_rate,ATPs(ityp)
-!			call CellDies(kcell)
 			cp%state = DYING
 			cp%dVdt = 0
 			Ncells_dying(ityp) = Ncells_dying(ityp) + 1
@@ -378,10 +376,6 @@ do kcell = 1,nlist
 		u = par_uni(kpar)
 	    if (u < kill_prob) then
 			cp%p_drug_death(idrug) = death_prob
-!			if (kcell == 1) then
-!				write(*,'(a,i6,2f8.4)') 'drug_tagged: ',kcell,u,kill_prob
-!				stop
-!			endif
 			cp%drug_tag(idrug) = .true.
             Ndrug_tag(idrug,ityp) = Ndrug_tag(idrug,ityp) + 1
 		endif
@@ -424,6 +418,7 @@ integer :: kcell
 type(cell_type), pointer :: cp
 integer :: ityp, idrug
 
+!write(*,*) 'CellDies: ',kcell
 cp%state = DEAD
 ityp = cp%celltype
 if (cp%state == DYING) then
@@ -901,11 +896,12 @@ else
 		cp%metab%Itotal = cp%metab%Itotal + dt*cp%metab%I_rate
 		! need to set cp%dVdt from cp%metab%I_rate
 		dVdt = max_growthrate(ityp)*cp%metab%I_rate/cp%metab%I_rate_max
-		dVdt = cp%growth_rate_factor*dVdt
+!		dVdt = cp%growth_rate_factor*dVdt
 !		cp%V = cp%V + cp%dVdt*dt
 		metab = 1
 		Cin_0 = cp%Cin
 !		if (kcell_now == 1) then
+!			write(*,*) 'cp%growth_rate_factor: ',cp%growth_rate_factor
 !			write(*,'(a,4e12.3)') 'dVdt: ',max_growthrate(ityp),cp%metab%I_rate/cp%metab%I_rate_max,cp%dVdt,get_dVdt(cp,metab)
 !			write(*,'(a,i3,4e12.3)') 'phase,V,Vdivide,I..: ', cp%phase,cp%V,cp%divide_volume,cp%metab%Itotal,cp%metab%I2Divide
 !		endif

@@ -1107,6 +1107,12 @@ cp%ndt = ndt
 
 if (use_metabolism) then
 	cp%metab = metabolic(1)
+	cp%growth_rate_factor = get_growth_rate_factor()
+	cp%ATP_rate_factor = get_ATP_rate_factor()
+	if (cp%metab%A_rate == 0) then
+		write(*,*) 'A_rate = 0'
+		stop
+	endif
 endif
 end subroutine
 
@@ -1514,7 +1520,7 @@ subroutine squeezer
 integer :: igap, kcell, nlist0
 
 if (ngaps == 0) return
-write(nflog,*) '==squeezer== nlist: ',nlist0, nlist
+write(*,*) 'squeezer: ngaps: ',ngaps
 !do igap = 1,ngaps
 !	kcell = gaplist(igap)
 !	if (
