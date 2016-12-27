@@ -20,7 +20,7 @@ real(REAL_KIND) :: nbr_d(1000)
 logical :: near, incontact, contact(2,2)
 logical :: dbug = .false.
 
-call logger('start setup_nbrlists')
+!call logger('start setup_nbrlists')
 do kcell = 1,nlist
 	cp1 => cell_list(kcell)
 	if (cp1%state == DEAD) cycle
@@ -103,7 +103,7 @@ do kcell = 1,nlist
 		t(i) = i
 	enddo
 	if (nbrs == 0) then
-		write(*,*) 'setup_nbrlists: nbrs = 0: kcell: ',kcell
+!		write(*,*) 'setup_nbrlists: nbrs = 0: kcell: ',kcell
 	else
 		call qqsort(nbr_d,nbrs,t)     ! sort in increasing order
 	endif

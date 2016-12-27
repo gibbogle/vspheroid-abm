@@ -825,10 +825,10 @@ call logger('did setup_react_diff')
 
 call SetInitialGrowthRate
 limit_stop = .false.
-medium_change_step = .false.		! for startup
+medium_change_step = .false.		! for startup 
 call logger('completed Setup')
 
-nspeedtest = 100000
+nspeedtest = 10000
 !call testOGL
 !stop
 

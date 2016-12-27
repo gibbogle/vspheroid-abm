@@ -38,7 +38,8 @@ if (Fortran_COMPILER_NAME STREQUAL "gfortran")
 
 elseif (Fortran_COMPILER_NAME STREQUAL "ifort")
   # ifort (untested)
-  set (CMAKE_Fortran_FLAGS_RELEASE "-O2 -fpp -fopenmp")
+  set (CMAKE_Fortran_FLAGS_RELEASE "-O2 -fpp -fopenmp -traceback")
+#  set (CMAKE_Fortran_FLAGS_RELEASE "-O2 -fpp -fopenmp -traceback -check bound -check uninit -check pointer")
   #set (CMAKE_Fortran_FLAGS_DEBUG   "-f77rtl -O0 -g")
 elseif (Fortran_COMPILER_NAME STREQUAL "g77")
   # g77
