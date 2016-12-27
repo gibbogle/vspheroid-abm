@@ -20,7 +20,7 @@ real(REAL_KIND) :: nbr_d(1000)
 logical :: near, incontact, contact(2,2)
 logical :: dbug = .false.
 
-!call logger('start setup_nbrlists')
+call logger('start setup_nbrlists')
 do kcell = 1,nlist
 	cp1 => cell_list(kcell)
 	if (cp1%state == DEAD) cycle
@@ -102,7 +102,11 @@ do kcell = 1,nlist
 	do i = 1,nbrs
 		t(i) = i
 	enddo
-	call qqsort(nbr_d,nbrs,t)     ! sort in increasing order
+	if (nbrs == 0) then
+		write(*,*) 'setup_nbrlists: nbrs = 0: kcell: ',kcell
+	else
+		call qqsort(nbr_d,nbrs,t)     ! sort in increasing order
+	endif
 	! Now the ith nearest is nbrlist(t(i))
 	! set cp1%nbrlist(:) as the closest #
 	cp1%nbrs = min(nbrs,nbr_list_max)
