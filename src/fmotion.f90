@@ -47,12 +47,16 @@ end subroutine
 subroutine fmover(dt_move, done, ok)
 real(REAL_KIND) :: dt_move
 logical :: done, ok
-integer :: k1, kcell, kpar, nd, nr, nc(0:8), kfrom(0:8), kto(0:8), tMnodes, ndt_start
+integer :: k1, kcell, kpar, nd, nr, tMnodes, ndt_start
+integer, allocatable :: kfrom(:), kto(:), nc(:)
 real(REAL_KIND), allocatable :: force(:,:,:)
 real(REAL_KIND) :: fmax, dx1(3), dx2(3)
 type(cell_type), pointer :: cp1
 logical :: penetrated
 
+allocate(kfrom(0:Mnodes))
+allocate(kto(0:Mnodes))
+allocate(nc(0:Mnodes))
 done = .false.
 ok = .true.
 dt_move = ndt*delta_tmove
@@ -134,12 +138,16 @@ enddo
 enddo
 !omp end parallel do
 deallocate(force)
+deallocate(kfrom)
+deallocate(kto)
+deallocate(nc)
 ok = .true.
 end subroutine
 
 !-----------------------------------------------------------------------------------------
 ! Trying a modification:
 ! all cells move through dt - can this work?
+! NOT USED
 !-----------------------------------------------------------------------------------------
 subroutine tried_fmover(dt, done, ok)
 real(REAL_KIND) :: dt
@@ -247,14 +255,15 @@ end subroutine
 subroutine forces(force,fmax,penetrated,ok)
 real(REAL_KIND) :: fmax, force(:,:,:)
 logical :: penetrated,ok
-integer :: k1, kcell, kpar, nd, nr, nc(0:8), tMnodes, kmax
-integer, allocatable :: kfrom(:), kto(:)
+integer :: k1, kcell, kpar, nd, nr, tMnodes, kmax
+integer, allocatable :: kfrom(:), kto(:), nc(:)
 real(REAL_KIND) :: F(3,2), r(3), amp, fsum, fwall_prev
 real(REAL_KIND),allocatable :: cell_fmax(:)
 logical :: badforce, pen
 
-allocate(kfrom(0:Mnodes+1))
-allocate(kto(0:Mnodes+1))
+allocate(kfrom(0:Mnodes))
+allocate(kto(0:Mnodes))
+allocate(nc(0:Mnodes))
 if (ncells < 100) then
 	tMnodes = 1
 else
@@ -334,6 +343,7 @@ enddo
 deallocate(cell_fmax)
 deallocate(kfrom)
 deallocate(kto)
+deallocate(nc)
 ok = .not.badforce
 end subroutine
 
