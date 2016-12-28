@@ -247,11 +247,14 @@ end subroutine
 subroutine forces(force,fmax,penetrated,ok)
 real(REAL_KIND) :: fmax, force(:,:,:)
 logical :: penetrated,ok
-integer :: k1, kcell, kpar, nd, nr, nc(0:8), kfrom(0:8), kto(0:8), tMnodes, kmax
+integer :: k1, kcell, kpar, nd, nr, nc(0:8), tMnodes, kmax
+integer, allocatable :: kfrom(:), kto(:)
 real(REAL_KIND) :: F(3,2), r(3), amp, fsum, fwall_prev
 real(REAL_KIND),allocatable :: cell_fmax(:)
 logical :: badforce, pen
 
+allocate(kfrom(0:Mnodes+1))
+allocate(kto(0:Mnodes+1))
 if (ncells < 100) then
 	tMnodes = 1
 else
@@ -287,9 +290,8 @@ fwall = 0
 badforce = .false.
 call omp_set_num_threads(tMnodes)
 penetrated = .false.
-!$omp parallel do private(k1,kcell,F,amp,ok)
-!do k1 = 1,ncells
-!	write(*,*) 'Threads, max: ',omp_get_num_threads(),omp_get_max_threads()
+
+!$omp parallel do private(k1,kcell,F,amp,pen,r,ok)
 do kpar = 0,tMnodes-1
     do k1 = kfrom(kpar),kto(kpar)
 	    kcell = perm_index(k1)
@@ -298,7 +300,6 @@ do kpar = 0,tMnodes-1
 	        stop
 	    endif
 	    call get_cell_force(kcell,F,pen,ok)
-!	    if (kcell == 530) write(*,'(a,3e12.3,1x,L)') 'F(1): (a) cell 530: ',F(:,1),cell_list(kcell)%Iphase
 	    if (.not.ok) then
 			badforce = .true.
 			exit
@@ -308,14 +309,12 @@ do kpar = 0,tMnodes-1
 		endif
 	    call get_random_dr(r)
 	    F(:,1) = F(:,1) + frandom*r + fwall_prev*[0,0,1]
-!	    if (kcell == 530) write(*,'(a,3e12.3,1x,L)') 'F(1): (b): cell 530: ',F(:,1),cell_list(kcell)%Iphase
 	    force(:,k1,1) = F(:,1)
 	    amp = sqrt(dot_product(F(:,1),F(:,1)))
 	    cell_fmax(k1) = max(cell_fmax(k1),amp)
 	    if (.not.cell_list(kcell)%Iphase) then
 			call get_random_dr(r)
 			F(:,2) = F(:,2) + frandom*r + fwall_prev*[0,0,1]
-!		    if (kcell == 530) write(*,'(a,3e12.3,1x,L)') 'F(2): (b) cell 530: ',F(:,2),cell_list(kcell)%Iphase
 		    force(:,k1,2) = F(:,2)
 			amp = sqrt(dot_product(F(:,2),F(:,2)))
 		    cell_fmax(k1) = max(cell_fmax(k1),amp)
@@ -333,6 +332,8 @@ do k1 = 1,ncells
 	endif
 enddo
 deallocate(cell_fmax)
+deallocate(kfrom)
+deallocate(kto)
 ok = .not.badforce
 end subroutine
 
