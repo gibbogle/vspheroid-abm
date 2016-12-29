@@ -1661,7 +1661,8 @@ if (use_metabolism) then
 endif
 
 tmetab = mytimer() - t1
-!write(*,'(a,3f8.4)') 'tdiff,tmetab,tmetab/(tdiff+tmetab): ',tdiff,tmetab,tmetab/(tdiff+tmetab)
+write(logmsg,'(a,3f8.4)') 'tdiff,tmetab,tmetab/(tdiff+tmetab): ',tdiff,tmetab,tmetab/(tdiff+tmetab)
+call logger(logmsg)
 
 !if (use_integration) then	! always
 if (chemo(DRUG_A)%present) then

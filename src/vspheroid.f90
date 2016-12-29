@@ -1215,7 +1215,7 @@ real(REAL_KIND) :: dxc, ex_conc(35*O2_BY_VOL+1)		! just for testing
 real(REAL_KIND) :: t0, t1, tmover, tgrower, ave_cin(0:2), ave_cex(0:2)
 real(REAL_KIND), parameter :: FULL_NBRLIST_UPDATE_HOURS = 4
 type(cell_type), pointer :: cp
-logical :: ok, done, changed
+logical :: ok, done, changed, dotimer
 
 if (kcell_test > 0) then
 	cp => cell_list(kcell_test)
@@ -1274,13 +1274,7 @@ if (.not.ok) then
 	return
 endif
 !if (ncells > nshow) write(*,*) 'start moving'
-if (istep == 1) then
-	nrepeat = 1
-else
-	nrepeat = 1
-endif
-!nrepeat = 60
-!dt = DELTA_T/nrepeat
+nrepeat = 1
 ndt = ndt + 1
 !write(*,*) 'mover - grower: ndt: ',ndt
 do irepeat = 1,nrepeat
@@ -1315,8 +1309,8 @@ do while (.not.done)
 	t_fmover = t_fmover + dt
 enddo
 enddo
-!write(*,'(a,2f8.2)') 't mover, grower: ',tmover,tgrower
-t0 = mytimer()
+write(logmsg,'(a,2f8.4)') 'tmover,tgrower: ',tmover,tgrower
+call logger(logmsg)
 call update_all_nbrlists
 !write(*,'(a,f8.2)') 't update_nbr_lists: ',mytimer() - t0
 !if (mod(istep,Nhop) == 0) then
@@ -1347,6 +1341,7 @@ if (use_metabolism) then
 endif
 
 !write(*,'(a,3e12.3)') 'simulate_step: Cin: ',cp%Cin(1:3)
+t0 = mytimer()
 ! Reaction-diffusion system
 if (medium_change_step .or. chemo(DRUG_A)%present) then
 	nt_diff = n_substeps
@@ -1422,6 +1417,7 @@ res = 0
 end subroutine
 
 !-----------------------------------------------------------------------------------------
+! Update HIF-1 and PDK1
 !-----------------------------------------------------------------------------------------
 subroutine update_HIF1(dt)
 real(REAL_KIND) :: dt
