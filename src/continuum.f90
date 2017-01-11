@@ -85,28 +85,28 @@ end subroutine
 ! from the field of Cextra at grid points
 !-----------------------------------------------------------------------------------------
 subroutine extra_concs_const(kcell,Cextra,conc)
-integer :: kcell
+integer :: kcell, ix, iy, iz
 real(REAL_KIND) :: Cextra(:,:,:), conc
-integer :: i, ix, iy, iz
-real(REAL_KIND) :: centre(3), alfa(3)
+real(REAL_KIND) :: alfa(3)
 type(cell_type), pointer :: cp
 
 cp => cell_list(kcell)
-if (cp%state == DEAD) then
-	write(*,*) 'Error: extra_concs_const: dead cell: ',kcell
-	stop
-endif
-if (cp%nspheres == 1) then
-	centre = cp%centre(:,1)
-else
-	centre = 0.5*(cp%centre(:,1) + cp%centre(:,2))
-endif
+!if (cp%state == DEAD) then
+!	write(*,*) 'Error: extra_concs_const: dead cell: ',kcell
+!	stop
+!endif
+!if (cp%nspheres == 1) then
+!	centre = cp%centre(:,1)
+!else
+!	centre = 0.5*(cp%centre(:,1) + cp%centre(:,2))
+!endif
+!do i = 1,3
+!	alfa(i) = (centre(i) - (cp%site(i)-1)*DELTA_X)/DELTA_X
+!enddo
+call grid_interp(kcell,alfa)
 ix = cp%site(1)
 iy = cp%site(2)
 iz = cp%site(3)
-do i = 1,3
-	alfa(i) = (centre(i) - (cp%site(i)-1)*DELTA_X)/DELTA_X
-enddo
 conc = (1-alfa(1))*(1-alfa(2))*(1-alfa(3))*Cextra(ix,iy,iz)  &
         + (1-alfa(1))*alfa(2)*(1-alfa(3))*Cextra(ix,iy+1,iz)  &
         + (1-alfa(1))*alfa(2)*alfa(3)*Cextra(ix,iy+1,iz+1)  &
@@ -137,26 +137,19 @@ if (cp%nspheres == 1) then
 else
 	centre = 0.5*(cp%centre(:,1) + cp%centre(:,2))
 endif
-ix = cp%site(1)
-iy = cp%site(2)
-iz = cp%site(3)
+!ix = cp%site(1)
+!iy = cp%site(2)
+!iz = cp%site(3)
 do i = 1,3
 	alfa(i) = (centre(i) - (cp%site(i)-1)*DELTA_X)/DELTA_X
 enddo
-!conc = (1-alfa(1))*(1-alfa(2))*(1-alfa(3))*Cextra(ix,iy,iz)  &
-!        + (1-alfa(1))*alfa(2)*(1-alfa(3))*Cextra(ix,iy+1,iz)  &
-!        + (1-alfa(1))*alfa(2)*alfa(3)*Cextra(ix,iy+1,iz+1)  &
-!        + (1-alfa(1))*(1-alfa(2))*alfa(3)*Cextra(ix,iy,iz+1)  &
-!        + alfa(1)*(1-alfa(2))*(1-alfa(3))*Cextra(ix+1,iy,iz)  &
-!        + alfa(1)*alfa(2)*(1-alfa(3))*Cextra(ix+1,iy+1,iz)  &
-!        + alfa(1)*alfa(2)*alfa(3)*Cextra(ix+1,iy+1,iz+1)  &
-!        + alfa(1)*(1-alfa(2))*alfa(3)*Cextra(ix+1,iy,iz+1)
 end subroutine
 
 !-----------------------------------------------------------------------------------------
 ! Flux contributions from a cell are accumulated at grid points given by cnr(:,:)
 ! This assumes that the cell flux rates have already been computed.
 ! Flux units: mumol/s
+! NOT USED
 !-----------------------------------------------------------------------------------------
 subroutine grid_flux_contribution(kcell,cnr)
 integer :: kcell, cnr(3,8)
@@ -188,39 +181,55 @@ enddo
 end subroutine
 
 !-----------------------------------------------------------------------------------------
-! Flux contributions from a cell are accumulated at grid points given by cnr(:,:)
-! This assumes that the cell flux rates have already been computed.
-! Flux units: mumol/s
+! Flux contributions from a cell are accumulated at grid points given by cnr(:,:), with
+! weights given by wt(:).  The weights are determined in proportion to the inverse
+! of distance (or inverse square.)
 !-----------------------------------------------------------------------------------------
 subroutine grid_flux_weights(kcell,cnr,wt)
 integer :: kcell, cnr(3,8)
 real(REAL_KIND) :: wt(8)
-integer :: k
-real(REAL_KIND) :: centre(3), gridpt(3), r(3), d(8), sum
+integer :: k, ix, iy, iz
+real(REAL_KIND) :: centre(3), gridpt(3), r(3), d(8), sum, alfa(3)
 type(cell_type), pointer :: cp
+logical :: use_square = .false.
+logical :: use_linear = .false.
 
 cp => cell_list(kcell)
 if (cp%state == DEAD) then
 	write(*,*) 'Error: grid_flux_weights: dead cell: ',kcell
 	stop
 endif
-if (cp%nspheres == 1) then
-	centre = cp%centre(:,1)
+if (use_linear) then
+	call grid_interp(kcell,alfa)
+	wt(1) = (1-alfa(1))*(1-alfa(2))*(1-alfa(3))
+	wt(2) = (1-alfa(1))*alfa(2)*(1-alfa(3))
+	wt(3) = (1-alfa(1))*(1-alfa(2))*alfa(3)
+	wt(4) = (1-alfa(1))*alfa(2)*alfa(3)
+	wt(5) = alfa(1)*(1-alfa(2))*(1-alfa(3))
+	wt(6) = alfa(1)*alfa(2)*(1-alfa(3))
+	wt(7) = alfa(1)*(1-alfa(2))*alfa(3)
+	wt(8) = alfa(1)*alfa(2)*alfa(3)
 else
-	centre = 0.5*(cp%centre(:,1) + cp%centre(:,2))
+	if (cp%nspheres == 1) then
+		centre = cp%centre(:,1)
+	else
+		centre = 0.5*(cp%centre(:,1) + cp%centre(:,2))
+	endif
+	sum = 0
+	do k = 1,8
+		gridpt(:) = (cnr(:,k)-1)*DELTA_X
+		r = centre - gridpt
+		d(k) = max(dot_product(r,r), small_d)
+		if (.not.use_square) then
+			d(k) = sqrt(d(k))
+		endif
+		sum = sum + 1/d(k)
+	enddo
+	! The grid flux weights are (1/d(k))/sum.  Note that dMdt > 0 for +ve flux into the cell, 
+	do k = 1,8
+		wt(k) = (1/d(k))/sum
+	enddo
 endif
-sum = 0
-do k = 1,8
-	gridpt(:) = (cnr(:,k)-1)*DELTA_X
-	r = centre - gridpt
-	d(k) = max(sqrt(dot_product(r,r)), small_d)
-	sum = sum + 1/d(k)
-enddo
-! The grid flux weights are (1/d(k))/sum.  Note that dMdt > 0 for +ve flux into the cell, 
-do k = 1,8
-!	Cflux(cnr(1,k),cnr(2,k),cnr(3,k),:) = Cflux(cnr(1,k),cnr(2,k),cnr(3,k),:) + cp%dMdt(:)*(1/d(k))/sum
-	wt(k) = (1/d(k))/sum
-enddo
 end subroutine
 
 end module

@@ -143,8 +143,8 @@ do ichemo = 1,3
 	dydt(k) = dCreact
 	if (dbug) write(*,'(a,i4,5e12.3)') 'dydt: ',ichemo,dCreact,membrane_flux,rate,C,cp%Cex(ichemo)
 	if (isnan(dydt(k))) then
-		write(nflog,*) 'f_rkc_OGL: dydt isnan: ',ichemo,dydt(k)
-		write(*,*) 'f_rkc_OGL: dydt isnan: ',ichemo,dydt(k)
+		write(nflog,'(a,i2,4e12.3)') 'f_rkc_OGL: dydt isnan: ',ichemo,dydt(k),C,cp%Cex(ichemo),rate
+		write(*,'(a,i2,4e12.3)') 'f_rkc_OGL: dydt isnan: ',ichemo,dydt(k),C,cp%Cex(ichemo),rate
 		stop
 	endif	
 enddo

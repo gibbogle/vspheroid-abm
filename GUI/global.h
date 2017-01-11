@@ -102,6 +102,7 @@ namespace Global
 
     extern double concData[4000];
     extern double IC_concData[4000];
+    extern int conc_axis;
     extern int conc_nvars;
     extern int conc_nc_ex;
     extern int conc_nc_ic;

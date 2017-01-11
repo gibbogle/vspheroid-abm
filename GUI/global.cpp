@@ -41,6 +41,7 @@ namespace Global
 
     double concData[4000];
     double IC_concData[4000];
+    int conc_axis;
     int conc_nvars;
     int conc_nc_ex;
     int conc_nc_ic;

@@ -89,6 +89,10 @@ Off-lattice model: Dimension of the fine grid (number of grid pts in X,Y and Z d
 "Randomise initial cell volumes",
 "The volumes of the initial cell population are randomised."},
 
+{"USE_CLOSE_PACKING", 1, 0, 1,
+"Close-pack cells initially",
+"Close-pack cells initially"},
+
 {"NDAYS", 10.0, 0.0, 30.0,
 "Number of days",
 "Length of the simulation.\n\
@@ -103,10 +107,10 @@ Off-lattice model: Dimension of the fine grid (number of grid pts in X,Y and Z d
 "Length of main time step, for cell death, division, etc.  Should be a divisor of 3600. \n\
 [mins]"},
 
-    {"N_SUBSTEPS", 10, 0, 0,
-    "Time step subdivisions",
-    "Number of subdivisions of the time step when drugs are present or when there is a medium change event. \n\
-    [mins]"},
+{"N_SUBSTEPS", 10, 0, 0,
+"Time step subdivisions",
+"Number of subdivisions of the time step when drugs are present or when there is a medium change event. \n\
+[mins]"},
 
 {"NXB", 35, 0, 0,
 "Coarse grid NXB, NYB",
@@ -594,7 +598,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
 
      // Metabolism parameters
 
-           {"USE_METABOLISM", 0,0,1,
+           {"USE_METABOLISM", 1,0,1,
             "Use glucose metabolism",
             "If metabolism is turned on, cell cycle is used, and lactate is simulated.  If metabolism is turned off, lactate is not simulated"},
 
@@ -618,10 +622,6 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
            "Oxygen moles consumed per pyruvate mole",
            "Number of moles of oxygen consumed the oxidation of one pyruvate mole"},
 
-     //      {"F_PO_BASE_1", 0.1, 0, 0,
-     //      "Base level of pyruvate oxidation (fraction of glycolysis)",
-     //      "With no nutrient constraints, the fraction of pyruvate produced by glycolysis that goes to oxidation by TCA/ETC"},
-
            {"K_H1_1", 140, 0, 0,
            "K_H1",
            "The rate of change of HIF-1 level H is given by: dH/dt = K_H2*(1 - H*exp(K_H1*C_O)), where C_O = oxygen concentration"},
@@ -633,31 +633,27 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
            {"K_HB_1", 0.2, 0, 0,
            "K_HB",
            "Glycolysis rate = K_HA*(1 + K_HB*H)*C_G^N/(C_G^N + Km^N)\n\
-             where: H = HIF-1 level, C_G = glucose concentration, HB is maximum glucose consumption rate, Km and N are the glucose consumption Hill function parameters"},
+             where: H = HIF-1 level, C_G = glucose concentration, K_HA is maximum glucose consumption rate when H=0, Km and N are the glucose consumption Hill function parameters"},
 
            {"K_PDK_1", 4.63e-5, 0, 0,
            "K_PDK",
            "Representing PDK1 factor level by y in the range (0,1), the rate of change of y is: dy/dt = -K_PDK*(y - 1 + H) where H = HIF-1 level"},
 
-            {"PDKMIN_1", 0.3, 0, 0,
+            {"PDKMIN_1", 0.5, 0, 0,
             "PDKmin",
             "Minimum value of the PDK1 factor"},
 
-            {"C_O2_NORM_1", 0.02, 0, 0,
+            {"C_O2_NORM_1", 0.05, 0, 0,
             "Nominal normal IC O2 concentration",
             "Nominal normal IC O2 concentration, used to set normal metabolic rates for unconstrained growth"},
 
-            {"C_G_NORM_1", 0.5, 0, 0,
+            {"C_G_NORM_1", 2.5, 0, 0,
             "Nominal normal IC glucose concentration",
             "Nominal normal IC glucose concentration, used to set normal metabolic rates for unconstrained growth"},
 
-            {"C_L_NORM_1", 3.0, 0, 0,
+            {"C_L_NORM_1", 0.0, 0, 0,
             "Nominal normal IC lactate concentration",
             "Nominal normal IC lactate concentration, used to set normal metabolic rates for unconstrained growth"},
-
-//           {"ATP_G_1", 0.4, 0, 0,
-//           "ATP production threshold for growth (fraction of peak)",
-//           "Cell growth stops when the ATP production rate falls below the fraction ATP_G of the maximum (no nutrient constraints) production rate"},
 
            {"ATP_S_1", 0.4, 0, 0,
            "ATP production threshold for survival (fraction of peak)",
@@ -699,10 +695,6 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
             "Oxygen moles consumed per pyruvate mole",
             "Number of moles of oxygen consumed the oxidation of one pyruvate mole"},
 
-     //       {"F_PO_BASE_2", 0.1, 0, 0,
-     //       "Base level of pyruvate oxidation (fraction of glycolysis)",
-     //       "With no nutrient constraints, the fraction of pyruvate produced by glycolysis that goes to oxidation by TCA/ETC"},
-
             {"K_H1_2", 140, 0, 0,
             "K_H1",
             "The rate of change of HIF-1 level H is given by: dH/dt = K_H2*(1 - H*exp(K_H1*C_O)), where C_O = oxygen concentration"},
@@ -714,31 +706,27 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
             {"K_HB_2", 0.2, 0, 0,
             "K_HB",
              "Glycolysis rate = K_HA*(1 + K_HB*H)*C_G^N/(C_G^N + Km^N)\n\
-              where: H = HIF-1 level, C_G = glucose concentration, HB is maximum glucose consumption rate, Km and N are the glucose consumption Hill function parameters"},
+              where: H = HIF-1 level, C_G = glucose concentration, K_HA is maximum glucose consumption rate when H=0, Km and N are the glucose consumption Hill function parameters"},
 
             {"K_PDK_2", 4.63e-5, 0, 0,
             "K_PDK",
             "Representing PDK1 factor level by y in the range (0,1), the rate of change of y is: dy/dt = -K_PDK*(y - 1 + H) where H = HIF-1 level"},
 
-             {"PDKMIN_2", 0.3, 0, 0,
+             {"PDKMIN_2", 0.5, 0, 0,
              "PDKmin",
              "Minimum value of the PDK1 factor"},
 
-             {"C_O2_NORM_2", 0.02, 0, 0,
+             {"C_O2_NORM_2", 0.05, 0, 0,
              "Nominal normal IC O2 concentration",
              "Nominal normal IC O2 concentration, used to set normal metabolic rates for unconstrained growth"},
 
-             {"C_G_NORM_2", 0.5, 0, 0,
+             {"C_G_NORM_2", 2.5, 0, 0,
              "Nominal normal IC glucose concentration",
              "Nominal normal IC glucose concentration, used to set normal metabolic rates for unconstrained growth"},
 
-             {"C_L_NORM_2", 3.0, 0, 0,
+             {"C_L_NORM_2", 0.0, 0, 0,
              "Nominal normal IC lactate concentration",
              "Nominal normal IC lactate concentration, used to set normal metabolic rates for unconstrained growth"},
-
-//            {"ATP_G_2", 0.5, 0, 0,
-//            "ATP production threshold for growth (fraction of peak)",
-//             "Cell growth stops when the ATP production rate falls below the fraction ATP_G of the maximum (no nutrient constraints) production rate"},
 
             {"ATP_S_2", 0.25, 0, 0,
             "ATP production threshold for survival (fraction of peak)",

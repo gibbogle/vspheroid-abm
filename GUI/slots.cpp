@@ -221,44 +221,35 @@ void MainWindow::radioButtonChanged(QAbstractButton *b)
     QString wtag = b->objectName();
     LOG_QMSG("radioButtonChanged: " + wtag);
     int rbutton_case;
-//    if (b->isChecked()) {
-        QString ptag = parse_rbutton(wtag,&rbutton_case);
-        // Now need to reflect the change in the workingParameterList
-        // Need to locate ptag
-        LOG_QMSG("ptag: " + ptag);
-        wtag = wtag.mid(5);
-        for (int k=0; k<nParams; k++) {
-            PARAM_SET p = parm->get_param(k);
-            if (wtag.compare(p.tag) == 0) {
-                parm->set_value(k,double(rbutton_case));
-                LOG_QMSG("found: " + wtag);
-                sprintf(msg,"parm->set_value: %d",rbutton_case);
-                LOG_MSG(msg);
-                if (ptag.compare("HYPOXIA")==0) {
-                    Global::i_hypoxia_cutoff = rbutton_case;
-                    QString linetag = "line_HYPOXIA_"+QString::number(rbutton_case);
-                    LOG_QMSG("hypoxia tag: " + linetag);
-                    QLineEdit *line = findChild<QLineEdit *>(linetag);
-                    line_HYPOXIA_THRESHOLD->setText(line->text());
-                }
-                break;
+    QString ptag = parse_rbutton(wtag,&rbutton_case);
+    // Now need to reflect the change in the workingParameterList
+    // Need to locate ptag
+    LOG_QMSG("ptag: " + ptag);
+    wtag = wtag.mid(5);
+    for (int k=0; k<nParams; k++) {
+        PARAM_SET p = parm->get_param(k);
+        if (wtag.compare(p.tag) == 0) {
+            parm->set_value(k,double(rbutton_case));
+            LOG_QMSG("found: " + wtag);
+            sprintf(msg,"parm->set_value: %d",rbutton_case);
+            LOG_MSG(msg);
+            if (ptag.compare("HYPOXIA")==0) {
+                Global::i_hypoxia_cutoff = rbutton_case;
+                QString linetag = "line_HYPOXIA_"+QString::number(rbutton_case);
+                LOG_QMSG("hypoxia tag: " + linetag);
+                QLineEdit *line = findChild<QLineEdit *>(linetag);
+                line_HYPOXIA_THRESHOLD->setText(line->text());
             }
+            break;
         }
+    }
+//    if (wtag.contains("FD_SOLVER")) {
+//        setFields();
 //    }
-        if (wtag.contains("FD_SOLVER")) {
-            setFields();
-        }
-//        if (radioButton_hypoxia_1->isChecked()) {
-//            Global::i_hypoxia_cutoff = 1;
-//            line_HYPOXIA_THRESHOLD->setText(line_HYPOXIA_1->text());
-//        } else if (radioButton_hypoxia_2->isChecked()) {
-//            Global::i_hypoxia_cutoff = 2;
-//            line_HYPOXIA_THRESHOLD->setText(line_HYPOXIA_2->text());
-//        } else if (radioButton_hypoxia_3->isChecked()) {
-//            Global::i_hypoxia_cutoff = 3;
-//            line_HYPOXIA_THRESHOLD->setText(line_HYPOXIA_3->text());
-//        }
-
+    if (ptag.compare("axis") == 0) {
+        Global::conc_axis = rbutton_case;
+        LOG_QMSG("selected profile axis: " + QString::number(Global::conc_axis));
+    }
 }
 
 void MainWindow::buttonClick_cell_constituent(QAbstractButton* button)

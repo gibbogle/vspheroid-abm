@@ -93,9 +93,6 @@ Hill_N_P = 1
 N_PO = 3
 ityp = 1
 V = Vcell_cm3
-!C_O2_norm = 0.02
-!C_G_norm = 0.5
-!C_L_norm = 3.0
 
 metabolic%HIF1 = 0
 metabolic%PDK1 = 1
@@ -325,6 +322,7 @@ real(REAL_KIND) :: r_Pm_base, r_A_target, f_G_new, C_P_max, dA
 integer :: N_O2, N_P, it
 real(REAL_KIND) :: r_G_threshold = 1.0e-12
 real(REAL_KIND) :: dA_threshold = 1.0e-16
+logical :: exceed
 
 C_O2 = max(0.0,C_O2_)
 C_G = max(0.0,C_G_)
@@ -353,6 +351,7 @@ MM_O2 = f_MM(C_O2,Km_O2,N_O2)
 r_Pm_base = fPDK*MM_O2*(O2_maxrate-base_O_rate)/f_PO	! note that MM_P is not here, since it varies it is added as needed
 
 if (dbug) write(*,'(a,5e12.3)') 'r_G,C_L,r_Pm: ',r_G,C_L,r_Pm_base,fPDK,MM_O2
+exceed = .false.
 if (r_G < r_G_threshold) then
 	r_G = max(0.0d0,r_G)
 	f_G = 0
@@ -373,11 +372,14 @@ else
 	it = 0
 	do
 		it = it + 1
-		if (it > 30) then
+		if (it > 10) then
 			write(*,*) 'f_metab: it,kcell: ',it,kcell_now
 			write(*,'(a,3f9.6)') 'C O2,G,L: ',C_O2, C_G, C_L
 			write(*,'(a,2f9.6)') 'HIF1,fPDK: ',mp%HIF1,fPDK
-			stop
+!			stop
+			exceed = .true.
+			r_PA = f_PA*(1-f_P)*r_P
+			exit
 		endif
 		if (dbug) write(*,'(a,i2,e12.3)') 'r_A_target: ',it,r_A_target
 		c1 = r_Pm_base*(f_PA + 1/(1-f_P))
@@ -412,7 +414,8 @@ else
 			if (dbug) write(*,'(a,2e12.3)') 'f_G_new, dA: ',f_G_new, dA
 			if (dbug) write(*,*)
 			f_G = f_G_new
-			r_A_target = r_A_target - dA
+			r_A_target = max(0.0,r_A_target - dA)
+			! Note: if f_G_new > 0, r_A_target is unchanged
 			cycle
 		endif
 	enddo
@@ -451,9 +454,9 @@ mp%C_P = C_P
 mp%O_rate = mp%O_rate + MM_O2*base_O_rate	! TRY REMOVING THIS
 mp%f_G = f_G
 mp%f_P = f_P
-if (dbug) then
-	write(*,'(a,6e10.3)') 'r_G,A,P,I,L,O2: ',mp%G_rate,mp%A_rate,mp%P_rate,mp%I_rate,mp%L_rate,mp%O_rate
-endif
+!if (dbug .or. exceed) then
+!	write(*,'(a,6e10.3)') 'r_G,A,P,I,L,O2: ',mp%G_rate,mp%A_rate,mp%P_rate,mp%I_rate,mp%L_rate,mp%O_rate
+!endif
 end subroutine
 
 !--------------------------------------------------------------------------

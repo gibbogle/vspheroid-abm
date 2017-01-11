@@ -305,11 +305,11 @@ integer :: jumpvec(3,27)
 integer :: diam_count_limit
 logical :: limit_stop
 real(REAL_KIND) :: DELTA_X, DELTA_T, tnow, t_simulation
-real(REAL_KIND) :: blobcentre(3), blobradius	! blob centre
+real(REAL_KIND) :: blobcentre0(3), blobcentre(3), blobradius	! blob centre
 real(REAL_KIND) :: epsilon, es_e, sqr_es_e, shift, Dfactor
 real(REAL_KIND) :: alpha_v, k_detach
 real(REAL_KIND) :: dr_mitosis, mitosis_hours, mitosis_duration
-real(REAL_KIND) :: test_growthrate
+real(REAL_KIND) :: test_growthrate, rrsum(3)
 real(REAL_KIND) :: Vdivide0, dVdivide, Rdivide0, MM_THRESHOLD, medium_volume0, total_volume, max_growthrate(MAX_CELLTYPES)
 real(REAL_KIND) :: t_anoxia_limit, anoxia_death_delay, anoxia_threshold
 real(REAL_KIND) :: t_aglucosia_limit, aglucosia_death_delay, aglucosia_threshold
@@ -415,7 +415,7 @@ logical :: use_permute = .false.
 logical :: use_gaplist = .true.
 logical :: use_SS = .false.
 logical :: use_integration = .true.
-logical :: use_packer = .true.
+logical :: use_packer
 logical :: use_volume_method
 logical :: use_cell_cycle
 logical :: use_metabolism

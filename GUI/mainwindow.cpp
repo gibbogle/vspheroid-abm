@@ -88,6 +88,7 @@ MainWindow::MainWindow(QWidget *parent)
 	for (int i=0; i<Plot::ncmax; i++) {
 		graphResultSet[i] = 0;
 	}
+    Global::conc_axis = 1;
 	vtkfile = "basecase.pos";
 	savepos_start = 0;
 	ntimes = 0;
@@ -272,6 +273,7 @@ void MainWindow::createActions()
 
     connect(buttonGroup_farfield, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(radioButtonChanged(QAbstractButton*)));
     connect(buttonGroup_hypoxia, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(radioButtonChanged(QAbstractButton*)));
+    connect(buttonGroup_profileaxis, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(radioButtonChanged(QAbstractButton*)));
 }
 
 //--------------------------------------------------------------------------------------------------------
@@ -1109,7 +1111,7 @@ void MainWindow::loadParams()
 }
 
 //--------------------------------------------------------------------------------------------------------
-// This is to disable unused fields (because spheroid_GUI.ui is shared with spheroid_GUI).
+// This is to disable unused fields (because spheroid_GUI.ui is shared with spheroid_GUI). NO LONGER
 // DXF and NZB are computed from NXB and MEDIUM_VOLUME, keeping DXF close to 38um.
 // Note that NYB = NXB, and the coarse grid spacing DXB = 4*DXF
 //--------------------------------------------------------------------------------------------------------

@@ -50,7 +50,7 @@ logical :: done, ok
 integer :: k1, kcell, kpar, nd, nr, tMnodes, ndt_start
 integer, allocatable :: kfrom(:), kto(:), nc(:)
 real(REAL_KIND), allocatable :: force(:,:,:)
-real(REAL_KIND) :: fmax, dx1(3), dx2(3)
+real(REAL_KIND) :: fmax, dx1(3), dx2(3), c(3)
 type(cell_type), pointer :: cp1
 logical :: penetrated
 
@@ -128,11 +128,14 @@ do kpar = 0,tMnodes-1
 	if (cp1%Iphase) then
 		dx1 = dt_move*force(:,k1,1)/kdrag
 		cp1%centre(:,1) = cp1%centre(:,1) + dx1
+		cp1%site = cp1%centre(:,1)/DELTA_X + 1
 	else
 		dx1 = dt_move*force(:,k1,1)/kdrag
 		dx2 = dt_move*force(:,k1,2)/kdrag
 		cp1%centre(:,1) = cp1%centre(:,1) + dx1
 		cp1%centre(:,2) = cp1%centre(:,2) + dx2
+		c = (cp1%centre(:,1) + cp1%centre(:,2))/2
+		cp1%site = c/DELTA_X + 1
 	endif
 enddo
 enddo

@@ -310,7 +310,6 @@ do kcell = 1,nlist
 	else
 		if (cp%anoxia_tag) then
 			if (tnow >= cp%t_anoxia_die) then
-			write(*,*) 'CellDeath: dies from anoxia: ',kcell
 				call CellDies(kcell,cp)
 				changed = .true.
 				Nanoxia_dead(ityp) = Nanoxia_dead(ityp) + 1
@@ -549,6 +548,7 @@ do kcell = 1,nlist0
 				cp%t_start_mitosis = tnow
 				ncells_mphase = ncells_mphase + 1
 				call get_random_vector3(rr)	! set initial axis direction
+				rrsum = rrsum + rr
 				cp%d = 0.1*small_d
 				c = cp%centre(:,1)
 				cp%centre(:,1) = c + (cp%d/2)*rr
@@ -580,7 +580,7 @@ do kcell = 1,nlist0
 		d_desired = max(cp%mitosis*cp%d_divide,small_d)
 		rr = cp%centre(:,2) - cp%centre(:,1)
 		cp%d = sqrt(dot_product(rr,rr))
-		rr = rr/cp%d	! axis direction
+!		rr = rr/cp%d	! axis direction
 		c = (cp%centre(:,1) + cp%centre(:,2))/2
 		cp%site = c/DELTA_X + 1
 		call cubic_solver(d_desired,cp%V,rad)
@@ -655,178 +655,6 @@ do k = 1,ndivide
 enddo
 end subroutine
 
-!-----------------------------------------------------------------------------------------
-! In the Iphase, the cell grows as a sphere.
-! When V > Vdivide, the cell enters Mphase
-! In the Mphase, V is constant, d increases and R decreases (R1 = R2)
-! The level of mitosis grows at a constant rate, and d is proportional to mitosis
-! When d > 2R cell division is completed, and two cells replace one.
-! This is the old code
-!-----------------------------------------------------------------------------------------
-subroutine grower(dt, changed, ok)
-real(REAL_KIND) :: dt
-logical :: changed, ok
-integer :: k, kcell, nlist0, ityp, idrug, prev_phase, kpar=0
-type(cell_type), pointer :: cp
-type(cycle_parameters_type), pointer :: ccp
-real(REAL_KIND) :: rr(3), c(3), rad, d_desired, tgrowth(MAX_CELLTYPES)
-real(REAL_KIND) :: c_rate(MAX_CELLTYPES), r_mean(MAX_CELLTYPES)
-real(REAL_KIND) :: C_O2, C_glucose, R
-integer :: ndivide, divide_list(1000)
-logical :: drugkilled
-logical :: mitosis_entry, in_mitosis, divide
-
-ok = .true.
-changed = .false.
-ccp => cc_parameters
-! Cancel CONTINUOUS_MITOSIS option 13/02/2016
-!tgrowth = divide_time_mean - mitosis_duration
-!c_rate(1:2) = log(2.0)/tgrowth(1:2)		! Note: to randomise divide time need to use random number, not mean!
-!r_mean(1:2) = Vdivide0/(2*tgrowth(1:2))
-
-nlist0 = nlist
-ndivide = 0
-tnow = istep*DELTA_T + t_fmover
-!do k = 1,ncells
-!	kcell = perm_index(k)
-do kcell = 1,nlist0
-	kcell_now = kcell
-	if (colony_simulation) then
-	    cp => ccell_list(kcell)
-	else
-    	cp => cell_list(kcell)
-    endif
-	if (cp%state == DEAD .or. cp%state == DYING) cycle
-	ityp = cp%celltype
-!	call getO2conc(cp,C_O2)
-!	call getGlucoseconc(cp,C_glucose)
-	divide = .false.
-	mitosis_entry = .false.
-	in_mitosis = .false.
-	if (use_volume_method) then
-	    if (cp%Iphase) then
-		    call growcell(cp,dt)
-		    cp%radius(1) = (3*cp%V/(4*PI))**(1./3.)	
-		    if (cp%V > cp%divide_volume) then	! time to enter mitosis
-    	        mitosis_entry = .true.
-	        endif
-	    else
-	        in_mitosis = .true.
-	    endif
-	else
-	    prev_phase = cp%phase
-        call timestep(cp, ccp, dt)
-        if (.not.cp%radiation_tag .and.(cp%NL2(1) > 0 .or. cp%NL2(2) > 0)) then	! irrepairable damage
-			! For now, tag for death at mitosis
-			cp%radiation_tag = .true.
-		    Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
-!			write(*,*) 'Tagged with NL2: ',istep,cp%NL2,Nradiation_tag(ityp)
-		endif
-        if (cp%phase >= M_phase) then
-            if (prev_phase == Checkpoint2) then
-                mitosis_entry = .true.
-                if (.not.cp%radiation_tag .and. cp%NL1 > 0) then		! lesions still exist, no time for repair
-					cp%radiation_tag = .true.
-				    Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
-!				    write(*,*) 'Tagged with NL1: ',istep,cp%NL1,Nradiation_tag(ityp)
-				endif
-            else
-                in_mitosis = .true.
-            endif
-        endif
-		if (cp%phase < Checkpoint2 .and. cp%phase /= Checkpoint1) then
-		    call growcell(cp,dt)
-		    cp%radius(1) = (3*cp%V/(4*PI))**(1./3.)
-		endif	
-	endif
-	if (mitosis_entry) then
-!	    write(*,'(a,i6,2e12.3)') 'mitosis_entry: V,Vdivide0',kcell,cp%V,Vdivide0
-		drugkilled = .false.
-		do idrug = 1,ndrugs_used
-			if (cp%drug_tag(idrug)) then
-				call CellDies(kcell,cp)
-				changed = .true.
-				Ndrug_dead(idrug,ityp) = Ndrug_dead(idrug,ityp) + 1
-				drugkilled = .true.
-				exit
-			endif
-		enddo
-		if (drugkilled) cycle
-			
-		if (use_volume_method) then
-			if (cp%growth_delay) then
-				if (cp%G2_M) then
-					if (tnow > cp%t_growth_delay_end) then
-						cp%G2_M = .false.
-					else
-						cycle
-					endif
-				else
-					cp%t_growth_delay_end = tnow + cp%dt_delay
-					cp%G2_M = .true.
-					cycle
-				endif
-			endif
-			! try moving death prob test to here
-			if (cp%radiation_tag) then
-				R = par_uni(kpar)
-				if (R < cp%p_rad_death) then
-					call CellDies(kcell,cp)
-					changed = .true.
-					Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
-					cycle
-				endif
-			endif		
-		else
-		    ! Check for cell death by radiation lesions
-!		    if (cp%NL1 > 0 .or. cp%NL2(2) > 0) then
-			if (cp%radiation_tag) then
-				call CellDies(kcell,cp)
-				changed = .true.
-				Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
-				cycle
-			endif		        
-		endif
-		
-		cp%Iphase = .false.
-        cp%nspheres = 2
-		cp%mitosis = 0
-		cp%t_start_mitosis = tnow
-		ncells_mphase = ncells_mphase + 1
-		call get_random_vector3(rr)	! set initial axis direction
-		cp%d = 0.1*small_d
-		c = cp%centre(:,1)
-		cp%centre(:,1) = c + (cp%d/2)*rr
-		cp%centre(:,2) = c - (cp%d/2)*rr
-		cp%d_divide = 2.0**(2./3)*cp%radius(1)
-	elseif (in_mitosis) then
-		cp%mitosis = (tnow - cp%t_start_mitosis)/mitosis_duration
-!		write(*,*) 'mitosis: ',kcell,cp%mitosis
-		d_desired = max(cp%mitosis*cp%d_divide,small_d)
-		rr = cp%centre(:,2) - cp%centre(:,1)
-		cp%d = sqrt(dot_product(rr,rr))
-		rr = rr/cp%d	! axis direction
-		c = (cp%centre(:,1) + cp%centre(:,2))/2
-		cp%site = c/DELTA_X + 1
-		call cubic_solver(d_desired,cp%V,rad)
-		cp%radius = rad
-		if (cp%d > 2*rad) then	! completion of mitosis - note that this overrides cp%phase
-!			write(*,'(a,i6,2e12.3)') 'divide: d > 2*rad: ',kcell,cp%d,rad
-			divide = .true.
-		endif
-	endif
-	if (divide) then
-		ndivide = ndivide + 1
-		divide_list(ndivide) = kcell
-	endif
-enddo
-do k = 1,ndivide
-	changed = .true.
-	kcell = divide_list(k)
-	call divider(kcell, ok)
-	if (.not.ok) return
-enddo
-end subroutine
 
 !-----------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------
@@ -1147,20 +975,6 @@ cp2%nbrs = nbrs0 + 1
 cp2%nbrlist(cp2%nbrs)%indx = kcell1
 cp2%nbrlist(cp2%nbrs)%contact = .false.
 cp2%nbrlist(cp2%nbrs)%contact(1,1) = .true.
-! Cancel CONTINUOUS_MITOSIS option 13/02/2016
-!if (MITOSIS_MODE == CONTINUOUS_MITOSIS) then
-!	cp1%Iphase = .false.
-!	cp2%Iphase = .false.
-!	call get_random_vector3(r)	! set initial axis direction
-!	cp1%d = 0.1*small_d
-!	c = cp1%centre(:,1)
-!	cp1%centre(:,1) = c + (cp1%d/2)*r
-!	cp1%centre(:,2) = c - (cp1%d/2)*r
-!	cp2%d = 0.1*small_d
-!	c = cp2%centre(:,1)
-!	cp2%centre(:,1) = c + (cp2%d/2)*r
-!	cp2%centre(:,2) = c - (cp2%d/2)*r
-!else
 cp1%Iphase = .true.
 cp1%nspheres = 1
 cp2%Iphase = .true.

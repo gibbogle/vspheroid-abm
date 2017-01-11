@@ -76,7 +76,7 @@ integer :: iuse_oxygen, iuse_glucose, iuse_tracer, iuse_drug, iuse_metab, iV_dep
 integer :: iuse_extra, iuse_relax, iuse_par_relax, iuse_gd_all
 real(REAL_KIND) :: days, percent, fluid_fraction, d_layer, sigma(MAX_CELLTYPES), Vsite_cm3, bdry_conc, spcrad_value, d_n_limit
 real(REAL_KIND) :: anoxia_tag_hours, anoxia_death_hours, aglucosia_tag_hours, aglucosia_death_hours
-integer :: iuse_drop, isaveprofiledata, isaveslicedata, iusecellcycle, iusemetabolism
+integer :: iuse_drop, isaveprofiledata, isaveslicedata, iusecellcycle, iusemetabolism, iclosepack
 integer :: iconstant, ioxygengrowth, iglucosegrowth, ioxygendeath, iglucosedeath
 logical :: use_metabolites
 character*(12) :: drug_name
@@ -104,6 +104,8 @@ read(nfcell,*) divide_time_median(2)
 read(nfcell,*) divide_time_shape(2)
 read(nfcell,*) iV_depend
 read(nfcell,*) iV_random
+read(nfcell,*) iclosepack
+use_packer = (iclosepack == 1)
 read(nfcell,*) days							! number of days to simulate
 read(nfcell,*) d_n_limit					! possible limit on diameter or number of cells
 diam_count_limit = d_n_limit
@@ -442,7 +444,6 @@ do ityp = 1,Ncelltypes
 	read(nf,*) C_O2_norm(ityp)
 	read(nf,*) C_G_norm(ityp)
 	read(nf,*) C_L_norm(ityp)
-!	read(nf,*) f_ATPg(ityp)
 	read(nf,*) f_ATPs(ityp)
 	read(nf,*) K_PL(ityp)
 	read(nf,*) K_LP(ityp)
@@ -828,7 +829,8 @@ limit_stop = .false.
 medium_change_step = .false.		! for startup 
 call logger('completed Setup')
 
-nspeedtest = 10000
+nspeedtest = 100000
+rrsum = 0
 !call testOGL
 !stop
 
@@ -926,8 +928,8 @@ real(REAL_KIND) :: Radius, cellradius, d, r2lim, r2, rad(3), rsite(3), centre(3)
 logical, allocatable :: occup(:,:,:)
 
 !blobcentre = DELTA_X*[(NX+1)/2,(NY+1)/2,(NZ+1)/2]
-blobcentre = DELTA_X*[(NX-1)/2,(NY-1)/2,(NZ-1)/2]
-write(nflog,'(a,3f8.4)') 'PlaceCells: blobcentre: ',blobcentre
+blobcentre0 = DELTA_X*[(NX-1)/2,(NY-1)/2,(NZ-1)/2]
+write(nflog,'(a,4f8.5)') 'PlaceCells: DELTA_X,blobcentre0: ',DELTA_X,blobcentre0
 if (use_packer) then
 	nblob = initial_count
 	cellradius = Raverage
@@ -939,12 +941,16 @@ if (use_packer) then
 	enddo
 	ave = ave/nblob
 	write(nflog,'(a,3f8.4)') 'Average cell centre: ',ave
-	write(nflog,'(a,3f8.4)') 'blobcentre: ',blobcentre
+	write(nflog,'(a,3f8.4)') 'blobcentre0: ',blobcentre0
 !	write(*,*) 'Cell centres:'
 	kcell = 0
 	do i = 1,nblob
 		call get_cellcentre(i,centre)
-		centre = centre - ave + blobcentre
+		centre = centre - ave + blobcentre0
+		
+		! try reflecting in YZ plane
+		!centre(1) = 2*blobcentre(1) - centre(1)
+		
 		kcell = kcell + 1
 		rsite = centre
 !		write(*,'(i6,3f8.4)') kcell,rsite
@@ -954,7 +960,7 @@ if (use_packer) then
 else
 	d = 2.2*Raverage
 	Radius = (3.0*initial_count/(4.0*PI))**(1./3.)	! approx initial blob radius, scaled by /d
-	write(nflog,*) 'blobcentre, d: ',blobcentre,d,Radius
+	write(nflog,*) 'blobcentre0, d: ',blobcentre0,d,Radius
 	irad = Radius + 2
 	allocate(occup(-irad:irad,-irad:irad,-irad:irad))
 	occup = .false.
@@ -971,7 +977,7 @@ else
 				r2 = dot_product(rad,rad)
 				if (r2 > r2lim) cycle
 				kcell = kcell + 1
-				rsite = blobcentre + d*site
+				rsite = blobcentre0 + d*site
 				call AddCell(kcell,rsite)
 				occup(ix,iy,iz) = .true.
 			enddo
@@ -985,7 +991,7 @@ else
 	endif
 	! Now add cells to make the count up to the specified initial_count
 	if (kcell < initial_count) then
-		call AddBdryCells(kcell, occup, irad, d, blobcentre)
+		call AddBdryCells(kcell, occup, irad, d, blobcentre0)
 		kcell = initial_count
 	endif
 	deallocate(occup)
@@ -1093,11 +1099,13 @@ cp%p_rad_death = 0
 cp%t_anoxia = 0
 cp%t_aglucosia = 0
 
-call get_random_vector3(v)	! set initial axis direction
-cp%d = 0.1*small_d
-c = cp%centre(:,1)
-cp%centre(:,1) = c + (cp%d/2)*v
-cp%centre(:,2) = c - (cp%d/2)*v
+! Not needed because it is done in new_grower() at the time of mitosis
+!call get_random_vector3(v)	! set initial axis direction
+!cp%d = 0.1*small_d
+!c = cp%centre(:,1)
+!cp%centre(:,1) = c + (cp%d/2)*v
+!cp%centre(:,2) = c - (cp%d/2)*v
+
 cp%nbrs = 0
 cp%Cex = Caverage(1,1,1,:)	! initially the concentrations are the same everywhere
 cp%Cin = cp%Cex
@@ -1216,6 +1224,9 @@ real(REAL_KIND) :: t0, t1, tmover, tgrower, ave_cin(0:2), ave_cex(0:2)
 real(REAL_KIND), parameter :: FULL_NBRLIST_UPDATE_HOURS = 4
 type(cell_type), pointer :: cp
 logical :: ok, done, changed, dotimer
+
+!call test_finesolver
+!call test_coarsesolver
 
 if (kcell_test > 0) then
 	cp => cell_list(kcell_test)
@@ -1381,6 +1392,7 @@ if (saveslice%active) then
 endif
 
 if (mod(istep,nt_hour) == 0) then
+!	call AdjustCentre()
 	if (ndoublings > 0) then
 	    t_ave_double = doubling_time_sum/(ndoublings*3600)
 	else
@@ -1388,6 +1400,7 @@ if (mod(istep,nt_hour) == 0) then
 	endif
 	write(logmsg,'(a,4i8,a,f5.2)') 'istep, hour, Ncells, ntagged: ',istep,istep/nt_hour,Ncells,Ndrug_tag(1,1),' t_double: ',t_ave_double
 	call logger(logmsg)
+!	write(*,'(a,3f8.5,3f8.3)') 'blobcentre, rrsum: ',blobcentre,rrsum
 	if (dbug) write(*,*) 'DRUG_A present: ',chemo(DRUG_A:DRUG_A+2)%present
 !	write(*,'(7e11.3)') Caverage(NX/2,NY/2,11:17,DRUG_A)
 !	write(*,'(7e11.3)') Caverage(NX/2,NY/2,11:17,DRUG_A+1)
@@ -1407,7 +1420,7 @@ if (mod(istep,nt_hour) == 0) then
 		endif
 	endif
 	if (.not.use_TCP) then
-		call get_concdata(nvars, ns, dxc, ex_conc)
+		call get_concdata(1,nvars, ns, dxc, ex_conc)
 	!	write(*,'(a,3f8.4)') 'cell #1: ',cell_list(1)%Cex(1),cell_list(1)%Cin(1),cell_list(1)%Cex(1)-cell_list(1)%Cin(1) 
 	endif
 !	call write_bdryconcs
@@ -1428,7 +1441,7 @@ type(cell_type), pointer :: cp
 
 do kcell = 1,nlist
 	cp => cell_list(kcell)
-	if (cp%state == DEAD) cycle
+	if (cp%state == DEAD .or. cp%state == DYING) cycle
 	mp => cp%metab
 	HIF1 = mp%HIF1
 	ityp = cp%celltype
@@ -1438,6 +1451,44 @@ do kcell = 1,nlist
 	call analyticSetPDK1(ityp,HIF1,PDK1,dt)
 	mp%PDK1 = PDK1
 enddo
+end subroutine
+
+!-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
+!subroutine get_centre
+!real(REAL_KIND) :: blob_centre(3)
+!integer :: n, kcell
+!type(cell_type), pointer :: cp
+!
+!n = 0
+!blob_centre = 0
+!do kcell = 1,nlist
+!	cp => cell_list(kcell)
+!	if (cp%state == DEAD) cycle
+!	n = n+1
+!	blob_centre = blob_centre + cp%centre(:,1)
+!enddo
+!write(logmsg,'(a,3f8.4)') 'blob_centre: ',blob_centre/n
+!call logger(logmsg)
+!end subroutine
+
+!-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
+subroutine AdjustCentre
+real(REAL_KIND) :: dc(3)
+integer :: kcell, is
+type(cell_type), pointer :: cp
+
+dc = blobcentre - blobcentre0
+write(*,'(a,3f8.5)') 'AdjustCentre: ',dc
+do kcell = 1,nlist
+	cp => cell_list(kcell)
+	if (cp%state == DEAD) cycle
+	do is = 1,cp%nspheres
+		cp%centre(:,is) = cp%centre(:,is) - dc
+	enddo
+enddo
+blobcentre = blobcentre0
 end subroutine
 
 !-----------------------------------------------------------------------------------------
@@ -1454,7 +1505,7 @@ cin = 0
 cex = 0
 do kcell = 1,nlist
 	cp => cell_list(kcell)
-	if (cp%state == DEAD) cycle
+	if (cp%state == DEAD .or. cp%state == DYING) cycle
 	n = n+1
 	cin = cin + cp%Cin(ichemo:ichemo+2)
 	cex = cex + cp%Cex(ichemo:ichemo+2)
@@ -1479,7 +1530,7 @@ cp => cell_list(kcell)
 write(nflog,'(a,i6,4e12.3)') 'kcell, volume, divide_volume, dVdt, divide_time: ', &
                 kcell, cp%V/Vn, cp%divide_volume/Vn, cp%dVdt/Vn, cp%divide_time
 !write(*,'(a,i6,4e12.3)') 'kcell, volume, divide_volume, dVdt, divide_time: ', &
-!                kcell, cp%V/Vn, cp%divide_volume/Vn, cp%dVdt/Vn, cp%divide_time
+!                kcell, cp%V/Vn, cp%divide_volume/Vn, cp%dVdt/Vn, cp%divide_time 
 end subroutine
 
 !-----------------------------------------------------------------------------------------

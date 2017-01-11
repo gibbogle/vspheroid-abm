@@ -1055,7 +1055,7 @@ end subroutine
 ! iycnr = c(2)/dx + 1
 ! izcnr = c(3)/dx + 1
 !--------------------------------------------------------------------------------
-subroutine get_concdata(nvars, ns, dxc, ex_conc) BIND(C)
+subroutine get_concdata1(nvars, ns, dxc, ex_conc) BIND(C)
 !DEC$ ATTRIBUTES DLLEXPORT :: get_concdata
 use, intrinsic :: iso_c_binding
 integer(c_int) :: nvars, ns
@@ -1088,8 +1088,10 @@ nvars = 1 + MAX_CHEMO + N_EXTRA
 allocate(ngc(NX))
 allocate(ctemp(nxgpts,2,2,0:nvars-1))
 
-! First calculate averages at the enclosing grid pts
+ichemo = OXYGEN
+write(nflog,'(a,40f8.5)') 'EC O2: ',(Caverage(ix,iy0,iz0,ichemo),ix=ix1,ix2+1)
 
+! First calculate averages at the enclosing grid pts
 ctemp = 0
 ngc = 0
 do kx = 1,nxgpts
@@ -1098,6 +1100,7 @@ do kx = 1,nxgpts
 			ix = ix1 + kx - 1
 			iy = iy0 + ky - 1
 			iz = iz0 + kz - 1
+			! Find the cells associated with this gridpt to compute cell-related variables
 			call get_gridptcells(ix,iy,iz,ngc(ix),gcell)
 			if (ngc(ix) > 0) then
 				do k = 1,ngc(ix)
@@ -1110,6 +1113,7 @@ do kx = 1,nxgpts
 				enddo
 				ctemp(kx,ky,kz,0:nvars-1) = ctemp(kx,ky,kz,0:nvars-1)/ngc(ix)
 			endif
+			! For constituents simply use the concentration fields
 			do ichemo = 1,MAX_CHEMO
 				ctemp(kx,ky,kz,ichemo) = Caverage(ix,iy,iz,ichemo)
 			enddo
@@ -1173,13 +1177,276 @@ deallocate(ngc)
 end subroutine
 
 !--------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------
+subroutine get_concdata(axis, nvars, ns, dxc, ex_conc) BIND(C)
+!DEC$ ATTRIBUTES DLLEXPORT :: get_concdata
+use, intrinsic :: iso_c_binding
+integer(c_int) :: axis, nvars, ns
+real(c_double) :: dxc, ex_conc(0:*)
+real(REAL_KIND) ::  dx, x1, x2, y1, y2, z1, z2, x0, y0, z0, x, y, z
+real(REAL_KIND) :: cntr(3), rng(3), radius
+real(REAL_KIND) :: alfax, alfay, alfaz
+integer :: nxgpts, ix1, ix2, iy1, iy2, iz1, iz2, ix0, iy0, iz0, kx, ky, kz
+integer :: ix, iy, iz, k, ks, ichemo, kcell, offset
+integer :: gcell(200)
+integer, allocatable ::  ngc(:)
+real(REAL_KIND), allocatable :: ctemp(:,:,:,:)
+type(cell_type), pointer :: cp
+
+!call logger('get_concdata')
+dx = DELTA_X
+ns = 20
+
+call getBlobCentreRange(cntr,rng,radius)
+
+if (axis == 1) then
+	x1 = cntr(1) - rng(1)/2
+	x2 = cntr(1) + rng(1)/2
+	y0 = cntr(2)
+	z0 = cntr(3)
+	ix1 = x1/dx + 1
+	ix2 = x2/dx + 1
+	iy0 = y0/dx + 1
+	iz0 = z0/dx + 1
+	nxgpts = ix2 - ix1 + 2
+	nvars = 1 + MAX_CHEMO + N_EXTRA
+	allocate(ngc(NX))
+	allocate(ctemp(nxgpts,2,2,0:nvars-1))
+
+	ichemo = OXYGEN
+	write(nflog,'(a,40f8.5)') 'EC x O2: ',(Caverage(ix,iy0,iz0,ichemo),ix=ix1,ix2+1)
+
+	! First calculate averages at the enclosing grid pts
+	ctemp = 0
+	ngc = 0
+	do kx = 1,nxgpts
+		do ky = 1,2
+			do kz = 1,2
+				ix = ix1 + kx - 1
+				iy = iy0 + ky - 1
+				iz = iz0 + kz - 1
+				! Find the cells associated with this gridpt to compute cell-related variables
+				call get_gridptcells(ix,iy,iz,ngc(ix),gcell)
+				if (ngc(ix) > 0) then
+					do k = 1,ngc(ix)
+						kcell = gcell(k)
+						cp => cell_list(kcell)
+						ctemp(kx,ky,kz,0) = ctemp(kx,ky,kz,0) + cp%CFSE
+						ctemp(kx,ky,kz,GROWTH_RATE) = ctemp(kx,ky,kz,GROWTH_RATE) + cp%dVdt
+						ctemp(kx,ky,kz,CELL_VOLUME) = ctemp(kx,ky,kz,CELL_VOLUME) + cp%V
+						ctemp(kx,ky,kz,O2_BY_VOL) = ctemp(kx,ky,kz,O2_BY_VOL) + cp%Cin(OXYGEN)*cp%V
+					enddo
+					ctemp(kx,ky,kz,0:nvars-1) = ctemp(kx,ky,kz,0:nvars-1)/ngc(ix)
+				endif
+				! For constituents simply use the concentration fields
+				do ichemo = 1,MAX_CHEMO
+					ctemp(kx,ky,kz,ichemo) = Caverage(ix,iy,iz,ichemo)
+				enddo
+			enddo
+		enddo
+	enddo
+
+	dxc = (x2-x1)/(ns-1)
+
+	! Now need to interpolate values at ns points along the line from (x1,y0,z0) to (x2,y0,z0)
+	! alfax, alfay, alfaz each lies in (0,1)
+	y = y0
+	z = z0
+	iy = y/dx + 1
+	iz = z/dx + 1
+	alfay = (y - (iy-1)*dx)/dx
+	alfaz = (z - (iz-1)*dx)/dx
+	do ks = 1,ns
+		x = x1 + (ks-1)*dxc
+		ix = x/dx + 1
+		alfax = (x - (ix-1)*dx)/dx
+		kx = ix - ix1 + 1
+	!	if (kx >= nxgpts) then
+	!		write(*,*) 'bad kx: ',kx,nxgpts
+	!		write(*,'(a,i4,4f8.4,2i4)') 'ks,x,x1,x2,dxc,ix,kx: ',ks,x,x1,x2,dxc,ix,kx
+	!		stop
+	!	endif
+		do ichemo = 0, nvars-1
+			offset = ichemo*ns
+			k = offset - 1 + ks
+			ex_conc(k) = (1-alfax)*(1-alfay)*(1-alfaz)*ctemp(kx,1,1,ichemo) + &
+						 (1-alfax)*alfay*(1-alfaz)*ctemp(kx,2,1,ichemo) + &
+						 (1-alfax)*(1-alfay)*alfaz*ctemp(kx,1,2,ichemo) + &
+						 (1-alfax)*alfay*alfaz*ctemp(kx,2,2,ichemo) + &
+						 alfax*(1-alfay)*(1-alfaz)*ctemp(kx+1,1,1,ichemo) + &
+						 alfax*alfay*(1-alfaz)*ctemp(kx+1,2,1,ichemo) + &
+						 alfax*(1-alfay)*alfaz*ctemp(kx+1,1,2,ichemo) + &
+						 alfax*alfay*alfaz*ctemp(kx+1,2,2,ichemo)
+		enddo
+	enddo
+	!write(nflog,'(10f8.3)') ex_conc(0:nvars*ns-1)
+	deallocate(ctemp)
+	deallocate(ngc)
+elseif (axis == 2) then
+	y1 = cntr(2) - rng(2)/2
+	y2 = cntr(2) + rng(2)/2
+	x0 = cntr(1)
+	z0 = cntr(3)
+	iy1 = y1/dx + 1
+	iy2 = y2/dx + 1
+	ix0 = x0/dx + 1
+	iz0 = z0/dx + 1
+	nxgpts = iy2 - iy1 + 2
+	nvars = 1 + MAX_CHEMO + N_EXTRA
+	allocate(ngc(NX))
+	allocate(ctemp(2,nxgpts,2,0:nvars-1))
+
+	ichemo = OXYGEN
+	write(nflog,'(a,40f8.5)') 'EC y O2: ',(Caverage(ix0,iy,iz0,ichemo),iy=iy1,iy2+1)
+
+	! First calculate averages at the enclosing grid pts
+	ctemp = 0
+	ngc = 0
+	do ky = 1,nxgpts
+		do kx = 1,2
+			do kz = 1,2
+				iy = iy1 + ky - 1
+				ix = ix0 + kx - 1
+				iz = iz0 + kz - 1
+				! Find the cells associated with this gridpt to compute cell-related variables
+				call get_gridptcells(ix,iy,iz,ngc(iy),gcell)
+				if (ngc(ix) > 0) then
+					do k = 1,ngc(iy)
+						kcell = gcell(k)
+						cp => cell_list(kcell)
+						ctemp(kx,ky,kz,0) = ctemp(kx,ky,kz,0) + cp%CFSE
+						ctemp(kx,ky,kz,GROWTH_RATE) = ctemp(kx,ky,kz,GROWTH_RATE) + cp%dVdt
+						ctemp(kx,ky,kz,CELL_VOLUME) = ctemp(kx,ky,kz,CELL_VOLUME) + cp%V
+						ctemp(kx,ky,kz,O2_BY_VOL) = ctemp(kx,ky,kz,O2_BY_VOL) + cp%Cin(OXYGEN)*cp%V
+					enddo
+					ctemp(kx,ky,kz,0:nvars-1) = ctemp(kx,ky,kz,0:nvars-1)/ngc(ix)
+				endif
+				! For constituents simply use the concentration fields
+				do ichemo = 1,MAX_CHEMO
+					ctemp(kx,ky,kz,ichemo) = Caverage(ix,iy,iz,ichemo)
+				enddo
+			enddo
+		enddo
+	enddo
+
+	dxc = (y2-y1)/(ns-1)
+
+	! Now need to interpolate values at ns points along the line from (x0,y1,z0) to (x0,y2,z0)
+	! alfax, alfay, alfaz each lies in (0,1)
+	x = x0
+	z = z0
+	ix = x/dx + 1
+	iz = z/dx + 1
+	alfax = (x - (ix-1)*dx)/dx
+	alfaz = (z - (iz-1)*dx)/dx
+	do ks = 1,ns
+		y = y1 + (ks-1)*dxc
+		iy = y/dx + 1
+		alfay = (y - (iy-1)*dx)/dx
+		ky = iy - iy1 + 1
+		do ichemo = 0, nvars-1
+			offset = ichemo*ns
+			k = offset - 1 + ks
+			ex_conc(k) = (1-alfay)*(1-alfax)*(1-alfaz)*ctemp(1,ky,1,ichemo) + &
+						 (1-alfay)*alfax*(1-alfaz)*ctemp(2,ky,1,ichemo) + &
+						 (1-alfay)*(1-alfax)*alfaz*ctemp(1,ky,2,ichemo) + &
+						 (1-alfay)*alfax*alfaz*ctemp(2,ky,2,ichemo) + &
+						 alfay*(1-alfax)*(1-alfaz)*ctemp(1,ky+1,1,ichemo) + &
+						 alfay*alfax*(1-alfaz)*ctemp(2,ky+1,1,ichemo) + &
+						 alfay*(1-alfax)*alfaz*ctemp(1,ky+1,2,ichemo) + &
+						 alfay*alfax*alfaz*ctemp(2,ky+1,2,ichemo)
+		enddo
+	enddo
+	deallocate(ctemp)
+	deallocate(ngc)
+elseif (axis == 3) then
+	z1 = cntr(3) - rng(3)/2
+	z2 = cntr(3) + rng(3)/2
+	y0 = cntr(2)
+	x0 = cntr(1)
+	iz1 = z1/dx + 1
+	iz2 = z2/dx + 1
+	iy0 = y0/dx + 1
+	ix0 = x0/dx + 1
+	nxgpts = iz2 - iz1 + 2
+	nvars = 1 + MAX_CHEMO + N_EXTRA
+	allocate(ngc(NX))
+	allocate(ctemp(2,2,nxgpts,0:nvars-1))
+
+	ichemo = OXYGEN
+	write(nflog,'(a,40f8.5)') 'EC z O2: ',(Caverage(ix0,iy0,iz,ichemo),iz=iz1,iz2+1)
+
+	! First calculate averages at the enclosing grid pts
+	ctemp = 0
+	ngc = 0
+	do kz = 1,nxgpts
+		do ky = 1,2
+			do kx = 1,2
+				iz = iz1 + kz - 1
+				iy = iy0 + ky - 1
+				ix = ix0 + kx - 1
+				! Find the cells associated with this gridpt to compute cell-related variables
+				call get_gridptcells(ix,iy,iz,ngc(iz),gcell)
+				if (ngc(iz) > 0) then
+					do k = 1,ngc(iz)
+						kcell = gcell(k)
+						cp => cell_list(kcell)
+						ctemp(kx,ky,kz,0) = ctemp(kx,ky,kz,0) + cp%CFSE
+						ctemp(kx,ky,kz,GROWTH_RATE) = ctemp(kx,ky,kz,GROWTH_RATE) + cp%dVdt
+						ctemp(kx,ky,kz,CELL_VOLUME) = ctemp(kx,ky,kz,CELL_VOLUME) + cp%V
+						ctemp(kx,ky,kz,O2_BY_VOL) = ctemp(kx,ky,kz,O2_BY_VOL) + cp%Cin(OXYGEN)*cp%V
+					enddo
+					ctemp(kx,ky,kz,0:nvars-1) = ctemp(kx,ky,kz,0:nvars-1)/ngc(ix)
+				endif
+				! For constituents simply use the concentration fields
+				do ichemo = 1,MAX_CHEMO
+					ctemp(kx,ky,kz,ichemo) = Caverage(ix,iy,iz,ichemo)
+				enddo
+			enddo
+		enddo
+	enddo
+
+	dxc = (z2-z1)/(ns-1)
+
+	! Now need to interpolate values at ns points along the line from (x0,y0,z1) to (x0,y0,z2)
+	! alfax, alfay, alfaz each lies in (0,1)
+	y = y0
+	x = x0
+	iy = y/dx + 1
+	ix = x/dx + 1
+	alfay = (y - (iy-1)*dx)/dx
+	alfax = (x - (ix-1)*dx)/dx
+	do ks = 1,ns
+		z = z1 + (ks-1)*dxc
+		iz = z/dx + 1
+		alfaz = (z - (iz-1)*dx)/dx
+		kz = iz - iz1 + 1
+		do ichemo = 0, nvars-1
+			offset = ichemo*ns
+			k = offset - 1 + ks
+			ex_conc(k) = (1-alfaz)*(1-alfay)*(1-alfax)*ctemp(1,1,kz,ichemo) + &
+						 (1-alfaz)*alfay*(1-alfax)*ctemp(2,1,kz,ichemo) + &
+						 (1-alfaz)*(1-alfay)*alfax*ctemp(1,2,kz,ichemo) + &
+						 (1-alfaz)*alfay*alfax*ctemp(2,2,kz,ichemo) + &
+						 alfaz*(1-alfay)*(1-alfax)*ctemp(1,1,kz+1,ichemo) + &
+						 alfaz*alfay*(1-alfax)*ctemp(2,1,kz+1,ichemo) + &
+						 alfaz*(1-alfay)*alfax*ctemp(1,2,kz+1,ichemo) + &
+						 alfaz*alfay*alfax*ctemp(2,2,kz+1,ichemo)
+		enddo
+	enddo
+	deallocate(ctemp)
+	deallocate(ngc)
+endif
+end subroutine
+
+!--------------------------------------------------------------------------------
 ! Returns all the intracellular concentrations along a line through the blob centre.
 ! Need to find all cells within a yz-tube about the centreline, then average over
 ! blocks of width dx.  A yz-tube has specified radius tube_radius, centred on centreline.
 ! Together with CFSE, growth rate (dVdt), cell volume,...
 ! Store the constituent profiles one after the other.
 !--------------------------------------------------------------------------------
-subroutine get_IC_concdata(nvars, ns, dxc, ic_conc) BIND(C)
+subroutine get_IC_concdata1(nvars, ns, dxc, ic_conc) BIND(C)
 !DEC$ ATTRIBUTES DLLEXPORT :: get_ic_concdata
 use, intrinsic :: iso_c_binding
 integer(c_int) :: nvars, ns
@@ -1245,13 +1512,164 @@ enddo
 end subroutine
 
 !--------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------
+subroutine get_IC_concdata(axis, nvars, ns, dxc, ic_conc) BIND(C)
+!DEC$ ATTRIBUTES DLLEXPORT :: get_ic_concdata
+use, intrinsic :: iso_c_binding
+integer(c_int) :: axis, nvars, ns
+real(c_double) :: dxc, ic_conc(0:*)
+integer :: k, ks, ichemo, kcell, offset
+real(REAL_KIND) :: cntr(3), rng(3), radius, tube_radius, tube_radius2
+real(REAL_KIND) :: x1, x2, y1, y2, z1, z2, x0, y0, z0, xdiff, ydiff, zdiff, xmin, xmax, ymin, ymax, zmin, zmax, r2
+real(REAL_KIND), allocatable :: csum(:,:)
+integer, allocatable :: ncsum(:)
+type(cell_type), pointer :: cp
+
+!call logger('get_IC_concdata')
+nvars = 1 + MAX_CHEMO + N_EXTRA
+tube_radius = DELTA_X
+tube_radius2 = tube_radius*tube_radius
+ns = 20
+
+call getBlobCentreRange(cntr,rng,radius)
+
+if (axis == 1) then
+	x1 = cntr(1) - rng(1)/2
+	x2 = cntr(1) + rng(1)/2
+	y0 = cntr(2)
+	z0 = cntr(3)
+
+	dxc = (x2-x1)/ns
+	!dxc = DELTA_X
+	!ns = (x2-x1)/dxc
+	xdiff = (x2-x1) - ns*dxc
+	xmin = x1 + xdiff/2
+	xmax = x2 - xdiff/2
+	! x range for block ks is xmin + ks.dx -> xmin + (ks+1)dx for ks: 0,ns-1
+	allocate(csum(ns,0:nvars-1))
+	allocate(ncsum(ns))
+	csum = 0
+	ncsum = 0
+	do kcell = 1,nlist
+		if (cell_list(kcell)%state == DEAD) cycle
+		cp => cell_list(kcell)
+		if (cp%centre(1,1) < xmin .or. cp%centre(1,1) > xmax) cycle
+		r2 = (cp%centre(2,1) - y0)**2 + (cp%centre(3,1) - z0)**2
+		if (r2 < tube_radius2) then
+			ks = (cp%centre(1,1) - xmin)/dxc + 1
+			ncsum(ks) = ncsum(ks) + 1
+			csum(ks,CFSE) = csum(ks,CFSE) + cp%CFSE
+			csum(ks,1:MAX_CHEMO) = csum(ks,1:MAX_CHEMO) + cp%Cin
+			csum(ks,GROWTH_RATE) = csum(ks,GROWTH_RATE) + cp%dVdt
+			csum(ks,CELL_VOLUME) = csum(ks,CELL_VOLUME) + Vcell_pL*cp%V
+			csum(ks,O2_BY_VOL) = csum(ks,O2_BY_VOL) + cp%Cin(OXYGEN)*Vcell_pL*cp%V
+		endif
+	enddo
+	do ks = 1,ns
+		do ichemo = 0, nvars-1
+			offset = ichemo*ns
+			k = offset - 1 + ks
+			if (ncsum(ks) > 0) then
+				ic_conc(k) = csum(ks,ichemo)/ncsum(ks)
+			else
+				ic_conc(k) = 0
+			endif
+		enddo
+	enddo
+elseif (axis == 2) then
+	y1 = cntr(2) - rng(2)/2
+	y2 = cntr(2) + rng(2)/2
+	x0 = cntr(1)
+	z0 = cntr(3)
+
+	dxc = (y2-y1)/ns
+	ydiff = (y2-y1) - ns*dxc
+	ymin = y1 + ydiff/2
+	ymax = y2 - ydiff/2
+	! y range for block ks is ymin + ks.dx -> ymin + (ks+1)dx for ks: 0,ns-1
+	allocate(csum(ns,0:nvars-1))
+	allocate(ncsum(ns))
+	csum = 0
+	ncsum = 0
+	do kcell = 1,nlist
+		if (cell_list(kcell)%state == DEAD) cycle
+		cp => cell_list(kcell)
+		if (cp%centre(2,1) < ymin .or. cp%centre(2,1) > ymax) cycle
+		r2 = (cp%centre(1,1) - x0)**2 + (cp%centre(3,1) - z0)**2
+		if (r2 < tube_radius2) then
+			ks = (cp%centre(2,1) - ymin)/dxc + 1
+			ncsum(ks) = ncsum(ks) + 1
+			csum(ks,CFSE) = csum(ks,CFSE) + cp%CFSE
+			csum(ks,1:MAX_CHEMO) = csum(ks,1:MAX_CHEMO) + cp%Cin
+			csum(ks,GROWTH_RATE) = csum(ks,GROWTH_RATE) + cp%dVdt
+			csum(ks,CELL_VOLUME) = csum(ks,CELL_VOLUME) + Vcell_pL*cp%V
+			csum(ks,O2_BY_VOL) = csum(ks,O2_BY_VOL) + cp%Cin(OXYGEN)*Vcell_pL*cp%V
+		endif
+	enddo
+	do ks = 1,ns
+		do ichemo = 0, nvars-1
+			offset = ichemo*ns
+			k = offset - 1 + ks
+			if (ncsum(ks) > 0) then
+				ic_conc(k) = csum(ks,ichemo)/ncsum(ks)
+			else
+				ic_conc(k) = 0
+			endif
+		enddo
+	enddo
+elseif (axis == 3) then
+	z1 = cntr(3) - rng(3)/2
+	z2 = cntr(3) + rng(3)/2
+	y0 = cntr(2)
+	x0 = cntr(1)
+
+	dxc = (z2-z1)/ns
+	zdiff = (z2-z1) - ns*dxc
+	zmin = z1 + zdiff/2
+	zmax = z2 - zdiff/2
+	! z range for block ks is zmin + ks.dx -> zmin + (ks+1)dx for ks: 0,ns-1
+	allocate(csum(ns,0:nvars-1))
+	allocate(ncsum(ns))
+	csum = 0
+	ncsum = 0
+	do kcell = 1,nlist
+		if (cell_list(kcell)%state == DEAD) cycle
+		cp => cell_list(kcell)
+		if (cp%centre(3,1) < zmin .or. cp%centre(3,1) > zmax) cycle
+		r2 = (cp%centre(2,1) - y0)**2 + (cp%centre(1,1) - x0)**2
+		if (r2 < tube_radius2) then
+			ks = (cp%centre(3,1) - zmin)/dxc + 1
+			ncsum(ks) = ncsum(ks) + 1
+			csum(ks,CFSE) = csum(ks,CFSE) + cp%CFSE
+			csum(ks,1:MAX_CHEMO) = csum(ks,1:MAX_CHEMO) + cp%Cin
+			csum(ks,GROWTH_RATE) = csum(ks,GROWTH_RATE) + cp%dVdt
+			csum(ks,CELL_VOLUME) = csum(ks,CELL_VOLUME) + Vcell_pL*cp%V
+			csum(ks,O2_BY_VOL) = csum(ks,O2_BY_VOL) + cp%Cin(OXYGEN)*Vcell_pL*cp%V
+		endif
+	enddo
+	do ks = 1,ns
+		do ichemo = 0, nvars-1
+			offset = ichemo*ns
+			k = offset - 1 + ks
+			if (ncsum(ks) > 0) then
+				ic_conc(k) = csum(ks,ichemo)/ncsum(ks)
+			else
+				ic_conc(k) = 0
+			endif
+		enddo
+	enddo
+endif
+
+end subroutine
+
+!--------------------------------------------------------------------------------
 ! Returns all the extracellular concentrations along a line through the blob centre.
 ! Together with CFSE, growth rate (dVdt), cell volume,...
 ! Store the constituent profiles one after the other.
 ! The challenge is to find the appropriate projection/interpolation from the cells
 ! to the equi-spaced points on the line.
 !--------------------------------------------------------------------------------
-subroutine get_concdata1(nvars, ns, dx, ex_conc) BIND(C)
+subroutine get_concdata2(nvars, ns, dx, ex_conc) BIND(C)
 !DEC$ ATTRIBUTES DLLEXPORT :: get_concdata
 use, intrinsic :: iso_c_binding
 integer(c_int) :: nvars, ns
