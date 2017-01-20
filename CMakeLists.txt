@@ -1,7 +1,7 @@
-# CMake project file for vspheroid-abm
+# CMake project file for fitter
 
 cmake_minimum_required (VERSION 2.6)
-project (vspheroid-abm)
+project (fitter)
 
 set (CMAKE_Fortran_COMPILER "ifort")
 #set (CMAKE_C_COMPILER "icc")
@@ -38,8 +38,7 @@ if (Fortran_COMPILER_NAME STREQUAL "gfortran")
 
 elseif (Fortran_COMPILER_NAME STREQUAL "ifort")
   # ifort (untested)
-  set (CMAKE_Fortran_FLAGS_RELEASE "-O2 -fpp -fopenmp -traceback")
-#  set (CMAKE_Fortran_FLAGS_RELEASE "-O2 -fpp -fopenmp -traceback -check bound -check uninit -check pointer")
+  set (CMAKE_Fortran_FLAGS_RELEASE "-O2 -fpp -fopenmp")
   #set (CMAKE_Fortran_FLAGS_DEBUG   "-f77rtl -O0 -g")
 elseif (Fortran_COMPILER_NAME STREQUAL "g77")
   # g77
@@ -54,38 +53,17 @@ else (Fortran_COMPILER_NAME STREQUAL "gfortran")
 endif (Fortran_COMPILER_NAME STREQUAL "gfortran")
 
 set (SOURCES 
-  "/home/mbog002/vspheroid-abm/src/cellstate.f90" 
-  "/home/mbog002/vspheroid-abm/src/chemokine.f90" 
-  "/home/mbog002/vspheroid-abm/src/colony.f90"
-  "/home/mbog002/vspheroid-abm/src/continuum.f90"
-  "/home/mbog002/vspheroid-abm/src/cycle.f90"
-  "/home/mbog002/vspheroid-abm/src/envelope.f90"
-  "/home/mbog002/vspheroid-abm/src/fmotion.f90"
-  "/home/mbog002/vspheroid-abm/src/global.f90"
-  "/home/mbog002/vspheroid-abm/src/metab.f90"
-  "/home/mbog002/vspheroid-abm/src/nbr.f90"
-  "/home/mbog002/vspheroid-abm/src/ode_solver.f90"
-  "/home/mbog002/vspheroid-abm/src/pack.f90"
-  "/home/mbog002/vspheroid-abm/src/par_zig_mod.f90"
-  "/home/mbog002/vspheroid-abm/src/react_diff.f90" 
-  "/home/mbog002/vspheroid-abm/src/real_kind.f90" 
-  "/home/mbog002/vspheroid-abm/src/rkc.f90" 
-  "/home/mbog002/vspheroid-abm/src/sparse_map.f90" 
-  "/home/mbog002/vspheroid-abm/src/Tcp.f90" 
-  "/home/mbog002/vspheroid-abm/src/transfer.f90" 
-  "/home/mbog002/vspheroid-abm/src/vspheroid.f90" 
-  "/home/mbog002/vspheroid-abm/src/vspheroid_main.f90" 
-  "/home/mbog002/vspheroid-abm/src/Winsock_c.f90" 
-  "./clientc.o"
-  "./tcpc.o"
+  "/home/mbog002/vspheroid-abm/src/vspheroid-fitter.f90" 
+  "/home/mbog002/vspheroid-abm/src/precmod.f90" 
+  "/home/mbog002/vspheroid-abm/src/stringmod.f90" 
 )
 
-set (ITSOL_GLUE_DIR "/home/mbog002/itsol_glue/")
-set (ITSOL_DIR "/home/mbog002/ITSOL_2/LIB/")
+include_directories ("../Build")
+
+set (VSPHEROID_DIR "/projects/uoa00014/vspheroid-abm/DLL2.0/")
 # build executables
 
-add_library (vspheroid-abm SHARED ${SOURCES})
-add_executable (vspheroid_main /home/mbog002/vspheroid-abm/src/vspheroid_main.f90)
-target_link_libraries(vspheroid_main vspheroid-abm ${ITSOL_GLUE_DIR}libitsol_glue.a ${ITSOL_DIR}libitsol.a libblas.so liblapack.so)
-set_target_properties(vspheroid_main PROPERTIES LINKER_LANGUAGE Fortran)
+add_executable (fitter ${SOURCES})
+target_link_libraries(fitter ${VSPHEROID_DIR}libvspheroid-abm.so)
+set_target_properties(fitter PROPERTIES LINKER_LANGUAGE Fortran)
 

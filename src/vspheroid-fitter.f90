@@ -31,7 +31,7 @@ end type
 integer :: ncpu, Niters, Nparams, Nsims, Nexpts
 integer :: ivalmin(0:max_params),n(0:max_params)
 real(REAL_KIND) :: val(0:max_params,0:max_vals)
-character*(32) :: template_infile, infile, outfile, fitlogfile, paramfile, exptfile
+character*(128) :: template_infile, infile, outfile, fitlogfile, paramfile, exptfile
 
 type(experiment_type), allocatable, target :: experiment(:)
 type(parameter_type), target :: param(0:max_params)
