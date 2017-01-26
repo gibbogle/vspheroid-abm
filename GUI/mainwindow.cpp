@@ -2318,11 +2318,11 @@ void MainWindow::updateProfilePlots()
             QString tag = grph->get_tag(i);
             bool IC = tag.contains("IC_");
             if (IC) {
-                nc = Global::conc_nc_ex;
-                dx = Global:: conc_dx_ex;
-            } else {
-                nc = Global::conc_nc_ic;
+                nc = Global::conc_nc_ic;        // was ex
                 dx = Global:: conc_dx_ic;
+            } else {
+                nc = Global::conc_nc_ex;        // was ic
+                dx = Global:: conc_dx_ex;
             }
             int k = grph->get_dataIndex(i);
             if (k == MULTI) {

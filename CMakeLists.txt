@@ -61,9 +61,11 @@ set (SOURCES
 include_directories ("../Build")
 
 set (VSPHEROID_DIR "/projects/uoa00014/vspheroid-abm/DLL2.0/")
+set (ITSOL_GLUE_DIR "/home/mbog002/itsol_glue/")
+set (ITSOL_DIR "/home/mbog002/ITSOL_2/LIB/")
 # build executables
 
 add_executable (fitter ${SOURCES})
-target_link_libraries(fitter ${VSPHEROID_DIR}libvspheroid-abm.so)
+target_link_libraries(fitter ${VSPHEROID_DIR}libvspheroid-abm.so ${ITSOL_GLUE_DIR}libitsol_glue.a ${ITSOL_DIR}libitsol.a libblas.so liblapack.so)
 set_target_properties(fitter PROPERTIES LINKER_LANGUAGE Fortran)
 
