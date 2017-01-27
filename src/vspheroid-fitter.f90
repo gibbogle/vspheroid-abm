@@ -352,7 +352,7 @@ end subroutine
 subroutine run(iexp)
 integer :: iexp
 integer :: ncpu, inbuflen, outbuflen,i_hypoxia_cutoff, i_growth_cutoff, jstep, i, it, k, nsumm_interval, res
-integer :: summarydata(100)
+real(REAL_KIND) :: summarydata(100)
 real(REAL_KIND) :: centre(3), t1, t2
 type(experiment_type), pointer :: pexp
 
