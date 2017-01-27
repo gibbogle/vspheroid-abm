@@ -1320,11 +1320,11 @@ do while (.not.done)
 	t_fmover = t_fmover + dt
 enddo
 enddo
-write(logmsg,'(a,2f8.4)') 'tmover,tgrower: ',tmover,tgrower
-call logger(logmsg)
+!write(logmsg,'(a,2f8.4)') 'tmover,tgrower: ',tmover,tgrower
+!call logger(logmsg)
 call update_all_nbrlists
 !write(*,'(a,f8.2)') 't update_nbr_lists: ',mytimer() - t0
-!if (mod(istep,Nhop) == 0) then
+!if (mod(istep,Nhop) == 0) then 
 !	! determine cell death and tagging for death 
 !	call setup_grid_cells
 !	call update_all_nbrlists

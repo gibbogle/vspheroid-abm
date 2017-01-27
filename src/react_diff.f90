@@ -1831,8 +1831,8 @@ if (use_metabolism) then
 endif
 
 tmetab = mytimer() - t1
-write(logmsg,'(a,3f8.4)') 'tdiff,tmetab,tmetab/(tdiff+tmetab): ',tdiff,tmetab,tmetab/(tdiff+tmetab)
-call logger(logmsg)
+!write(logmsg,'(a,3f8.4)') 'tdiff,tmetab,tmetab/(tdiff+tmetab): ',tdiff,tmetab,tmetab/(tdiff+tmetab)
+!call logger(logmsg)
 
 !if (use_integration) then	! always
 if (chemo(DRUG_A)%present) then
@@ -1908,7 +1908,7 @@ do kcell = 1,nlist
 !	enddo
 	ichemo = GLUCOSE
 	if (cp%Cin(ichemo) > cp%Cex(ichemo)) then
-		write(*,*) 'Cin > Cex: ',kcell,ichemo,cp%Cin(ichemo),cp%Cex(ichemo)
+		write(nflog,*) 'Cin > Cex: ',kcell,ichemo,cp%Cin(ichemo),cp%Cex(ichemo)
 	endif
 	do ichemo = OXYGEN,LACTATE
 		Kin = chemo(ichemo)%membrane_diff_in

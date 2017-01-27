@@ -41,7 +41,6 @@ end type
 type(chemokine_type), target :: chemo(MAX_CHEMO)
 
 integer :: nchemo, chemomap(MAX_CHEMO)
-real(REAL_KIND) :: C_OGL(3)				! 1=OXYGEN, 2=GLUCOSE, 3=LACTATE
 
 contains
 
