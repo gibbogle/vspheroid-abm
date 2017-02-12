@@ -470,7 +470,7 @@ real(REAL_KIND) :: rr(3), c(3), rad, d_desired, R
 integer, parameter :: MAX_DIVIDE_LIST = 10000
 integer :: ndivide, divide_list(MAX_DIVIDE_LIST)
 logical :: drugkilled
-logical :: mitosis_entry, in_mitosis, divide
+logical :: mitosis_entry, in_mitosis, divide, tagged
 
 ok = .true.
 changed = .false.
@@ -492,6 +492,10 @@ do kcell = 1,nlist0
 	divide = .false.
 	mitosis_entry = .false.
 	in_mitosis = .false.
+	tagged = cp%anoxia_tag .or. cp%aglucosia_tag .or. (cp%state == DYING)
+	if (tagged) then
+		cp%dVdt = 0
+	endif
 	if (use_volume_method) then
 !        if (colony_simulation) then
 !            write(*,'(a,i6,L2,2e12.3)') 'kcell: ',kcell,cp%Iphase,cp%V,cp%divide_volume
