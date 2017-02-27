@@ -277,6 +277,7 @@ logical :: anoxia_death, aglucosia_death
 real(REAL_KIND) :: delayed_death_prob(MAX_CELLTYPES)
 type(cell_type), pointer :: cp
 type(drug_type), pointer :: dp
+real(REAL_KIND) :: p_tag = 0.3
 
 !call logger('CellDeath')
 ok = .true.
@@ -287,29 +288,36 @@ endif
 !tnow = istep*DELTA_T	! seconds
 anoxia_death = chemo(OXYGEN)%controls_death
 aglucosia_death = chemo(GLUCOSE)%controls_death
-delayed_death_prob = apoptosis_rate*DELTA_T/3600
+delayed_death_prob = apoptosis_rate*dt/3600
 nlist0 = nlist
 do kcell = 1,nlist
     cp => cell_list(kcell)
 	if (cp%state == DEAD) cycle
 	ityp = cp%celltype
-	if (cp%state == DYING) then
+!	if (cp%state == DYING) then
+	if (cp%ATP_tag) then
 	    if (par_uni(kpar) < delayed_death_prob(ityp)) then	
 			call CellDies(kcell,cp)
+			changed = .true.
+			NATP_dead(ityp) = NATP_dead(ityp) + 1		! note that death from anoxia here means metabolic death 
 		endif
 		cycle
 	endif	
 	call getO2conc(cp,C_O2)
 	if (use_metabolism) then
-		if (cp%metab%A_rate*cp%V < cp%ATP_rate_factor*ATPs(ityp)*Vcell_cm3) then
+!		if (cp%metab%A_rate*cp%V < cp%ATP_rate_factor*ATPs(ityp)*Vcell_cm3) then
+		if (cp%metab%A_rate < cp%ATP_rate_factor*ATPs(ityp)) then
 			cp%state = DYING
+			cp%ATP_tag = .true.
 			cp%dVdt = 0
 			Ncells_dying(ityp) = Ncells_dying(ityp) + 1
+			NATP_tag(ityp) = NATP_tag(ityp) + 1
 			cycle
 		endif	
 	else
 		if (cp%anoxia_tag) then
-			if (tnow >= cp%t_anoxia_die) then
+!			if (tnow >= cp%t_anoxia_die) then
+			if (tnow >= cp%t_anoxia_die .and. par_uni(kpar) < p_tag*dt/DELTA_T) then
 				call CellDies(kcell,cp)
 				changed = .true.
 				Nanoxia_dead(ityp) = Nanoxia_dead(ityp) + 1
@@ -418,13 +426,15 @@ type(cell_type), pointer :: cp
 integer :: ityp, idrug
 
 !write(*,*) 'CellDies: ',kcell
-cp%state = DEAD
 ityp = cp%celltype
 if (cp%state == DYING) then
 	Ncells_dying(ityp) = Ncells_dying(ityp) - 1
 endif
 Ncells = Ncells - 1
 Ncells_type(ityp) = Ncells_type(ityp) - 1
+if (cp%ATP_tag) then
+	NATP_tag(ityp) = NATP_tag(ityp) - 1
+endif
 if (cp%anoxia_tag) then
 	Nanoxia_tag(ityp) = Nanoxia_tag(ityp) - 1
 endif
@@ -446,6 +456,7 @@ if (ngaps > max_ngaps) then
     stop
 endif
 gaplist(ngaps) = kcell
+cp%state = DEAD
 
 end subroutine
 
@@ -1116,10 +1127,11 @@ end subroutine
 !----------------------------------------------------------------------------------
 ! This is used to adjust a cell's growth rate to introduce some random variability
 ! into divide times.
+! dr = 0 suppresses variability
 !----------------------------------------------------------------------------------
 function get_growth_rate_factor() result(r)
 real(REAL_KIND) :: r
-real(REAL_KIND) :: dr = 0.2
+real(REAL_KIND) :: dr = 0.0	! was 0.2
 integer :: kpar = 0
 
 r = 1 + (par_uni(kpar) - 0.5)*dr
@@ -1128,10 +1140,12 @@ end function
 !----------------------------------------------------------------------------------
 ! This is used to adjust a cell's ATP thresholds to introduce some random variability
 ! into transitions to no-growth and death.
+! Too much variability?
+! dr = 0 suppresses variability
 !----------------------------------------------------------------------------------
 function get_ATP_rate_factor() result(r)
 real(REAL_KIND) :: r
-real(REAL_KIND) :: dr = 0.2
+real(REAL_KIND) :: dr = 0.0	! was 0.2
 integer :: kpar = 0
 
 r = 1 + (par_uni(kpar) - 0.5)*dr

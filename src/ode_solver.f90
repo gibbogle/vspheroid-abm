@@ -43,7 +43,54 @@ logical :: chemo_active(2*MAX_CHEMO)    ! flags necessity to solve for the const
 !real(REAL_KIND),allocatable :: dMdt_G_lookup(:,:,:)
 !real(REAL_KIND),allocatable :: dMdt_L_lookup(:,:,:)
 
+!real(REAL_KIND) :: dt_rkc
 contains
+
+!----------------------------------------------------------------------------------
+! Try to estimate SS Cin from Cex, assuming that other variables change slowly,
+! i.e. treating C_G, C_L as approx constant for determining SS C_O2, then
+! use RKC to update these concs.
+!----------------------------------------------------------------------------------
+function get_CO2_SS(kcell) result(C)
+integer :: kcell
+real(REAL_KIND) :: C
+!real(REAL_KIND) :: tstart, dt
+!logical :: ok
+!integer :: ichemo, k, neqn, i
+!real(REAL_KIND) :: t, tend
+!real(REAL_KIND) :: timer1, timer2
+! Variables for RKC
+!integer :: info(4), idid
+!real(REAL_KIND) :: rtol, atol(1)
+!type(rkc_comm) :: comm_rkc(1)
+!real(REAL_KIND) :: work_rkc(8+5*3*2)
+integer :: ict
+real(REAL_KIND) :: Cin(3), area_factor = 1.2**(2./3.)
+real(REAL_KIND) :: C0, C1, Cex, dC, r0, r1, a, b, Kmem	! these are OXYGEN
+type(cell_type), pointer :: cp
+type(metabolism_type), pointer :: mp
+
+!write(*,'(a,2i6,6f8.4)') 'OGLSolver: Cin,Cex: ',istep,kcell,cp%Cin(1:3),cp%Cex(1:3)
+cp => cell_list(kcell)
+mp => cp%metab
+ict = cp%celltype
+kcell_now = kcell
+Cin(1:3) = cp%Cin(1:3)
+Cex = cp%Cex(1)
+dC = min(Cex/10, 0.0001)
+call get_metab_rates(ict,mp,Cin)
+r0 = mp%O_rate
+C1 = Cin(1) - dC
+Cin(1) = C1
+call get_metab_rates(ict,mp,Cin)
+r1 = mp%O_rate
+a = r0
+b = (r1 - r0)/dC
+! linearising gives O2 consumption rate r(C) = a + b(Cex - C)
+Kmem = area_factor*chemo(OXYGEN)%membrane_diff_in
+! equating membrane flux = Kmem(Cex - C) to linearised r(C) = a + b(Cex - C)
+C = Cex - a/(Kmem - b)
+end function
 
 !----------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------
@@ -56,46 +103,62 @@ real(REAL_KIND) :: t, tend
 real(REAL_KIND) :: Cin(3)
 real(REAL_KIND) :: timer1, timer2
 type(cell_type), pointer :: cp
+type(metabolism_type), pointer :: mp
 ! Variables for RKC
 integer :: info(4), idid
 real(REAL_KIND) :: rtol, atol(1)
 type(rkc_comm) :: comm_rkc(1)
 real(REAL_KIND) :: work_rkc(8+5*3*2)
+logical :: use_SS_CO2 = .false.
 
+!write(*,'(a,2i6,6f8.4)') 'OGLSolver: Cin,Cex: ',istep,kcell,cp%Cin(1:3),cp%Cex(1:3)
 cp => cell_list(kcell)
-!if (kcell == 8000) write(*,'(a,i6,6f8.4)') 'OGLSolver: Cin,Cex: ',kcell,cp%Cin(1:3),cp%Cex(1:3)
 kcell_now = kcell
-! Try using icase for kcell
-Cin(1:3) = cp%Cin(1:3)
-neqn = 3
 
-!mp_rkc => cp%metab
-!Cex_rkc = cp%Cex(1:3)
+if (use_SS_CO2) then
+	neqn = 2
+	cp%Cin(1) = get_CO2_SS(kcell)
+	Cin(1) = cp%Cin(2)		! glucose and lactate become 1 and 2 for RKC
+	Cin(2) = cp%Cin(3)
+!	write(*,'(a,2e12.3)') 'OGLsolver: cp%Cex(1), cp%Cin(1): ',cp%Cex(1),cp%Cin(1)
+else
+	neqn = 3
+	Cin(1:3) = cp%Cin(1:3)
+endif
 
 info(1) = 1
 info(2) = 1		! = 1 => use spcrad() to estimate spectral radius, != 1 => let rkc do it
 info(3) = 1
 info(4) = 0
-rtol = 1d-2
+rtol = 1d-3		! this is probably too large
 atol = rtol
 
 idid = 0
 t = tstart
 tend = t + dt
-call rkc(comm_rkc(1),neqn,f_rkc_OGL,Cin,t,tend,rtol,atol,info,work_rkc,idid,kcell)	! ict)
+call rkc(comm_rkc(1),neqn,f_rkc_OGL,Cin,t,tend,rtol,atol,info,work_rkc,idid,kcell)	! ! Using icase to pass kcell
 if (idid /= 1) then
 	write(logmsg,*) 'Solver: Failed at t = ',t,' with idid = ',idid
 	call logger(logmsg)
 	ok = .false.
 	return
 endif
-cp%Cin(1:3) = Cin
+!write(*,'(a,2e12.3)') 'After rkc: Cin: ',Cin(1:2)
+if (use_SS_CO2) then
+	cp%Cin(2:3) = Cin(1:2)	! with use_SS_CO2 it should never happen that Cin(1) > Cex(1)
+else
+	if (Cin(1) > cp%Cex(1)) then
+		Cin(1) = cp%Cex(1)
+	!	stop
+	endif
+	cp%Cin(1:3) = Cin
+endif
 
-!call get_metab_rates(ict,mp,Cin)
-!if (kcell_now == 1) then
-!	write(*,'(a,6f8.4)') 'after OGLSolver: Cin,Cex: ',cp%Cin(1:3),cp%Cex(1:3)
-!	write(*,'(a,3e12.3)') 'rates: ',mp%O_rate,mp%G_rate,mp%L_rate
-!endif
+! This next step is to ensure that cp has the current rates.  May not be needed.
+ict = cp%celltype
+mp => cp%metab
+call get_metab_rates(ict,mp,cp%Cin(1:3))
+
 end subroutine
 
 !----------------------------------------------------------------------------------
@@ -109,11 +172,10 @@ real(REAL_KIND) :: C, membrane_kin, membrane_kout, membrane_flux, area_factor, C
 type(cell_type), pointer :: cp
 type(metabolism_type), pointer :: mp
 !real(REAL_KIND) :: A, d, dX, dV, Kd, KdAVX
-!type(metabolism_type), pointer :: mp
 real(REAL_KIND) :: average_volume = 1.2
 logical :: use_average_volume = .true.
 
-!if (kcell_now == kcell_test) write(*,'(a,3f9.6)') 'f_rkc_OGL: y: ',y(1:3)
+!write(*,'(a,3f9.6)') 'f_rkc_OGL: y: ',y(1:3)
 
 !ict = icase
 cp => cell_list(icase)
@@ -121,35 +183,54 @@ mp => cp%metab
 ict = cp%celltype
 area_factor = (average_volume)**(2./3.)
 vol_cm3 = Vcell_cm3		!!!!!!!!!!!!!! temporary !!!!!!!!!!!!
-!call get_metab_rates(ict,mp_rkc,y)
-call get_metab_rates(ict,mp,y)
-!if (dbug) write(*,'(a,3e12.3)') 'rates: ',mp_rkc%O_rate,mp_rkc%G_rate,mp_rkc%L_rate
-do ichemo = 1,3
+if (neqn == 2) then
+	Cin(1) = cp%Cin(1)
+	Cin(2) = y(1)
+	Cin(3) = y(2)
+else
+	Cin = y
+endif
+call get_metab_rates(ict,mp,Cin)
+!write(*,'(a,3e12.3)') 'rates: ',mp%O_rate,mp%G_rate,mp%L_rate
+do i = 1,neqn
 	! First process IC reactions
-	k = ichemo
-	C = y(k)
+	if (neqn == 2) then
+		ichemo = i+1
+	else
+		ichemo = i
+	endif
+	C = y(i)
     membrane_kin = chemo(ichemo)%membrane_diff_in
     membrane_kout = chemo(ichemo)%membrane_diff_out
 !	membrane_flux = area_factor*(membrane_kin*Cex_rkc(ichemo) - membrane_kout*C)
 	membrane_flux = area_factor*(membrane_kin*cp%Cex(ichemo) - membrane_kout*C)
     if (ichemo == OXYGEN) then
 		rate = mp%O_rate
+		if (rate < 0) then
+			write(*,*) 'O_rate < 0: ',rate
+			stop
+		endif
     elseif (ichemo == GLUCOSE) then	! 
 		rate = mp%G_rate
     elseif (ichemo == LACTATE) then
 		rate = -mp%L_rate
     endif
 	dCreact = (membrane_flux - rate)/vol_cm3
-	dydt(k) = dCreact
-	if (dbug) write(*,'(a,i4,5e12.3)') 'dydt: ',ichemo,dCreact,membrane_flux,rate,C,cp%Cex(ichemo)
-	if (isnan(dydt(k))) then
-		write(nflog,'(a,i2,4e12.3)') 'f_rkc_OGL: dydt isnan: ',ichemo,dydt(k),C,cp%Cex(ichemo),rate
-		write(*,'(a,i2,4e12.3)') 'f_rkc_OGL: dydt isnan: ',ichemo,dydt(k),C,cp%Cex(ichemo),rate
+!	if (ichemo == OXYGEN) then
+!		dCreact = min(dCreact, (cp%Cex(ichemo) - C)/dt_rkc)
+!	endif
+	dydt(i) = dCreact
+!	write(*,'(a,i4,5e12.3)') 'dydt: ',ichemo,dCreact,membrane_flux,rate,C,cp%Cex(ichemo)
+	if (isnan(dydt(i))) then
+		write(nflog,'(a,i2,4e12.3)') 'f_rkc_OGL: dydt isnan: ',ichemo,dydt(i),C,cp%Cex(ichemo),rate
+		write(*,'(a,i2,4e12.3)') 'f_rkc_OGL: dydt isnan: ',ichemo,dydt(i),C,cp%Cex(ichemo),rate
 		stop
 	endif	
 enddo
 end subroutine
 
+!----------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------
 subroutine testOGL
 real(REAL_KIND) :: dt
 integer :: ichemo, it, ityp, kcell

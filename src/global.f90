@@ -171,7 +171,7 @@ type cell_type
 	real(REAL_KIND) :: dCdt(NCONST)
 	real(REAL_KIND) :: dMdt(NCONST)	! mumol/s
 	real(REAL_KIND) :: CFSE
-	logical :: radiation_tag, anoxia_tag, aglucosia_tag
+	logical :: radiation_tag, anoxia_tag, aglucosia_tag, ATP_tag
 	logical :: drug_tag(MAX_DRUGTYPES)
 	real(REAL_KIND) :: p_rad_death
 	real(REAL_KIND) :: p_drug_death(MAX_DRUGTYPES)
@@ -282,7 +282,7 @@ type savedata_type
     integer :: nt, it
 end type
 
-integer, parameter :: nflog=10, nfin=11, nfout=12, nfres=13, nfcell=14, nfprofile=15, nfslice=16
+integer, parameter :: nflog=10, nfin=11, nfout=12, nfres=13, nfcell=14, nfprofile=15, nfslice=16, nfFACS=17
 integer, parameter :: MAX_NLIST = 200000
 integer, parameter :: MAX_NBRS = 50
 integer, parameter :: ndt_max = 30
@@ -330,9 +330,9 @@ integer :: zmin     						! drop lower bound at drop time = lower limit of blob 
 logical :: is_dropped
 real(REAL_KIND) :: wall_attraction_factor = 0
 
-integer :: Nradiation_tag(MAX_CELLTYPES), Nanoxia_tag(MAX_CELLTYPES), Naglucosia_tag(MAX_CELLTYPES)
+integer :: Nradiation_tag(MAX_CELLTYPES), Nanoxia_tag(MAX_CELLTYPES), Naglucosia_tag(MAX_CELLTYPES), NATP_tag(MAX_CELLTYPES)
 integer :: Ndrug_tag(MAX_DRUGTYPES,MAX_CELLTYPES)
-integer :: Nradiation_dead(MAX_CELLTYPES), Nanoxia_dead(MAX_CELLTYPES), Naglucosia_dead(MAX_CELLTYPES)
+integer :: Nradiation_dead(MAX_CELLTYPES), Nanoxia_dead(MAX_CELLTYPES), Naglucosia_dead(MAX_CELLTYPES),NATP_dead(MAX_CELLTYPES)
 integer :: Ndrug_dead(MAX_DRUGTYPES,MAX_CELLTYPES)
 real(REAL_KIND) :: O2cutoff(3), hypoxia_threshold
 real(REAL_KIND) :: growthcutoff(3)
@@ -340,7 +340,7 @@ logical :: use_radiation_growth_delay_all = .true.
 
 type(cycle_parameters_type), target :: cc_parameters    ! possibly varies by cell type
 
-type(savedata_type) :: saveprofile, saveslice
+type(savedata_type) :: saveprofile, saveslice, saveFACS
 
 ! From react_diff
 real(REAL_KIND) :: dxf, dxb, dx3, dxb3, Rcell, Vcell

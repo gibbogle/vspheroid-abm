@@ -76,7 +76,7 @@ integer :: iuse_oxygen, iuse_glucose, iuse_tracer, iuse_drug, iuse_metab, iV_dep
 integer :: iuse_extra, iuse_relax, iuse_par_relax, iuse_gd_all
 real(REAL_KIND) :: days, percent, fluid_fraction, d_layer, sigma(MAX_CELLTYPES), Vsite_cm3, bdry_conc, spcrad_value, d_n_limit
 real(REAL_KIND) :: anoxia_tag_hours, anoxia_death_hours, aglucosia_tag_hours, aglucosia_death_hours
-integer :: iuse_drop, isaveprofiledata, isaveslicedata, iusecellcycle, iusemetabolism, iclosepack
+integer :: iuse_drop, isaveprofiledata, isaveslicedata, isaveFACSdata, iusecellcycle, iusemetabolism, iclosepack
 integer :: iconstant, ioxygengrowth, iglucosegrowth, ioxygendeath, iglucosedeath
 logical :: use_metabolites
 character*(12) :: drug_name
@@ -260,6 +260,10 @@ read(nfcell,*) isaveslicedata
 read(nfcell,*) saveslice%filebase
 read(nfcell,*) saveslice%dt
 read(nfcell,*) saveslice%nt
+read(nfcell,*) isaveFACSdata
+read(nfcell,*) saveFACS%filebase
+read(nfcell,*) saveFACS%dt
+read(nfcell,*) saveFACS%nt
 
 read(nfcell,*) Ndrugs_used
 call ReadDrugData(nfcell)
@@ -340,6 +344,9 @@ saveprofile%dt = 60*saveprofile%dt		! mins -> seconds
 saveslice%active = (isaveslicedata == 1)
 saveslice%it = 1
 saveslice%dt = 60*saveslice%dt			! mins -> seconds
+saveFACS%active = (isaveFACSdata == 1)
+saveFACS%it = 1
+saveFACS%dt = 60*saveFACS%dt			! mins -> seconds
 
 use_dropper = (iuse_drop == 1)
 
@@ -359,9 +366,9 @@ write(nflog,*)
 open(nfres,file='vspheroid_ts.out',status='replace')
 write(nfres,'(a)') 'data info GUI_version DLL_version &
 istep hour vol_mm3 diam_um Ncells(1) Ncells(2) &
-Nanoxia_dead(1) Nanoxia_dead(2) Naglucosia_dead(1) Naglucosia_dead(2) NdrugA_dead(1) NdrugA_dead(2) &
+NATP_dead(1) NATP_dead(2) Nanoxia_dead(1) Nanoxia_dead(2) Naglucosia_dead(1) Naglucosia_dead(2) NdrugA_dead(1) NdrugA_dead(2) &
 NdrugB_dead(1) NdrugB_dead(2) Nradiation_dead(1) Nradiation_dead(2) &
-Ntagged_anoxia(1) Ntagged_anoxia(2) Ntagged_aglucosia(1) Ntagged_aglucosia(2) Ntagged_drugA(1) Ntagged_drugA(2) &
+Ntagged_ATP(1) Ntagged_ATP(2) Ntagged_anoxia(1) Ntagged_anoxia(2) Ntagged_aglucosia(1) Ntagged_aglucosia(2) Ntagged_drugA(1) Ntagged_drugA(2) &
 Ntagged_drugB(1) Ntagged_drugB(2) Ntagged_radiation(1) Ntagged_radiation(2) &
 f_hypox(1) f_hypox(2) f_hypox(3) &
 f_clonohypox(1) f_clonohypox(2) f_clonohypox(3) &
@@ -444,13 +451,14 @@ do ityp = 1,Ncelltypes
 	read(nf,*) C_O2_norm(ityp)
 	read(nf,*) C_G_norm(ityp)
 	read(nf,*) C_L_norm(ityp)
+	read(nf,*) O2_baserate(ityp)
 	read(nf,*) f_ATPs(ityp)
 	read(nf,*) K_PL(ityp)
 	read(nf,*) K_LP(ityp)
 	read(nf,*) Hill_Km_P(ityp)
 	read(nf,*) Apoptosis_rate(ityp)
 enddo
-PDKmin(:) = 0.3
+!PDKmin(:) = 0.3
 Hill_N_P = 1
 Hill_Km_P = Hill_Km_P/1000	! uM -> mM
 end subroutine
@@ -797,12 +805,15 @@ total_dMdt = 0
 
 Nradiation_tag = 0
 Ndrug_tag = 0
+NATP_tag = 0
 Nanoxia_tag = 0
 Naglucosia_tag = 0
 Nradiation_dead = 0
 Ndrug_dead = 0
 Nanoxia_dead = 0
+NATP_dead = 0
 Naglucosia_dead = 0
+Ncells_dying = 0
 
 ndoublings = 0
 doubling_time_sum = 0
@@ -1225,6 +1236,7 @@ real(REAL_KIND), parameter :: FULL_NBRLIST_UPDATE_HOURS = 4
 type(cell_type), pointer :: cp
 logical :: ok, done, changed, dotimer
 
+!call testmetab
 !call test_finesolver
 !call test_coarsesolver
 
@@ -1334,7 +1346,11 @@ call update_all_nbrlists
 !	endif
 !endif
 
-call make_grid_flux_weights
+call make_grid_flux_weights(ok)
+if (.not.ok) then
+	res = 8
+	return
+endif
 
 if (ngaps > 2000 .or. mod(istep,nt_nbr) == 0) then
 	if (ngaps > 2000) then
@@ -1391,6 +1407,16 @@ if (saveslice%active) then
 	endif
 endif
 
+if (saveFACS%active) then
+	if (istep*DELTA_T >= saveFACS%it*saveFACS%dt) then
+		call WriteFACSData
+		saveFACS%it = saveFACS%it + 1
+		if (saveFACS%it > saveFACS%nt) then
+			saveFACS%active = .false.
+		endif
+	endif
+endif
+
 if (mod(istep,nt_hour) == 0) then
 !	call AdjustCentre()
 	if (ndoublings > 0) then
@@ -1400,6 +1426,7 @@ if (mod(istep,nt_hour) == 0) then
 	endif
 	write(logmsg,'(a,4i8,a,f5.2)') 'istep, hour, Ncells, ntagged: ',istep,istep/nt_hour,Ncells,Ndrug_tag(1,1),' t_double: ',t_ave_double
 	call logger(logmsg)
+	call show_central_cells
 !	write(*,'(a,3f8.5,3f8.3)') 'blobcentre, rrsum: ',blobcentre,rrsum
 	if (dbug) write(*,*) 'DRUG_A present: ',chemo(DRUG_A:DRUG_A+2)%present
 !	write(*,'(7e11.3)') Caverage(NX/2,NY/2,11:17,DRUG_A)
@@ -2103,5 +2130,41 @@ enddo
 
 end subroutine
 
+
+subroutine show_central_cells 
+type(cell_type), pointer :: cp
+type(metabolism_type), pointer :: mp
+real(REAL_KIND) :: r2, c(3), v(3)
+real(REAL_KIND) :: rlim, A_rate, C_O2, C_G, C_L
+integer :: kcell, ityp
+
+kcell = 1
+ityp = 1
+cp => cell_list(kcell)
+mp => cp%metab
+write(nflog,'(9e12.3)') cp%Cin(OXYGEN),cp%Cin(LACTATE),mp%A_rate,mp%I_rate,mp%P_rate,mp%O_rate,mp%HIF1,mp%PDK1,mp%C_P
+write(nflog,'(a,e12.3)') 'SS C_O2: ',get_CO2_SS(kcell)
+!C_O2 = cp%Cin(OXYGEN)
+!C_L = cp%Cin(LACTATE)
+!C_G = cp%Cin(GLUCOSE)
+!call f_metab(ityp, mp, C_O2, C_G, C_L)
+!write(nflog,'(9e12.3)') C_O2,C_L,mp%A_rate,mp%I_rate,mp%P_rate,mp%O_rate,mp%HIF1,mp%PDK1,mp%C_P
+
+
+return
+
+rlim = 0.75*DELTA_X
+do kcell = 1,nlist
+	cp => cell_list(kcell)
+	if (cp%state == DEAD) cycle
+	c = cp%centre(:,1)
+	v = c - blobcentre
+	r2 = dot_product(v,v)
+	if (r2 < rlim*rlim) then
+		A_rate = cp%metab%A_rate
+		write(nflog,'(i6,i2,7e12.3)') kcell,cp%state,cp%Cex(OXYGEN),cp%Cin(OXYGEN),A_rate,cp%metab%O_rate,cp%metab%P_rate,cp%metab%f_P
+	endif
+enddo
+end subroutine
 
 end module

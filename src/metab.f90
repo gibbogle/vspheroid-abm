@@ -40,6 +40,7 @@ real(REAL_KIND) :: PDKmin(MAX_CELLTYPES)   ! PDKmin
 real(REAL_KIND) :: C_O2_norm(MAX_CELLTYPES)
 real(REAL_KIND) :: C_G_norm(MAX_CELLTYPES)
 real(REAL_KIND) :: C_L_norm(MAX_CELLTYPES)
+real(REAL_KIND) :: O2_baserate(MAX_CELLTYPES)
 real(REAL_KIND) :: K_PL(MAX_CELLTYPES)     ! P -> L
 real(REAL_KIND) :: K_LP(MAX_CELLTYPES)     ! L -> P
 real(REAL_KIND) :: Apoptosis_rate(MAX_CELLTYPES)     
@@ -49,7 +50,7 @@ real(REAL_KIND) :: G_maxrate, O2_maxrate
 
 real(REAL_KIND) :: A_rate_base(MAX_CELLTYPES)	! total rate of production of ATP under full nutrition
 
-real(REAL_KIND), parameter :: base_O_rate = 0.0e-11 
+!real(REAL_KIND), parameter :: base_O_rate = 0.0e-11 
 
 real(REAL_KIND),allocatable :: f_G_lookup(:,:,:)
 real(REAL_KIND),allocatable :: f_P_lookup(:,:,:)
@@ -82,8 +83,9 @@ end function
 !--------------------------------------------------------------------------
 subroutine SetupMetabolism
 integer :: ityp, it, N_P, N_O2
-real(REAL_KIND) :: f_Gn, f_Pn, f_PO, f_PA, MM_O2, MM_P, V, K1, K2, Km_P, Km_O2, C_P, C_L, r_Gn, r_Pn, r_Ln, r_An, r_In
+real(REAL_KIND) :: f_Gn, f_Pn, f_PO, f_PA, MM_O2, MM_P, V, K1, K2, Km_P, C_P, C_L, r_Gn, r_Pn, r_Ln, r_An, r_In
 type(metabolism_type), pointer :: mp
+real(REAL_KIND) :: Km_O2_factor = 1
 
 Hill_Km_O2 = chemo(OXYGEN)%MM_C0
 Hill_N_O2 = chemo(OXYGEN)%Hill_N
@@ -97,13 +99,14 @@ V = Vcell_cm3
 metabolic%HIF1 = 0
 metabolic%PDK1 = 1
 
-Km_O2 = chemo(OXYGEN)%MM_C0
+!Km_O2 = chemo(OXYGEN)%MM_C0
+Hill_Km_O2 = Km_O2_factor*Hill_Km_O2
 N_O2 = chemo(OXYGEN)%Hill_N
 O2_maxrate = chemo(OXYGEN)%max_cell_rate
 G_maxrate = chemo(GLUCOSE)%max_cell_rate
 
 do ityp = 1,1
-	MM_O2 = f_MM(C_O2_norm(ityp),Km_O2,N_O2)
+	MM_O2 = f_MM(C_O2_norm(ityp),Hill_Km_O2,N_O2)
     mp => metabolic(ityp)
 	K1 = K_PL(ityp)
 	K2 = K_LP(ityp)
@@ -119,7 +122,8 @@ do ityp = 1,1
 	do it = 1,10
 		MM_P = f_MM(C_P,Km_P,N_P)
 		r_Gn = get_glycosis_rate(ityp,0.0d0,C_G_norm(ityp))
-		r_Ln = 2*(1-f_Gn)*r_Gn - MM_P*MM_O2*(O2_maxrate-base_O_rate)/(f_PO*(1-f_Pn))
+!		r_Ln = 2*(1-f_Gn)*r_Gn - MM_P*MM_O2*(O2_maxrate-base_O_rate)/(f_PO*(1-f_Pn))
+		r_Ln = 2*(1-f_Gn)*r_Gn - MM_P*MM_O2*O2_maxrate/(f_PO*(1-f_Pn))
 		r_Pn = 2*(1-f_Gn)*r_Gn - r_Ln
 		r_An = 2*(1-f_Gn)*r_Gn + f_PA*(1-f_Pn)*r_Pn
 		r_In = f_Gn*r_Gn + f_Pn*r_Pn
@@ -318,9 +322,9 @@ real(REAL_KIND) :: r_G, fPDK
 real(REAL_KIND) :: f_G, f_P, r_P, r_A, r_I, r_L, f_PO, f_PA
 real(REAL_KIND) :: K1, K2, C_P
 real(REAL_KIND) :: r_GP, r_GA, r_PA, r_Pm, V, Km_O2, Km_P, c1, c2, a, b, c, d, e, MM_P, MM_O2
-real(REAL_KIND) :: r_Pm_base, r_A_target, f_G_new, C_P_max, dA
+real(REAL_KIND) :: r_Pm_base, r_A_target, f_G_new, C_P_max, dA, fract
 integer :: N_O2, N_P, it
-real(REAL_KIND) :: r_G_threshold = 1.0e-12
+real(REAL_KIND) :: r_G_threshold = 1.0e-13
 real(REAL_KIND) :: dA_threshold = 1.0e-16
 logical :: exceed
 
@@ -348,14 +352,17 @@ r_G = mp%G_rate
 !endif
 fPDK = mp%PDK1
 MM_O2 = f_MM(C_O2,Km_O2,N_O2)
-r_Pm_base = fPDK*MM_O2*(O2_maxrate-base_O_rate)/f_PO	! note that MM_P is not here, since it varies it is added as needed
+!r_Pm_base = fPDK*MM_O2*(O2_maxrate-base_O_rate)/f_PO	! note that MM_P is not here, since it varies it is added as needed
+r_Pm_base = fPDK*MM_O2*O2_maxrate/f_PO	! note that MM_P is not here, since it varies it is added as needed
 
 if (dbug) write(*,'(a,5e12.3)') 'r_G,C_L,r_Pm: ',r_G,C_L,r_Pm_base,fPDK,MM_O2
 exceed = .false.
 if (r_G < r_G_threshold) then
 	r_G = max(0.0d0,r_G)
 	f_G = 0
-	f_P = f_P_norm*r_G/r_G_threshold
+	fract = r_G/r_G_threshold
+	fract = sin(fract*PI/2)
+	f_P = f_P_norm*fract
 	r_GA = 2*r_G
 !	r_P = r_GA - V*(K1*C_P - K2*C_L) = MM(C_P)*r_Pm_base/(1-f_P) = r_Pm_base*C_P/((1-f_P)*(Km_P + C_P)) 
 	e = r_GA + V*K2*C_L
@@ -366,9 +373,14 @@ if (r_G < r_G_threshold) then
 	C_P = (-b + d)/(2*a)
 	r_P = r_GA - V*(K1*C_P - K2*C_L)	
 	r_PA = f_PA*(1-f_P)*r_P
+!	write(*,*) 'r_G < r_G_threshold'
+!	write(nflog,*) 'r_G < r_G_threshold'
+!	write(nflog,'(a,5e13.6,2f9.6)') 'f_G,f_P,r_G,GA,L,C_P,C_L: ',f_G,f_P,r_G,r_GA,V*(K1*C_P - K2*C_L),C_P,C_L
+!	stop
 else
 
 	r_A_target = r_A_norm
+	
 	it = 0
 	do
 		it = it + 1
@@ -391,6 +403,10 @@ else
 		d = sqrt(b*b - 4*a*c)
 		C_P = (-b + d)/(2*a)
 		r_GA = r_A_target - f_PA*r_Pm_base*C_P/(Km_P + C_P)
+		
+		r_GA = min(r_GA, 2*r_G)
+		r_A_target = r_GA + f_PA*r_Pm_base*C_P/(Km_P + C_P)
+		
 		r_P = r_GA - V*(K1*C_P - K2*C_L)
 		r_P = max(0.0,r_P)
 		C_P_max = (r_GA + V*K2*C_L)/(V*K1)
@@ -410,11 +426,14 @@ else
 			if (dbug) write(*,'(a,e12.3)') 'dA: ',dA
 			f_G_new = max(0.0d0,f_G - dA/(2*r_G))
 			dA = dA - 2*(f_G - f_G_new)*r_G
-			if (f_G_new == 0) dA = 1.01*dA
+			if (f_G_new == 0) dA = 1.001*dA
 			if (dbug) write(*,'(a,2e12.3)') 'f_G_new, dA: ',f_G_new, dA
 			if (dbug) write(*,*)
 			f_G = f_G_new
 			r_A_target = max(0.0,r_A_target - dA)
+			
+!			r_A_target = min(r_A_target,2*r_G + f_PA*r_Pm_base*C_P/(Km_P + C_P))
+			
 			! Note: if f_G_new > 0, r_A_target is unchanged
 			cycle
 		endif
@@ -451,12 +470,18 @@ mp%O_rate = f_PO*r_P*(1-f_P)		! consumption
 mp%L_rate = V*(K1*C_P - K2*C_L)		! production
 mp%C_P = C_P
 ! Add base rate correction
-mp%O_rate = mp%O_rate + MM_O2*base_O_rate	! TRY REMOVING THIS
+mp%O_rate = mp%O_rate + O2_baserate(ityp)
 mp%f_G = f_G
 mp%f_P = f_P
 !if (dbug .or. exceed) then
 !	write(*,'(a,6e10.3)') 'r_G,A,P,I,L,O2: ',mp%G_rate,mp%A_rate,mp%P_rate,mp%I_rate,mp%L_rate,mp%O_rate
 !endif
+!if (istep >= 1187) then
+!	write(nflog,'(a,5e13.6,2f9.6)') 'f_G,f_P,r_G,GA,L,C_P: ',f_G,f_P,r_G,r_GA,mp%L_rate,C_P,C_L
+!	write(nflog,'(a,5e13.6)') 'f_G,f_P,r_G,O,L: ',f_G,f_P,mp%G_rate,mp%O_rate,mp%L_rate
+!	write(nflog,'(a,4e13.6)') 'r_G,r_GA,C_P,C_L: ',r_G,r_GA,C_P,C_L
+!endif
+!if (r_G < r_G_threshold) stop
 end subroutine
 
 !--------------------------------------------------------------------------
@@ -490,6 +515,33 @@ integer :: N
 
 v = C**N/(Km**N + C**N)
 end function
+
+!--------------------------------------------------------------------------
+! Test metab rates with very low O2, holding glucose and lactate constant.
+!--------------------------------------------------------------------------
+subroutine testmetab
+type(metabolism_type), target :: metab
+type(metabolism_type), pointer :: mp
+integer :: ityp, i
+real(REAL_KIND) :: C_O2, C_G, C_L
+
+metab = cell_list(1)%metab
+mp => metab
+ityp = 1
+C_G = 100
+C_L = 18
+C_O2 = 0.1
+mp%HIF1 = 1
+mp%PDK1 = 0.6
+write(nflog,*) 'i  C_O2  C_L   A_rate   I_rate   P_rate   O_rate   HIF1 PDK1   C_P'
+do i = 1,100
+	call f_metab(ityp, mp, C_O2, C_G, C_L)
+	write(nflog,'(i6,9e12.3)') i,C_O2,C_L,mp%A_rate,mp%I_rate,mp%P_rate,mp%O_rate,mp%HIF1,mp%PDK1,mp%C_P
+	C_O2 = 0.8*C_O2
+!	C_O2 = C_O2 - 0.00005
+enddo
+stop
+end subroutine
 
 end module
 

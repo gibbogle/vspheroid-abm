@@ -131,24 +131,6 @@ do ichemo = 1,MAX_CHEMO
 enddo
 end subroutine
 
-!----------------------------------------------------------------------------------------
-! Consumption rate = Rmax*C/(MM_C0 + C)  (Michaelis-Menten)
-! where Km = MM_C0 >= Rmax*T*10^6/Vextra_cm3 is the O2 concentration at which cell uptake is halved,
-! and T is the maximum expected time step
-! This is to ensure that all the O2 in the site is not depleted in a time step, making
-! O2 conc go negative.  For now it seems reasonable to assume that glucose uptake
-! varies in proportion to O2 uptake, i.e. we only need Oxygen M-M
-!----------------------------------------------------------------------------------------
-subroutine SetMMParameters
-
-chemo(OXYGEN)%MM_C0 = 0.00133		! 1 mmHg = 1.33 uM (Kevin suggests 1 - 2 uM)
-chemo(GLUCOSE)%MM_C0 = chemo(OXYGEN)%MM_C0*chemo(GLUCOSE)%max_cell_rate/chemo(OXYGEN)%max_cell_rate
-write(logmsg,'(a,e12.4)') 'Oxygen MM_C0: ',chemo(OXYGEN)%MM_C0
-call logger(logmsg)
-write(logmsg,'(a,e12.4)') 'Glucose MM_C0: ',chemo(GLUCOSE)%MM_C0
-call logger(logmsg)
-end subroutine
-
 !----------------------------------------------------------------------------------
 ! Computes metabolism rate as a fraction of the maximum cell rate
 ! Use the "soft landing" option for Hill_N = 1 if MM_threshold = 0

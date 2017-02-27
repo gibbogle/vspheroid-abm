@@ -379,7 +379,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "Membrane diff constant",
      "Cell membrane diffusion coefficient Kout"},
 
-    {"LACTATE_BDRY_CONC", 3, 0, 0,
+    {"LACTATE_BDRY_CONC", 0.3, 0, 0,
      "Boundary concentration",
      "LACTATE boundary concentration"},
 
@@ -606,7 +606,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
            "ATP moles produced per glucose mole",
            "Number of ATP moles produced by the glycolysis of one glucose mole"},
 
-           {"N_PA_1", 18, 0, 0,
+           {"N_PA_1", 14, 0, 0,
            "ATP moles produced per pyruvate mole",
            "Number of ATP moles produced by the oxidation of one pyruvate mole"},
 
@@ -643,7 +643,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
             "PDKmin",
             "Minimum value of the PDK1 factor"},
 
-            {"C_O2_NORM_1", 0.05, 0, 0,
+            {"C_O2_NORM_1", 0.005, 0, 0,
             "Nominal normal IC O2 concentration",
             "Nominal normal IC O2 concentration, used to set normal metabolic rates for unconstrained growth"},
 
@@ -655,20 +655,24 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
             "Nominal normal IC lactate concentration",
             "Nominal normal IC lactate concentration, used to set normal metabolic rates for unconstrained growth"},
 
-           {"ATP_S_1", 0.4, 0, 0,
+            {"O2_BASERATE_1",1.0e-11, 0, 0,
+             "O2 base consumption rate",
+             "Base rate of oxygen consumption, this is added to the value computed by the metabolism model"},
+
+           {"ATP_S_1", 0.6, 0, 0,
            "ATP production threshold for survival (fraction of peak)",
            "Cell death occurs when the ATP production rate falls below the fraction ATP_S of the maximum (no nutrient constraints) production rate"},
 
-           {"K_PL_1", 0.1, 0, 0,
+           {"K_PL_1", 1, 0, 0,
            "Pyruvate -> lactate rate constant",
            "The forward rate constant K_PL of the pyruvate-lactate reaction, i.e. the rate constant for conversion of pyruvate to lactate"},
 
-           {"K_LP_1", 0.1, 0, 0,
+           {"K_LP_1", 1, 0, 0,
            "Lactate -> pyruvate rate constant",
            "The reverse rate constant K_LP of the pyruvate-lactate reaction, i.e. the rate constant for conversion of lactate to pyruvate"},
 
             {"PYRUVATE_MM_KM_1", 20, 0, 0,
-            "Pyruvate Michaelis-Menten Km",
+            "Pyruvate Michaelis-Menten Km (uM)",
             "Pyruvate Michaelis-Menten Km (uM). fMM = C_P/(Km + C_P) is a multiple of pyruvate oxidation rate, ensuring that the rate -> 0 as C_P -> 0"},
 
             {"APOPTOSIS_RATE_1", 0.1, 0, 0,
@@ -728,6 +732,10 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
              "Nominal normal IC lactate concentration",
              "Nominal normal IC lactate concentration, used to set normal metabolic rates for unconstrained growth"},
 
+             {"O2_BASERATE_2",1.0e-11, 0, 0,
+              "O2 base consumption rate",
+              "Base rate of oxygen consumption, this is added to the value computed by the metabolism model"},
+
             {"ATP_S_2", 0.25, 0, 0,
             "ATP production threshold for survival (fraction of peak)",
              "Cell death occurs when the ATP production rate falls below the fraction ATP_S of the maximum (no nutrient constraints) production rate"},
@@ -741,7 +749,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
              "The reverse rate constant of the pyruvate-lactate reaction, i.e. the rate constant for conversion of lactate to pyruvate"},
 
              {"PYRUVATE_MM_KM_2", 20, 0, 0,
-             "Pyruvate Michaelis-Menten Km",
+             "Pyruvate Michaelis-Menten Km (uM)",
              "Pyruvate Michaelis-Menten Km (uM). fMM = C_P/(Km + C_P) is a multiple of pyruvate oxidation rate, ensuring that the rate -> 0 as C_P -> 0"},
 
              {"APOPTOSIS_RATE_2", 0.1, 0, 0,
@@ -844,6 +852,22 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "Number",
      "Number of times to save slice data"},
 
+     {"SAVE_FACS_DATA",0,0,1,
+      "Save FACS data",
+      "Save data for FACS at a specified interval"},
+
+     {"SAVE_FACS_DATA_FILE_NAME",0,0,0,
+      "facs_data",
+      "Base file name for saving FACS data"},
+
+     {"SAVE_FACS_DATA_INTERVAL",0,0,0,
+      "Interval",
+      "Time interval for saving FACS data"},
+
+     {"SAVE_FACS_DATA_NUMBER",1,0,0,
+      "Number",
+      "Number of times to save FACS data"},
+
 // This is the end of the parameters that are actually read by the DLL
 // Entries after this point are QMyLabel dummies, to enable display of explanatory info  - no input data is transmitted,
 // followed by the list of time-series and profile plots selected for this run.
@@ -858,11 +882,13 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
 
 // Time-series plots
     {"nlive",                     1, 0,1,"","Number of live cells"},
+    {"nATPdead",                  0, 0,1,"","Total number of cells that have been killed by lack of ATP"},
     {"nanoxiadead",               0, 0,1,"","Total number of cells that have been killed by anoxia"},
     {"naglucosiadead",            0, 0,1,"","Total number of cells that have been killed by aglucosia"},
     {"ndrugAdead",                0, 0,1,"","Total number of cells that have been killed by drugA"},
     {"ndrugBdead",                0, 0,1,"","Total number of cells that have been killed by drugB"},
     {"nradiationdead",            0, 0,1,"","Total number of cells that have been killed by radiation"},
+    {"nATPtagged",                0, 0,1,"","Current number of cells tagged to die by lack of ATP"},
     {"nanoxiatagged",             0, 0,1,"","Current number of cells tagged to die by anoxia"},
     {"naglucosiatagged",          0, 0,1,"","Current number of cells tagged to die by aglucosia"},
     {"ndrugAtagged",              0, 0,1,"","Current number of cells tagged to die by drugA"},

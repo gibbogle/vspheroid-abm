@@ -94,7 +94,7 @@ call make_sparse_map(bmapfile,.false.,ok)
 if (.not.ok) return
 write(nflog,*) 'made bmapfile: ',bmapfile
 
-call make_grid_flux_weights
+call make_grid_flux_weights(ok)
 do ichemo = 1,MAX_CHEMO
 	if (.not.chemo(ichemo)%used) cycle
 	if (ichemo > TRACER) then
@@ -760,7 +760,7 @@ real(REAL_KIND) :: Cflux_const(:,:,:)
 integer :: kcell, k, cnr(3,8), ix, iy, iz, j, n(3)
 real(REAL_KIND) :: wt(8), fsum(3), avec(3,2)
 type(cell_type), pointer :: cp
-real(REAL_KIND) :: alpha_flux = 0.3
+real(REAL_KIND) :: alpha_flux = 0.2		! was 0.3
 
 Cflux_const = 0
 fsum = 0
@@ -833,7 +833,8 @@ end subroutine
 ! Note that cp%site is the grid pt at the lower left (in 3D) of the cell centre.  
 ! This implies that the surrounding grid pts all have incremented indices.
 !-------------------------------------------------------------------------------------------
-subroutine make_grid_flux_weights
+subroutine make_grid_flux_weights(ok)
+logical :: ok
 integer :: ix, iy, iz, kcell, k
 real(REAL_KIND) :: c(3)
 type(cell_type), pointer :: cp
@@ -846,6 +847,12 @@ do kcell = 1,nlist
 	ix = c(1)/DELTA_X + 1
 	iy = c(2)/DELTA_X + 1
 	iz = c(3)/DELTA_X + 1
+	if (ix < 1 .or. ix > NX-1 .or. iy < 1 .or. iy > NY-1 .or. iz < 1 .or. iz > NZ-1) then
+		write(logmsg,*) 'make_grid_flux_weights: blob too big, cell outside grid: ',kcell,ix,iy,iz
+		call logger(logmsg)
+		ok = .false.
+		return
+	endif
 	cp%site = [ix, iy, iz]
 	cp%cnr(:,1) = [ix, iy, iz]
 	cp%cnr(:,2) = [ix, iy+1, iz]
@@ -1410,7 +1417,7 @@ integer :: kpar = 0
 real(REAL_KIND) :: rad, xb0, yb0, zb0, x, y, z, p(3), phi, theta, c(MAX_CHEMO), csum(MAX_CHEMO)
 real(REAL_KIND) :: xf0, yf0, zf0    ! centre on fine grid
 real(REAL_KIND) :: pmax(3), cmax
-integer :: i, ic, ichemo, n = 100
+integer :: i, ic, ichemo, ix, iy, iz, k, n = 100
 
 !call SetRadius(Nsites)
 rad = blobradius
@@ -1419,13 +1426,20 @@ yf0 = blobcentre(2)
 zf0 = blobcentre(3)
 csum = 0
 cmax = 0
-do i = 1,n
+do
 	z = -rad + 2*rad*par_uni(kpar)
 	phi = 2*PI*par_uni(kpar)
 	theta = asin(z/rad)
 	x = xf0 + rad*cos(theta)*cos(phi)
 	y = yf0 + rad*cos(theta)*sin(phi)
 	z = zf0 + z
+	ix = x/DXF + 1
+	iy = y/DXF + 1
+	iz = z/DXF + 1
+	if (ix < 1 .or. ix+1 > NX) cycle
+	if (iy < 1 .or. iy+1 > NY) cycle
+	if (iz < 1 .or. iz+1 > NZ) cycle
+	k = k+1
 	p = [x, y, z]
 	call getConc_f(p,c)
 	csum = csum + c
@@ -1433,6 +1447,7 @@ do i = 1,n
 	    cmax = c(1)
 	    pmax = p
 	endif
+	if (k == n) exit
 enddo
 do ic = 1,nchemo
 	ichemo = chemomap(ic)
@@ -1497,7 +1512,7 @@ real(REAL_KIND), allocatable :: x(:), rhs(:)
 real(REAL_KIND), pointer :: Cave(:,:,:), Cprev(:,:,:), Fprev(:,:,:), Fcurr(:,:,:)
 real(REAL_KIND), pointer :: Cave_b(:,:,:), Cprev_b(:,:,:), Fprev_b(:,:,:), Fcurr_b(:,:,:)
 real(REAL_KIND), allocatable :: a(:), a_b(:)
-real(REAL_KIND) :: alpha_cave = 0.3
+real(REAL_KIND) :: alpha_cave = 0.2
 real(REAL_KIND) :: dCtol = 1.0e-4
 real(REAL_KIND) :: massmin = 1.0e-8
 integer :: ILUtype = 1
@@ -1835,7 +1850,7 @@ tmetab = mytimer() - t1
 !call logger(logmsg)
 
 !if (use_integration) then	! always
-if (chemo(DRUG_A)%present) then
+if (chemo(DRUG_A)%present .or. chemo(DRUG_B)%present) then
 	! solve for Cin and dMdt for drug + metabolites by integrating them together
 	call integrate_Cin(dt)
 endif
@@ -2010,7 +2025,7 @@ real(REAL_KIND) :: Csum, dCsum, msum, mass(MAX_CHEMO), Cmin
 real(REAL_KIND), allocatable :: x(:), rhs(:)
 real(REAL_KIND), pointer :: Cave(:,:,:), Cprev(:,:,:), Fprev(:,:,:), Fcurr(:,:,:)
 real(REAL_KIND), allocatable :: a(:)
-real(REAL_KIND) :: alpha_cave = 0.3
+real(REAL_KIND) :: alpha_cave = 0.2
 integer :: ILUtype = 1
 logical :: ok
 real(REAL_KIND) :: xx, yy, zz, R1, R2, R12, R22, c(3), d2, constant_flux, df, factor
