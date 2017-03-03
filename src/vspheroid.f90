@@ -1287,7 +1287,10 @@ if (radiation_dose > 0) then
 	write(logmsg,'(a,f6.1)') 'Radiation dose: ',radiation_dose
 	call logger(logmsg)
 endif
-call SetupChemomap
+
+call DrugChecks
+!call SetupChemomap
+
 !dt = DELTA_T/NT_CONC
 ! the idea is to accumulate time steps until DELTA_T is reached 
 call make_perm_index(ok)
@@ -1432,20 +1435,23 @@ if (mod(istep,nt_hour) == 0) then
 !	write(*,'(7e11.3)') Caverage(NX/2,NY/2,11:17,DRUG_A)
 !	write(*,'(7e11.3)') Caverage(NX/2,NY/2,11:17,DRUG_A+1)
 !	write(*,'(7e11.3)') Caverage(NX/2,NY/2,11:17,DRUG_A+2)
-	if (chemo(DRUG_A)%present) then
-		call get_average_concs(DRUG_A,ave_cin, ave_cex)
-		if (ave_cin(1) < 1.0e-6) then
-			call ClearDrug(DRUG_A)
-			chemo(DRUG_A:DRUG_A+2)%present = .false.
-		endif
-	endif
-	if (chemo(DRUG_B)%present) then
-		call get_average_concs(DRUG_B,ave_cin,ave_cex)
-		if (ave_cin(1) < 1.0e-6) then
-			call ClearDrug(DRUG_B)
-			chemo(DRUG_B:DRUG_B+2)%present = .false.
-		endif
-	endif
+
+! Replaced by DrugChecks
+!	if (chemo(DRUG_A)%present) then
+!		call get_average_concs(DRUG_A,ave_cin, ave_cex)
+!		if (ave_cin(1) < 1.0e-6) then
+!			call ClearDrug(DRUG_A)
+!			chemo(DRUG_A:DRUG_A+2)%present = .false.
+!		endif
+!	endif
+!	if (chemo(DRUG_B)%present) then
+!		call get_average_concs(DRUG_B,ave_cin,ave_cex)
+!		if (ave_cin(1) < 1.0e-6) then
+!			call ClearDrug(DRUG_B)
+!			chemo(DRUG_B:DRUG_B+2)%present = .false.
+!		endif
+!	endif
+	
 	if (.not.use_TCP) then
 		call get_concdata(1,nvars, ns, dxc, ex_conc)
 	!	write(*,'(a,3f8.4)') 'cell #1: ',cell_list(1)%Cex(1),cell_list(1)%Cin(1),cell_list(1)%Cex(1)-cell_list(1)%Cin(1) 
@@ -1454,6 +1460,29 @@ if (mod(istep,nt_hour) == 0) then
     call showcells
 endif
 res = 0
+end subroutine
+
+!-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
+subroutine DrugChecks
+integer :: idrug, iparent, im, ichemo, kcell
+type(cell_type), pointer :: cp
+
+drug_gt_cthreshold = .false.
+do idrug = 1,2
+	iparent = DRUG_A + 3*(idrug-1)
+	if (chemo(iparent)%present) then		! simulation with this drug has started
+	    do im = 0,2
+	        ichemo = iparent + im
+!	        if (chemo(ichemo)%medium_Cext > Cthreshold) drug_gt_cthreshold(idrug) = .true.
+	        if (chemo(ichemo)%medium_Cbnd > Cthreshold) drug_gt_cthreshold(idrug) = .true.
+	    enddo
+	endif
+enddo
+
+call CheckDrugConcs
+call CheckDrugPresence
+call SetupChemomap
 end subroutine
 
 !-----------------------------------------------------------------------------------------

@@ -610,7 +610,7 @@ CO2 = cp%Cin(OXYGEN)
 !	write(*,'(a,3e12.3)') 'Cin: ',cp%Cin(DRUG_A:DRUG_A+2)
 !	write(*,'(a,3e12.3)') 'Cex: ',cp%Cex(DRUG_A:DRUG_A+2)
 !endif
-idrug = (ichemo_parent - TRACER - 1)/3 + 1
+idrug = (ichemo_parent - DRUG_A)/3 + 1
 dp => drug(idrug)
 do im = 0,2
 	ichemo = ichemo_parent + im
@@ -934,9 +934,9 @@ if (ichemo <= LACTATE) then
 elseif (ichemo == TRACER) then
 	
 else	! parent drug or drug metabolite
-	idrug = (ichemo - TRACER - 1)/3 + 1
+	idrug = (ichemo - DRUG_A)/3 + 1
 	dp => drug(idrug)
-	im = ichemo - TRACER - 1 - 3*(idrug-1)
+	im = ichemo - DRUG_A - 3*(idrug-1)
 	Kmet0(im) = dp%Kmet0(ictyp,im)
 	C2(im) = dp%C2(ictyp,im)
 	KO2(im) = dp%KO2(ictyp,im)
@@ -1033,9 +1033,9 @@ if (ichemo <= GLUCOSE) then
 elseif (ichemo == TRACER) then
 	stop
 else	! parent drug or drug metabolite
-	idrug = (ichemo - TRACER - 1)/3 + 1
+	idrug = (ichemo - DRUG_A)/3 + 1
 	dp => drug(idrug)
-	im = ichemo - TRACER - 1 - 3*(idrug-1)
+	im = ichemo - DRUG_A - 3*(idrug-1)
 	Kmet0(im) = dp%Kmet0(ictyp,im)
 	C2(im) = dp%C2(ictyp,im)
 	KO2(im) = dp%KO2(ictyp,im)
@@ -1554,9 +1554,9 @@ do ic = 1,nchemo
 	if (ichemo <= TRACER) then
 		nfinemap = nfinemap + 1
 		finemap(nfinemap) = ichemo
-	elseif (mod(ichemo-TRACER-1,3) == 0) then
+	elseif (mod(ichemo-DRUG_A,3) == 0) then
 		nfinemap = nfinemap + 1
-		finemap(nfinemap) = ichemo		! idrug = (ichemo-TRACER-1)/3 + 1
+		finemap(nfinemap) = ichemo		! idrug = (ichemo-DRUG_A)/3 + 1
 	endif
 enddo		
 
@@ -1873,6 +1873,40 @@ do ic = 1,nchemo
 enddo
 !endif
 
+end subroutine
+
+!----------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------
+subroutine CheckDrugConcs
+integer :: ndrugs_present, drug_present(3*MAX_DRUGTYPES), drug_number(3*MAX_DRUGTYPES)
+integer :: idrug, iparent, im, kcell, ichemo, i
+type(cell_type), pointer :: cp
+
+ndrugs_present = 0
+drug_present = 0
+do idrug = 1,ndrugs_used
+	iparent = DRUG_A + 3*(idrug-1)
+	if (chemo(iparent)%present) then		! simulation with this drug has started
+	    do im = 0,2
+	        ichemo = iparent + im
+	        ndrugs_present = ndrugs_present + 1
+	        drug_present(ndrugs_present) = ichemo
+	        drug_number(ndrugs_present) = idrug
+	    enddo
+	endif
+enddo
+
+do kcell = 1,nlist
+	if (cell_list(kcell)%state == DEAD) cycle
+    cp => cell_list(kcell)
+	do i = 1,ndrugs_present
+	    ichemo = drug_present(i)
+	    idrug = drug_number(i)
+	    if (cp%Cin(ichemo) > Cthreshold) drug_gt_cthreshold(idrug) = .true.
+	    if (cp%Cex(ichemo) > Cthreshold) drug_gt_cthreshold(idrug) = .true.
+	enddo
+enddo
+    
 end subroutine
 
 !-------------------------------------------------------------------------------------- 

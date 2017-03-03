@@ -14,6 +14,7 @@ namespace Global
     int nt_vtk;
     int istep;
     bool leftb;
+    int hour;
 
     int nvars_used;
     int nfieldvars_used;

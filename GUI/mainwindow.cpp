@@ -123,7 +123,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupGraphSelector();
     setGraphsActive();
 
-    for(int i=0; i<16; i++)
+    for (int i=0; i<maxGraphs; i++)
         pGraph[i] = NULL;
     LOG_QMSG("did Graphs");
 
@@ -2254,6 +2254,7 @@ void MainWindow::showSummary(int hr)
 		return;
 	}
     hour = hr;
+    Global::hour = hour;
 //    exthread->mutex1.lock();
 
 //    hour = summaryData[0]*DELTA_T/(60*60);

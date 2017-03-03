@@ -75,6 +75,7 @@ namespace Global
     extern int nt_vtk;
     extern int istep;
     extern bool leftb;
+    extern int hour;
 
     extern int nvars_used;
     extern int nfieldvars_used;

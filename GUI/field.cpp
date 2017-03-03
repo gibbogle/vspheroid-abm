@@ -684,6 +684,11 @@ void Field::displayField(int hr, int *res)
     scene->addLine(scalebar0, scalebar0, scalebar0+w_scalebar, scalebar0, pen);
     QGraphicsTextItem *scalebar_text = scene->addText("100 um",font);
     scalebar_text->setPos(scalebar0,1.4*scalebar0);
+
+    QString hourStr = "Hour " + QString::number(Global::hour);
+    QGraphicsSimpleTextItem *hour_text = scene->addSimpleText(hourStr,font);
+    hour_text->setPos(scalebar0,3*scalebar0);
+//    hour_text->setBrush(Qt::yellow);
     view->show();
     return;
 
