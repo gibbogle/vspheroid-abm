@@ -9827,7 +9827,7 @@ padding: 8px
              <bool>true</bool>
             </property>
            </widget>
-           <widget class="QLineEdit" name="lineEdit">
+           <widget class="QLineEdit" name="line_DRUG_THRESHOLD">
             <property name="geometry">
              <rect>
               <x>830</x>
