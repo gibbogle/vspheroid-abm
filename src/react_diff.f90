@@ -596,7 +596,7 @@ real(REAL_KIND) :: K1(0:2), K2(0:2)
 real(REAL_KIND) :: a0,a1,a2,b0,b1,b2,c0,c1,c2,d0,d1,d2,a,b,c,d,y0,y1,y2
 integer :: n_O2(0:2)
 type(drug_type), pointer :: dp
-integer :: nt = 20
+integer :: nt = 100
 real(REAL_KIND) :: tol = 1.0e-12
 logical :: use_analytic = .false.
 
@@ -627,10 +627,10 @@ do im = 0,2
 	Km(im) = dp%Km(ictyp,im)
 	Vmax(im) = dp%Vmax(ictyp,im)
 	K1(im) = (1 - CC2 + CC2*KO2(im)**n_O2(im)/(KO2(im)**n_O2(im) + CO2**n_O2(im)))
-!	if (kcell == 1) then
-!		write(*,'(2i2,3e12.3)') im,ichemo,Kin(im),Kout(im),Kd(im)
-!		write(*,'(i2,3e12.3)') im,Kmet0(im),C2(im),KO2(im)
-!		write(*,'(2i2,3e12.3)') im,N_O2(im),Km(im),Vmax(im),K1(im)
+!	if (kcell == 1 .and. im==0) then
+!		write(*,'(a,2i2,3e12.3)') 'im,ichemo,Kin,Kout: ',im,ichemo,Kin(im),Kout(im)
+!		write(*,'(a,i2,3e12.3)') 'im,Kmet0,C2,KO2: ',im,Kmet0(im),CC2,KO2(im)
+!		write(*,'(a,2i2,3e12.3)') 'im,N_O2,Km,Vmax,K1: ',im,N_O2(im),Km(im),Vmax(im),K1(im)
 !	endif
 enddo
 if (use_analytic) then
@@ -683,11 +683,11 @@ else
 		dCdt(0) = Kin(0)*Cex(0)/Vin - Kout(0)*Cin(0)/Vin - decay_rate(0)*Cin(0) - K1(0)*K2(0)*Cin(0)
 		dCdt(1) = Kin(1)*Cex(1)/Vin - Kout(1)*Cin(1)/Vin - decay_rate(1)*Cin(1) - K1(1)*K2(1)*Cin(1) + K1(0)*K2(0)*Cin(0)
 		dCdt(2) = Kin(2)*Cex(2)/Vin - Kout(2)*Cin(2)/Vin - decay_rate(2)*Cin(2) - K1(2)*K2(2)*Cin(2) + K1(1)*K2(1)*Cin(1)
-	!	if (kcell == 1) then
-	!		write(*,'(a,i4,6e11.4)') 'dCdt: ',it,Cin,dCdt
-	!		write(*,'(5e14.6)') Kin(0),Kout(0),decay_rate(0),K1(0),K2(0)
-	!		write(*,'(5e14.6)') Cin(0),Cex(0),dCdt(0),Vin,dtt
-	!	endif
+!		if (kcell == 1) then
+!			write(*,'(a,i4,6e11.3)') 'it,Cin,dCdt: ',it,Cin,dCdt
+!			write(*,'(a,5e12.3)') 'Kin,Kout,Kdecay,K1,K2: ',Kin(0),Kout(0),decay_rate(0),K1(0),K2(0)
+!			write(*,'(a,5e12.3)') 'Cin,Cex,dCdt,Vin,dtt: ',Cin(0),Cex(0),dCdt(0),Vin,dtt
+!		endif
 		do im = 0,2
 			Cin(im) = max(0.0, Cin(im) + dCdt(im)*dtt)
 		enddo
@@ -698,7 +698,7 @@ do im = 0,2
 	cp%Cin(ichemo_parent+im) = Cin(im)
 enddo
 !if (kcell == 1) write(*,'(a,3e12.3)') 'Cin: ',Cin(0:2)
-!if (kcell == 1) write(*,'(a,2f7.4,3e12.3)') 'integrate_Cin: ',Cex(0),Cin(0),Kin(0),Kout(0),cp%dMdt(ichemo_parent)
+!if (kcell == 1) write(*,'(a,2f7.4,3e12.3)') 'integrate_Cin: Cex,Cin,Kin,Kout,dMdt: ',Cex(0),Cin(0),Kin(0),Kout(0),cp%dMdt(ichemo_parent)
 
 end subroutine
 
@@ -1426,6 +1426,7 @@ yf0 = blobcentre(2)
 zf0 = blobcentre(3)
 csum = 0
 cmax = 0
+k = 0
 do
 	z = -rad + 2*rad*par_uni(kpar)
 	phi = 2*PI*par_uni(kpar)
@@ -1527,26 +1528,27 @@ real(REAL_KIND) :: tdiff, tmetab, t0, t1
 
 if (dbug) write(*,'(a,L2,f8.2)') 'diff_solver: medium_change_step,dt: ',medium_change_step,dt
 ok = .true.
-do ichemo = 1,MAX_CHEMO
-	if (.not.chemo(ichemo)%used) cycle
-	call getMass(ichemo,mass(ichemo))
-	if (chemo(ichemo)%present) then
-		if (chemo(DRUG_A)%present .and. (ichemo == DRUG_A+1 .or. ichemo == DRUG_A+2)) cycle
-		if (chemo(DRUG_B)%present .and. (ichemo == DRUG_B+1 .or. ichemo == DRUG_B+2)) cycle
-		masslimit = 1.0e-12
-		if (mass(ichemo) < masslimit) then
-			chemo(ichemo)%present = .false.
-			write(nflog,*) 'Set present = false: ',ichemo 
-			if (dbug) write(*,*) 'Set present = false: ',ichemo 
-		endif
-	else
-		if (mass(ichemo) > 1.0e-12) then
-			chemo(ichemo)%present = .true.
-		endif
-	endif
-enddo
-if (dbug) write(*,'(a,3e12.3)') 'DRUG_A mass: ',mass(DRUG_A:DRUG_A+2)
-call SetupChemomap
+! Superceded by improved method for checking drug presence
+!do ichemo = 1,MAX_CHEMO
+!	if (.not.chemo(ichemo)%used) cycle
+!	call getMass(ichemo,mass(ichemo))
+!	if (chemo(ichemo)%present) then
+!		if (chemo(DRUG_A)%present .and. (ichemo == DRUG_A+1 .or. ichemo == DRUG_A+2)) cycle
+!		if (chemo(DRUG_B)%present .and. (ichemo == DRUG_B+1 .or. ichemo == DRUG_B+2)) cycle
+!		masslimit = 1.0e-12
+!		if (mass(ichemo) < masslimit) then
+!			chemo(ichemo)%present = .false.
+!			write(nflog,*) 'Set present = false: ',ichemo 
+!			if (dbug) write(*,*) 'Set present = false: ',ichemo 
+!		endif
+!	else
+!		if (mass(ichemo) > 1.0e-12) then
+!			chemo(ichemo)%present = .true.
+!		endif
+!	endif
+!enddo
+!if (dbug) write(*,'(a,3e12.3)') 'DRUG_A mass: ',mass(DRUG_A:DRUG_A+2)
+!call SetupChemomap
 
 nfinemap = 0
 do ic = 1,nchemo
@@ -1644,7 +1646,7 @@ do ic = 1,nchemo
 			ok = .false.
 		endif
 	else
-		write(nflog,*) 'no solve, zeroC: ',ichemo
+!		write(nflog,*) 'no solve, zeroC: ',ichemo
 	endif
 	call itsol_free_precond_ILU(icc, ierr)
 !	write(nflog,*) 'did itsol_free_precond_ILU'
@@ -1777,7 +1779,7 @@ do ic = 1,nfinemap
 				ok = .false.
 			endif
 		else
-			write(nflog,*) 'no solve, zeroC: ',ichemo
+!			write(nflog,*) 'no solve, zeroC: ',ichemo
 		endif
 		call itsol_free_precond_ILU(icc,ierr)
 		call itsol_free_matrix(icc,ierr)

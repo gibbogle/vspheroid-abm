@@ -3,6 +3,8 @@
 */*.pro
 */*.user
 build/**/*
+docs/
+docs/**/*
 execution/
 execution/**/*
 vspheroid_GUI-build/**/*

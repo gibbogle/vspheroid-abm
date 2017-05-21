@@ -274,6 +274,7 @@ void MainWindow::createActions()
     connect(buttonGroup_farfield, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(radioButtonChanged(QAbstractButton*)));
     connect(buttonGroup_hypoxia, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(radioButtonChanged(QAbstractButton*)));
     connect(buttonGroup_profileaxis, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(radioButtonChanged(QAbstractButton*)));
+    ConnectKillParameterSignals();
 }
 
 //--------------------------------------------------------------------------------------------------------
@@ -2502,6 +2503,7 @@ void MainWindow::outputData(QString qdata)
 void MainWindow::postConnection()
 {
 	LOG_MSG("postConnection");
+
 	if (use_CPORT1) {
 		sthread1->socket->close();
 		sthread1->tcpServer->close();
@@ -2511,7 +2513,6 @@ void MainWindow::postConnection()
 			LOG_MSG("sthread1 did not terminate");
 		}
 	}
-
     action_run->setEnabled(true);
     action_pause->setEnabled(false);
     action_stop->setEnabled(false);
@@ -2527,19 +2528,21 @@ void MainWindow::postConnection()
     tab_chemo->setEnabled(true);
     tab_run->setEnabled(true);
 
-	// Check if a result set of this name is already in the list, if so remove it
-	for (int i=0; i<result_list.size(); i++) {
-		if (newR->casename.compare(result_list[i]->casename) == 0) {
-			result_list.removeAt(i);
-		}
-	}
-	// Compute the maxima
-	for (int i=0; i<nGraphs; i++) {
-        if (!grph->isTimeseries(i)) continue;
-        if (!grph->isActive(i)) continue;
-		double maxval = getMaximum(newR,newR->pData[i]);
-		newR->maxValue[i] = maxval;
-	}
+// Removed code for newR because of error on closing program - not sure what causes it
+    // Check if a result set of this name is already in the list, if so remove it
+//	for (int i=0; i<result_list.size(); i++) {
+//		if (newR->casename.compare(result_list[i]->casename) == 0) {
+//			result_list.removeAt(i);
+//		}
+//	}
+
+    // Compute the maxima
+//	for (int i=0; i<nGraphs; i++) {
+//        if (!grph->isTimeseries(i)) continue;
+//        if (!grph->isActive(i)) continue;
+//		double maxval = getMaximum(newR,newR->pData[i]);
+//		newR->maxValue[i] = maxval;
+//	}
 
 	// Add the new result set to the list
 //	result_list.append(newR);

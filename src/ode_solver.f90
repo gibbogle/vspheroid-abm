@@ -115,6 +115,9 @@ logical :: use_SS_CO2 = .false.
 cp => cell_list(kcell)
 kcell_now = kcell
 
+mp => cp%metab
+call Set_f_GP(cp%celltype,mp)	! dropped argument C from monolayer_m version
+
 if (use_SS_CO2) then
 	neqn = 2
 	cp%Cin(1) = get_CO2_SS(kcell)
@@ -160,6 +163,68 @@ mp => cp%metab
 call get_metab_rates(ict,mp,cp%Cin(1:3))
 
 end subroutine
+
+!----------------------------------------------------------------------------------
+! C_O2, C_G are the intracellular concentrations
+! When C_O2 < CO_H both f_G and f_P are reduced, to 0 when C_O2 <= CO_L
+! When C_G < CG_H f_G is reduced, to 0 when C_G <= CG_L
+! When both concentrations are below the H threshold the reduction factors are 
+! multiplied for f_G
+!----------------------------------------------------------------------------------
+subroutine Set_f_GP(ityp,mp)
+integer :: ityp
+type(metabolism_type), pointer :: mp
+!real(REAL_KIND) :: C(:)
+real(REAL_KIND) :: C_O2, C_G, Ofactor, Gfactor, ATPfactor
+real(REAL_KIND) :: CO_L, CG_L, f_ATP_H, f_ATP_L, f
+real(REAL_KIND) :: alfa = 0.2
+logical :: use_ATP = .true.
+
+if (use_ATP) then
+	f_ATP_L = f_ATPg(ityp)
+	f_ATP_H = f_ATPramp(ityp)*f_ATPg(ityp)
+	f = mp%A_rate/r_A_norm
+	if (f > f_ATP_H) then
+		ATPfactor = 1
+	elseif (f < f_ATP_L) then
+		ATPfactor = 0
+	else
+		ATPfactor = (f - f_ATP_L)/(f_ATP_H - f_ATP_L)
+		ATPfactor = smoothstep(ATPfactor)
+	endif
+!	write(*,'(a,2e12.3)') 'A_rate, ATPfactor: ',mp%A_rate,ATPfactor
+	mp%f_G = alfa*ATPfactor*f_G_norm + (1-alfa)*mp%f_G
+	mp%f_P = alfa*ATPfactor*f_P_norm + (1-alfa)*mp%f_P
+else
+!	C_O2 = C(1)
+!	C_G = C(N1D+2)
+	CO_L = 0.8*CO_H(ityp)
+	CG_L = 0.8*CG_H(ityp)
+	Ofactor = 1
+	Gfactor = 1
+
+	if (C_O2 < CO_L) then
+		Ofactor = 0
+	elseif (C_O2 < CO_H(ityp)) then
+		Ofactor = (C_O2 - CO_L)/(CO_H(ityp) - CO_L)
+	endif
+	if (C_G < CG_L) then
+		Gfactor = 0
+	elseif (C_G < CG_H(ityp)) then
+		Gfactor = (C_G - CG_L)/(CG_H(ityp) - CG_L)
+	endif
+	mp%f_G = Gfactor*Ofactor*f_G_norm
+	mp%f_P = Ofactor*f_P_norm
+!	write(*,'(a,6f8.4)') 'G, Ofactor: ',Gfactor, Ofactor, C_G, C_O2, mp%f_G, mp%f_P
+endif
+end subroutine
+
+!----------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------
+function smoothstep(x) result(f)
+real(REAL_KIND) :: x, f
+f = x*x*(3 - 2*x)
+end function
 
 !----------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------

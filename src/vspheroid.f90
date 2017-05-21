@@ -10,7 +10,7 @@
 !     volume			cm^3
 !     mass				micromole = 10^-6 mol = mumol
 !     flux				mumol/s
-!     concentration		mumol/cm^3 = mM 
+!     concentration		mumol/cm^3 = mM
 !---------------------------------------------------------------------------------------------------------------
 module vspheroid
 
@@ -383,7 +383,9 @@ doubling_time glycolysis_rate pyruvate_oxidation_rate ATP_rate intermediates_rat
 
 write(logmsg,*) 'Opened nfout: ',outputfile
 call logger(logmsg)
-call DetermineKd
+if (.not.use_new_drugdata) then
+	call DetermineKd	! Kd is now set or computed in the GUI 
+endif
 ok = .true.
 
 end subroutine
@@ -435,6 +437,43 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------
 subroutine ReadMetabolismParameters(nf)
+integer :: nf
+integer :: ityp
+
+do ityp = 1,Ncelltypes
+	read(nf,*) N_GA(ityp)
+	read(nf,*) N_PA(ityp)
+	read(nf,*) N_GI(ityp)
+	read(nf,*) N_PI(ityp)
+	read(nf,*) N_PO(ityp)
+	read(nf,*) K_H1(ityp)
+	read(nf,*) K_H2(ityp)
+	read(nf,*) K_HB(ityp)
+	read(nf,*) K_PDK(ityp)
+	read(nf,*) PDKmin(ityp)
+	read(nf,*) C_O2_norm(ityp)
+	read(nf,*) C_G_norm(ityp)
+	read(nf,*) C_L_norm(ityp)
+!	read(nf,*) CO_H(ityp)
+!	read(nf,*) CG_H(ityp)
+	read(nf,*) f_ATPs(ityp)
+	read(nf,*) f_ATPg(ityp)
+	read(nf,*) f_ATPramp(ityp)
+	read(nf,*) ATP_Km(ityp)
+	read(nf,*) K_PL(ityp)
+	read(nf,*) K_LP(ityp)
+	read(nf,*) Hill_Km_P(ityp)
+	read(nf,*) Apoptosis_rate(ityp)
+enddo
+PDKmin(:) = 0.3
+Hill_N_P = 1
+Hill_Km_P = Hill_Km_P/1000		! uM -> mM
+ATP_Km = ATP_Km/1000			! uM -> mM
+end subroutine
+
+!-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
+subroutine ReadMetabolismParameters1(nf)
 integer :: nf
 integer :: ityp
 
@@ -512,6 +551,9 @@ do idrug = 1,Ndrugs_used
             read(nf,*) drug(idrug)%SER_KO2(ictyp,im)
             read(nf,*) drug(idrug)%n_O2(ictyp,im)
             read(nf,*) drug(idrug)%death_prob(ictyp,im)
+            if (use_new_drugdata) then
+	            read(nf,*) drug(idrug)%Kd(ictyp,im)
+	        endif
             read(nf,*) ival
             drug(idrug)%kills(ictyp,im) = (ival == 1)
             read(nf,*) ival
@@ -751,6 +793,14 @@ call logger('did ArrayInitialisation')
 !call create_stencil
 
 chemo(LACTATE)%used = use_metabolism
+if (use_metabolism) then
+	use_cell_cycle = .true.
+	chemo(OXYGEN)%controls_growth = .false.
+	chemo(OXYGEN)%controls_death = .false.
+	chemo(GLUCOSE)%controls_growth = .false.
+	chemo(GLUCOSE)%controls_death = .false.
+endif
+
 call SetupChemo
 call logger('did SetupChemo')
 if (use_metabolism) then
@@ -843,6 +893,7 @@ call logger('completed Setup')
 
 nspeedtest = 100000
 rrsum = 0
+total_dose_time = 0
 !call testOGL
 !stop
 
@@ -1279,6 +1330,7 @@ blobradius = getRadius()
 blobcentre = getCentre()
 
 istep = istep + 1
+!write(nflog,*) 'simulate_step: ',istep
 t_simulation = (istep-1)*DELTA_T	! seconds
 radiation_dose = 0
 if (use_events) then
@@ -1287,6 +1339,12 @@ endif
 if (radiation_dose > 0) then
 	write(logmsg,'(a,f6.1)') 'Radiation dose: ',radiation_dose
 	call logger(logmsg)
+	call Irradiation(radiation_dose,ok)
+	if (.not.ok) then
+		call logger('irradiation error')
+		res = 3
+		return
+	endif
 endif
 
 call DrugChecks
@@ -1301,44 +1359,48 @@ if (.not.ok) then
 	return
 endif
 !if (ncells > nshow) write(*,*) 'start moving'
-nrepeat = 1
+
+! Moved to after diff_solver
+!nrepeat = 1
 ndt = ndt + 1
 !write(*,*) 'mover - grower: ndt: ',ndt
-do irepeat = 1,nrepeat
-t_fmover = 0
-nit = 0
-done = .false.
-do while (.not.done)
-	nit = nit + 1
-	t0 = mytimer()
-	call fmover(dt,done,ok)
-	t1 = mytimer()
-	tmover = tmover + t1 - t0
-	if (.not.ok) then
-		call logger('fmover error')
-		res = 1
-		return
-	endif
-	tnow = istep*DELTA_T + t_fmover
-	ncells0 = ncells
-
-	call GrowCells(radiation_dose,dt,changed,ok)
-	if (.not.ok) then
-		call logger('grower error')
-		res = 3
-		return
-	endif
-	tgrower = tgrower + mytimer() - t1
-	radiation_dose = 0
-	if (changed) then
-		call make_perm_index(ok)
-	endif
-	t_fmover = t_fmover + dt
-enddo
-enddo
+!do irepeat = 1,nrepeat
+!t_fmover = 0
+!nit = 0
+!done = .false.
+!do while (.not.done)
+!	nit = nit + 1
+!	t0 = mytimer()
+!	call fmover(dt,done,ok)
+!	t1 = mytimer()
+!	tmover = tmover + t1 - t0
+!	if (.not.ok) then
+!		call logger('fmover error')
+!		res = 1
+!		return
+!	endif
+!	tnow = istep*DELTA_T + t_fmover
+!	if (dt == 0) then
+!		exit
+!	endif
+!	t_fmover = t_fmover + dt
+!	ncells0 = ncells
+!	call GrowCells(dt,changed,ok)
+!	if (.not.ok) then
+!		call logger('grower error')
+!		res = 3
+!		return
+!	endif
+!	tgrower = tgrower + mytimer() - t1
+!	radiation_dose = 0
+!	if (changed) then
+!		call make_perm_index(ok)
+!	endif
+!enddo
+!enddo
 !write(logmsg,'(a,2f8.4)') 'tmover,tgrower: ',tmover,tgrower
 !call logger(logmsg)
-call update_all_nbrlists
+!call update_all_nbrlists
 !write(*,'(a,f8.2)') 't update_nbr_lists: ',mytimer() - t0
 !if (mod(istep,Nhop) == 0) then 
 !	! determine cell death and tagging for death 
@@ -1381,7 +1443,7 @@ else
 endif
 dt = DELTA_T/nt_diff
 call setup_grid_cells
-call update_all_nbrlists
+!call update_all_nbrlists
 do it_diff = 1,nt_diff
 	call diff_solver(dt,ok)
 	if (.not.ok) then
@@ -1390,7 +1452,40 @@ do it_diff = 1,nt_diff
 	endif
 enddo
 medium_change_step = .false.
-call set_bdry_conc()
+
+t_fmover = 0
+nit = 0
+done = .false.
+do while (.not.done)
+	nit = nit + 1
+	t0 = mytimer()
+	call fmover(dt,done,ok)
+	t1 = mytimer()
+	tmover = tmover + t1 - t0
+	if (.not.ok) then
+		call logger('fmover error')
+		res = 1
+		return
+	endif
+	tnow = istep*DELTA_T + t_fmover
+	if (dt == 0) then
+		exit
+	endif
+	t_fmover = t_fmover + dt
+	ncells0 = ncells
+	call GrowCells(dt,changed,ok)
+	if (.not.ok) then
+		call logger('grower error')
+		res = 3
+		return
+	endif
+	tgrower = tgrower + mytimer() - t1
+	radiation_dose = 0
+	if (changed) then
+		call make_perm_index(ok)
+	endif
+enddo
+call update_all_nbrlists
 
 if (saveprofile%active) then
 	if (istep*DELTA_T >= saveprofile%it*saveprofile%dt) then
@@ -1458,6 +1553,7 @@ if (mod(istep,nt_hour) == 0) then
 	!	write(*,'(a,3f8.4)') 'cell #1: ',cell_list(1)%Cex(1),cell_list(1)%Cin(1),cell_list(1)%Cex(1)-cell_list(1)%Cin(1) 
 	endif
 !	call write_bdryconcs
+	call set_bdry_conc()
     call showcells
 endif
 res = 0
@@ -1480,7 +1576,6 @@ do idrug = 1,2
 	    enddo
 	endif
 enddo
-
 call CheckDrugConcs
 call CheckDrugPresence
 call SetupChemomap

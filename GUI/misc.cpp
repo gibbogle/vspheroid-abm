@@ -234,7 +234,8 @@ void ExecThread::run()
             exit(1);
             break;
         }
-//        LOG_MSG("did simulate_step");
+        LOG_MSG("did simulate_step");
+
         if (i%summary_interval == 0) {
             mutex1.lock();
             get_summary(Global::summaryData, &Global::i_hypoxia_cutoff, &Global::i_growth_cutoff);

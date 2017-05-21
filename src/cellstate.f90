@@ -10,6 +10,7 @@ use cycle_mod
 implicit none
 
 integer :: kcell_dividing = 0
+real(REAL_KIND) :: total_dose_time
 
 contains
 
@@ -17,17 +18,17 @@ contains
 ! Need to initialize site and cell concentrations when a cell divides and when there is
 ! cell death.
 !-----------------------------------------------------------------------------------------
-subroutine GrowCells(dose,dt,changed, ok)
-real(REAL_KIND) :: dose, dt
+subroutine GrowCells(dt,changed, ok)
+real(REAL_KIND) :: dt
 logical :: changed, ok
 
 !call logger('GrowCells')
 !tnow = istep*DELTA_T
 ok = .true.
-if (dose > 0) then
-	call Irradiation(dose, ok)
-	if (.not.ok) return
-endif
+!if (dose > 0) then
+!	call Irradiation(dose, ok)
+!	if (.not.ok) return
+!endif
 changed = .false.
 !call grower(dt,changed,OK)
 call new_grower(dt,changed,OK)
@@ -275,11 +276,13 @@ integer :: kcell, nlist0, site(3), i, ichemo, idrug, im, ityp, killmodel, kpar=0
 real(REAL_KIND) :: C_O2, C_glucose, kmet, Kd, dMdt, Cdrug, n_O2, kill_prob, dkill_prob, death_prob, survival_prob, u
 logical :: anoxia_death, aglucosia_death
 real(REAL_KIND) :: delayed_death_prob(MAX_CELLTYPES)
+logical :: flag
 type(cell_type), pointer :: cp
 type(drug_type), pointer :: dp
 real(REAL_KIND) :: p_tag = 0.3
+logical :: allow_anoxia = .false.
 
-!call logger('CellDeath')
+!write(nflog,*) 'CellDeath'
 ok = .true.
 if (colony_simulation) then
     return
@@ -290,6 +293,7 @@ anoxia_death = chemo(OXYGEN)%controls_death
 aglucosia_death = chemo(GLUCOSE)%controls_death
 delayed_death_prob = apoptosis_rate*dt/3600
 nlist0 = nlist
+flag = .false.
 do kcell = 1,nlist
     cp => cell_list(kcell)
 	if (cp%state == DEAD) cycle
@@ -306,6 +310,8 @@ do kcell = 1,nlist
 	call getO2conc(cp,C_O2)
 	if (use_metabolism) then
 !		if (cp%metab%A_rate*cp%V < cp%ATP_rate_factor*ATPs(ityp)*Vcell_cm3) then
+		! Suppress death by anoxia for debugging
+		if (allow_anoxia) then
 		if (cp%metab%A_rate < cp%ATP_rate_factor*ATPs(ityp)) then
 			cp%state = DYING
 			cp%ATP_tag = .true.
@@ -313,6 +319,7 @@ do kcell = 1,nlist
 			Ncells_dying(ityp) = Ncells_dying(ityp) + 1
 			NATP_tag(ityp) = NATP_tag(ityp) + 1
 			cycle
+		endif
 		endif	
 	else
 		if (cp%anoxia_tag) then
@@ -366,26 +373,34 @@ do kcell = 1,nlist
 		survival_prob = 1
 		do im = 0,2
 			if (.not.dp%kills(ityp,im)) cycle
-			killmodel = dp%kill_model(ityp,im)		! could use %drugclass to separate kill modes 
 			Cdrug = cp%Cin(ichemo + im)
+			if (Cdrug == 0) cycle
+!			if (.not.flag) write(nflog,*) 'idrug,im,kcell: ',idrug,im,kcell
+			killmodel = dp%kill_model(ityp,im)		! could use %drugclass to separate kill modes 
 			Kd = dp%Kd(ityp,im)
 			n_O2 = dp%n_O2(ityp,im)
+!			Cdrug = 0.54
 			kmet = (1 - dp%C2(ityp,im) + dp%C2(ityp,im)*dp%KO2(ityp,im)**n_O2/(dp%KO2(ityp,im)**n_O2 + C_O2**n_O2))*dp%Kmet0(ityp,im)
+			if (.not.flag .and. C_O2 < 0.01) write(nflog,'(a,6e12.3)') 'C_O2,Kmet0,kmet,Kd,Cdrug,dt: ',C_O2,dp%Kmet0(ityp,im),kmet,Kd,Cdrug,dt
 			dMdt = kmet*Cdrug
 			call getDrugKillProb(killmodel,Kd,dMdt,Cdrug,dt,dkill_prob)
-!			kill_prob = kill_prob + dkill_prob
 			survival_prob = survival_prob*(1 - dkill_prob)
-!			if (kcell == 1) write(*,'(a,2i5,5f8.4)') 'CellDeath: ',istep,im,Cdrug,dt,dMdt,dkill_prob,survival_prob
+			if (.not.flag .and. C_O2 < 0.01) write(nflog,'(a,2e12.3)') 'dkill_prob: ',dkill_prob,survival_prob
 			death_prob = max(death_prob,dp%death_prob(ityp,im))
 		enddo
 		kill_prob = 1 - survival_prob
-!		if (kcell == 1) write(*,'(a,f8.4)') 'kill_prob: ',kill_prob
+		if (kill_prob == 0) cycle
+		if (.not.flag .and. idrug==1) then
+			total_dose_time = total_dose_time + dt
+			write(nflog,'(a,2f7.4,2f8.1)') 'kill_prob, SF: ',kill_prob,1-kill_prob,dt,total_dose_time
+		endif
 		u = par_uni(kpar)
 	    if (u < kill_prob) then
 			cp%p_drug_death(idrug) = death_prob
 			cp%drug_tag(idrug) = .true.
             Ndrug_tag(idrug,ityp) = Ndrug_tag(idrug,ityp) + 1
 		endif
+		flag = .true.
 	enddo
 enddo
 end subroutine

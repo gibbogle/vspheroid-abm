@@ -130,6 +130,7 @@ type metabolism_type
 	real(REAL_KIND) :: f_G
 	real(REAL_KIND) :: f_P
 	real(REAL_KIND) :: C_P
+	real(REAL_KIND) :: A_fract
 end type
 
 type cell_type
@@ -359,16 +360,31 @@ real(REAL_KIND) :: C_O2_bdry
 real(REAL_KIND) :: total_dMdt
 
 ! Metabolism parameters
+!real(REAL_KIND) :: N_GA(MAX_CELLTYPES)		! number of ATP molecules generated per glucose molecule in glycosis
+!real(REAL_KIND) :: N_GI(MAX_CELLTYPES)		! number of intermediate molecules generated per glucose molecule in glycosis
+!!real(REAL_KIND) :: F_PO_BASE(MAX_CELLTYPES)	! base level of pyruvate oxidation (fraction of glycolysis rate)
+!real(REAL_KIND) :: N_PA(MAX_CELLTYPES)		! number of ATP molecules generated per pyruvate molecule in pyruvate oxidation
+!real(REAL_KIND) :: N_PI(MAX_CELLTYPES)		! number of intermediate molecules generated per pyruvate molecule in pyruvate oxidation
+!real(REAL_KIND) :: N_PO(MAX_CELLTYPES)		! number of O2 molecules consumed per pyruvate molecule in pyruvate oxidation
+!!real(REAL_KIND) :: f_ATPg(MAX_CELLTYPES)	! threshold ATP production rate fractions for cell growth, survival
+!real(REAL_KIND) :: f_ATPs(MAX_CELLTYPES)	! threshold ATP production rate fractionss for cell growth, survival
+!!real(REAL_KIND) :: ATPg(MAX_CELLTYPES)		! threshold ATP production rates for cell growth, survival
+!real(REAL_KIND) :: ATPs(MAX_CELLTYPES)		! threshold ATP production rates for cell growth, survival
+
 real(REAL_KIND) :: N_GA(MAX_CELLTYPES)		! number of ATP molecules generated per glucose molecule in glycosis
 real(REAL_KIND) :: N_GI(MAX_CELLTYPES)		! number of intermediate molecules generated per glucose molecule in glycosis
 !real(REAL_KIND) :: F_PO_BASE(MAX_CELLTYPES)	! base level of pyruvate oxidation (fraction of glycolysis rate)
 real(REAL_KIND) :: N_PA(MAX_CELLTYPES)		! number of ATP molecules generated per pyruvate molecule in pyruvate oxidation
 real(REAL_KIND) :: N_PI(MAX_CELLTYPES)		! number of intermediate molecules generated per pyruvate molecule in pyruvate oxidation
 real(REAL_KIND) :: N_PO(MAX_CELLTYPES)		! number of O2 molecules consumed per pyruvate molecule in pyruvate oxidation
-!real(REAL_KIND) :: f_ATPg(MAX_CELLTYPES)	! threshold ATP production rate fractions for cell growth, survival
-real(REAL_KIND) :: f_ATPs(MAX_CELLTYPES)	! threshold ATP production rate fractionss for cell growth, survival
-!real(REAL_KIND) :: ATPg(MAX_CELLTYPES)		! threshold ATP production rates for cell growth, survival
-real(REAL_KIND) :: ATPs(MAX_CELLTYPES)		! threshold ATP production rates for cell growth, survival
+real(REAL_KIND) :: f_ATPg(MAX_CELLTYPES)	! threshold ATP production rate fractions for cell growth
+real(REAL_KIND) :: f_ATPs(MAX_CELLTYPES)	! threshold ATP production rate fractions for cell survival
+real(REAL_KIND) :: f_ATPramp(MAX_CELLTYPES)	! multiplying factor for ramp start for reducing r_G, r_P
+real(REAL_KIND) :: ATPg(MAX_CELLTYPES)		! threshold ATP production rates for cell growth
+real(REAL_KIND) :: ATPs(MAX_CELLTYPES)		! threshold ATP production rates for cell survival
+real(REAL_KIND) :: ATP_Km(MAX_CELLTYPES)	! Michaelis-Menten Km for dependence of target ATP rate on C_O2
+real(REAL_KIND) :: CO_H(MAX_CELLTYPES)		! threshold O2 for Ofactor
+real(REAL_KIND) :: CG_H(MAX_CELLTYPES)		! threshold glucose for Gfactor
 type(metabolism_type), target :: metabolic(MAX_CELLTYPES)
 
 integer :: show_progeny
@@ -411,6 +427,7 @@ logical :: use_extracellular_O2 = .false.
 logical :: use_migration = .false.
 logical :: use_divide_time_distribution = .true.
 logical :: use_constant_divide_volume = .true.
+logical :: use_new_drugdata = .true.
 logical :: suppress_growth = .false.
 logical :: use_hysteresis = .false.
 logical :: use_permute = .false.

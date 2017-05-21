@@ -19,6 +19,7 @@ extern Params *parm;	// I don't believe this is the right way, but it works
 //--------------------------------------------------------------------------------------------------------
 void MainWindow::on_comb_DRUG_A_currentIndexChanged(int index)
 {
+    if (comb_DRUG_A->currentIndex() == -1) return;
     QString filename = comb_DRUG_A->currentText();
     QString drugname = filename;
     QString cell_line;
@@ -42,6 +43,7 @@ void MainWindow::on_comb_DRUG_A_currentIndexChanged(int index)
 //--------------------------------------------------------------------------------------------------------
 void MainWindow::on_comb_DRUG_B_currentIndexChanged(int index)
 {
+    if (comb_DRUG_B->currentIndex() == -1) return;
     QString filename = comb_DRUG_B->currentText();
     QString drugname = filename;
     QString cell_line;
@@ -82,13 +84,15 @@ void MainWindow::on_cbox_USE_DRUG_A_toggled(bool checked)
     comb_DRUG_A->setEnabled(checked);
     text_DRUG_A_NAME->setEnabled(checked);
     radioButton_drugA->setEnabled(checked);
+    comb_DRUG_A->setCurrentIndex(-1);
     if (checked) {
         radioButton_drugA->setChecked(true);
+        /*
         QString drugname = comb_DRUG_A->currentText();
         extractDrugname(&drugname,&cell_line);
-        LOG_QMSG("drugname, cell_line: " + drugname + " " + cell_line);
         text_DRUG_A_NAME->setText(drugname);
         radioButton_drugA->setText(drugname);
+        */
         on_comb_DRUG_A_currentIndexChanged(0);
     } else {
         radioButton_drugA->setChecked(false);
@@ -97,7 +101,7 @@ void MainWindow::on_cbox_USE_DRUG_A_toggled(bool checked)
             radioButton_drugB->setChecked(true);
         }
         text_DRUG_A_NAME->setText("");
-        radioButton_drugA->setText("");
+        radioButton_drugA->setText("Drug A");
     }
 }
 
@@ -110,12 +114,15 @@ void MainWindow::on_cbox_USE_DRUG_B_toggled(bool checked)
     comb_DRUG_B->setEnabled(checked);
     text_DRUG_B_NAME->setEnabled(checked);
     radioButton_drugB->setEnabled(checked);
+    comb_DRUG_B->setCurrentIndex(-1);
     if (checked) {
         radioButton_drugB->setChecked(true);
+        /*
         QString drugname = comb_DRUG_B->currentText();
         extractDrugname(&drugname,&cell_line);
         text_DRUG_B_NAME->setText(drugname);
         radioButton_drugB->setText(drugname);
+        */
         on_comb_DRUG_B_currentIndexChanged(1);
     } else {
         radioButton_drugB->setChecked(false);
@@ -125,7 +132,7 @@ void MainWindow::on_cbox_USE_DRUG_B_toggled(bool checked)
             radioButton_drugA->setChecked(true);
         }
         text_DRUG_B_NAME->setText("");
-        radioButton_drugB->setText("");
+        radioButton_drugB->setText("Drug B");
     }
 }
 
@@ -133,16 +140,16 @@ void MainWindow::on_cbox_USE_DRUG_B_toggled(bool checked)
 //-----------------------------------------------------------------------------------------
 void MainWindow::on_checkBox_CELLDISPLAY_1_toggled(bool display)
 {
-    vtk->display_celltype[1] = display;
-    vtk->renderCells();
+//    vtk->display_celltype[1] = display;
+//    vtk->renderCells();
 }
 
 //-----------------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------------
 void MainWindow::on_checkBox_CELLDISPLAY_2_toggled(bool display)
 {
-    vtk->display_celltype[2] = display;
-    vtk->renderCells();
+//    vtk->display_celltype[2] = display;
+//    vtk->renderCells();
 }
 
 //-----------------------------------------------------------------------------------------
@@ -151,8 +158,8 @@ void MainWindow::on_comboBox_CELLCOLOUR_1_currentIndexChanged(int index)
 {
     QColor qcolor;
     qcolor = comboColour[index];
-    vtk->celltype_colour[1] = qcolor;
-    vtk->renderCells();
+//    vtk->celltype_colour[1] = qcolor;
+//    vtk->renderCells();
     sprintf(msg,"changed celltype_colour[1]: index: %d r,g,b: %d %d %d",index,qcolor.red(),qcolor.green(),qcolor.blue());
     LOG_MSG(msg);
 }
@@ -161,8 +168,8 @@ void MainWindow::on_comboBox_CELLCOLOUR_1_currentIndexChanged(int index)
 //-----------------------------------------------------------------------------------------
 void MainWindow::on_comboBox_CELLCOLOUR_2_currentIndexChanged(int index)
 {
-    vtk->celltype_colour[2] = comboColour[index];
-    vtk->renderCells();
+//    vtk->celltype_colour[2] = comboColour[index];
+//    vtk->renderCells();
 }
 
 //------------------------------------------------------------------------------------------------------
@@ -183,7 +190,7 @@ void MainWindow::on_action_FACS_triggered()
     stackedWidget->setCurrentIndex(4);
     action_outputs->setEnabled(true);
     action_inputs->setEnabled(true);
-    action_VTK->setEnabled(true);
+//    action_VTK->setEnabled(true);
     action_FACS->setEnabled(false);
     Global::showingFACS = true;
 }
@@ -221,35 +228,40 @@ void MainWindow::radioButtonChanged(QAbstractButton *b)
     QString wtag = b->objectName();
     LOG_QMSG("radioButtonChanged: " + wtag);
     int rbutton_case;
-    QString ptag = parse_rbutton(wtag,&rbutton_case);
-    // Now need to reflect the change in the workingParameterList
-    // Need to locate ptag
-    LOG_QMSG("ptag: " + ptag);
-    wtag = wtag.mid(5);
-    for (int k=0; k<nParams; k++) {
-        PARAM_SET p = parm->get_param(k);
-        if (wtag.compare(p.tag) == 0) {
-            parm->set_value(k,double(rbutton_case));
-            LOG_QMSG("found: " + wtag);
-            sprintf(msg,"parm->set_value: %d",rbutton_case);
-            LOG_MSG(msg);
-            if (ptag.compare("HYPOXIA")==0) {
-                Global::i_hypoxia_cutoff = rbutton_case;
-                QString linetag = "line_HYPOXIA_"+QString::number(rbutton_case);
-                LOG_QMSG("hypoxia tag: " + linetag);
-                QLineEdit *line = findChild<QLineEdit *>(linetag);
-                line_HYPOXIA_THRESHOLD->setText(line->text());
+//    if (b->isChecked()) {
+        QString ptag = parse_rbutton(wtag,&rbutton_case);
+        // Now need to reflect the change in the workingParameterList
+        // Need to locate ptag
+        LOG_QMSG("ptag: " + ptag);
+        wtag = wtag.mid(5);
+        for (int k=0; k<nParams; k++) {
+            PARAM_SET p = parm->get_param(k);
+            if (wtag.compare(p.tag) == 0) {
+                parm->set_value(k,double(rbutton_case));
+                LOG_QMSG("found: " + wtag);
+                sprintf(msg,"parm->set_value: %d",rbutton_case);
+                LOG_MSG(msg);
+                if (ptag.compare("HYPOXIA")==0) {
+                    Global::i_hypoxia_cutoff = rbutton_case;
+                    QString linetag = "line_HYPOXIA_"+QString::number(rbutton_case);
+                    LOG_QMSG("hypoxia tag: " + linetag);
+                    QLineEdit *line = findChild<QLineEdit *>(linetag);
+                    line_HYPOXIA_THRESHOLD->setText(line->text());
+                }
+                break;
             }
-            break;
         }
-    }
-//    if (wtag.contains("FD_SOLVER")) {
-//        setFields();
-//    }
-    if (ptag.compare("axis") == 0) {
-        Global::conc_axis = rbutton_case;
-        LOG_QMSG("selected profile axis: " + QString::number(Global::conc_axis));
-    }
+//        if (radioButton_hypoxia_1->isChecked()) {
+//            Global::i_hypoxia_cutoff = 1;
+//            line_HYPOXIA_THRESHOLD->setText(line_HYPOXIA_1->text());
+//        } else if (radioButton_hypoxia_2->isChecked()) {
+//            Global::i_hypoxia_cutoff = 2;
+//            line_HYPOXIA_THRESHOLD->setText(line_HYPOXIA_2->text());
+//        } else if (radioButton_hypoxia_3->isChecked()) {
+//            Global::i_hypoxia_cutoff = 3;
+//            line_HYPOXIA_THRESHOLD->setText(line_HYPOXIA_3->text());
+//        }
+
 }
 
 void MainWindow::buttonClick_cell_constituent(QAbstractButton* button)
@@ -316,7 +328,7 @@ void MainWindow::onSelectFieldConstituent()
 
 void MainWindow::on_verticalSliderTransparency_sliderMoved(int position)
 {
-    vtk->setOpacity(position);
+//    vtk->setOpacity(position);
 }
 
 //--------------------------------------------------------------------------------------------------------
@@ -341,6 +353,7 @@ void MainWindow::on_checkBox_colony_toggled()
 void MainWindow::on_lineEdit_colony_days_textChanged()
 {
     Global::colony_days = lineEdit_colony_days->text().toDouble();
+
 }
 
 //--------------------------------------------------------------------------------------------------------
@@ -384,3 +397,4 @@ void MainWindow:: on_cbox_SAVE_FACS_DATA_toggled(bool checked)
     line_SAVE_FACS_DATA_INTERVAL->setEnabled(checked);
     line_SAVE_FACS_DATA_NUMBER->setEnabled(checked);
 }
+
