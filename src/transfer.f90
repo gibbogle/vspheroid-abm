@@ -794,20 +794,20 @@ end subroutine
 
 !-----------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------
-subroutine getNecroticFraction(necrotic_fraction, totvol_cm3)
-real(REAL_KIND) :: necrotic_fraction, totvol_cm3
-real(REAL_KIND) :: dz, cellvol_cm3, dvol
-!real(REAL_KIND) :: necrotic_vol_cm3
-
-!call getNecroticVolume(necrotic_vol_cm3)
-!necrotic_fraction = necrotic_vol_cm3/vol_cm3
-dz = 2*Raverage
-cellvol_cm3 = Ncells/(1000.*Nmm3)	! Nmm3 = calibration target # of cells/mm3
-dvol = totvol_cm3-cellvol_cm3
-necrotic_fraction = dvol/totvol_cm3
-!write(*,'(a,i6,3e12.3,f6.3)') 'getNecroticFraction: ',Ncells,cellvol_cm3,totvol_cm3,dvol,necrotic_fraction
-if (necrotic_fraction < 0.005) necrotic_fraction = 0
-end subroutine
+!subroutine getNecroticFraction(necrotic_fraction, totvol_cm3)
+!real(REAL_KIND) :: necrotic_fraction, totvol_cm3
+!real(REAL_KIND) :: dz, cellvol_cm3, dvol
+!!real(REAL_KIND) :: necrotic_vol_cm3
+!
+!!call getNecroticVolume(necrotic_vol_cm3)
+!!necrotic_fraction = necrotic_vol_cm3/vol_cm3
+!dz = 2*Raverage
+!cellvol_cm3 = Ncells/(1000.*Nmm3)	! Nmm3 = calibration target # of cells/mm3
+!dvol = totvol_cm3-cellvol_cm3
+!necrotic_fraction = dvol/totvol_cm3
+!!write(*,'(a,i6,3e12.3,f6.3)') 'getNecroticFraction: ',Ncells,cellvol_cm3,totvol_cm3,dvol,necrotic_fraction
+!if (necrotic_fraction < 0.005) necrotic_fraction = 0
+!end subroutine
 
 !-----------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------
@@ -817,7 +817,7 @@ real(REAL_KIND) :: area_cm2, radius, cntr(3), rng(3)
 !call getBlobCentreRange(cntr,rng,radius)
 !diam_cm = 2*radius
 !vol_cm3 = (4*PI/3)*radius**3
-call getVolume(vol_cm3, area_cm2)
+call getVolume(5,vol_cm3, area_cm2)
 diam_cm = 2*sqrt(area_cm2/PI)
 end subroutine
 
@@ -880,6 +880,7 @@ integer :: TNanoxia_dead, TNaglucosia_dead, TNradiation_dead, TNdrug_dead(2),  T
 integer :: ityp, i, im, idrug
 real(REAL_KIND) :: diam_um, hypoxic_percent, clonohypoxic_percent, growth_percent, necrotic_percent,  npmm3, Tplate_eff
 real(REAL_KIND) :: diam_cm, vol_cm3, vol_mm3, hour, necrotic_fraction, doubling_time, plate_eff(MAX_CELLTYPES)
+real(REAL_KIND) :: volume_cm3(5), maxarea(5), diameter_um(5)
 real(REAL_KIND) :: cmedium(MAX_CHEMO), cbdry(MAX_CHEMO)
 real(REAL_KIND) :: r_G, r_P, r_A, r_I, P_utilisation
 
@@ -920,8 +921,8 @@ clonohypoxic_percent = (100.*nclonohypoxic(i_hypoxia_cutoff))/TNviable
 
 call getGrowthCount(ngrowth)
 growth_percent = (100.*ngrowth(i_growth_cutoff))/Ncells
-call getNecroticFraction(necrotic_fraction,vol_cm3)
-necrotic_percent = 100.*necrotic_fraction
+!call getNecroticFraction(necrotic_fraction,vol_cm3)
+!necrotic_percent = 100.*necrotic_fraction
 do ityp = 1,Ncelltypes
 	if (Nlive(ityp) > 0) then
 		plate_eff(ityp) = real(Nviable(ityp))/Nlive(ityp)
@@ -966,6 +967,13 @@ call getMediumConc(cmedium, cbdry)
 !	enddo
 !enddo
 
+call getVolumes(volume_cm3,maxarea)
+do i = 1,5
+	diameter_um(i) = 10000*(6*volume_cm3(i)/PI)**(1./3)
+enddo
+necrotic_fraction = volume_cm3(1)/volume_cm3(5)
+necrotic_percent = 100.*necrotic_fraction
+
 if (ndoublings > 0) then
     doubling_time = doubling_time_sum/(3600*ndoublings)
 else
@@ -980,8 +988,8 @@ summaryData(1:47) = [ rint(istep), rint(Ncells), rint(TNATP_dead), rint(TNanoxia
 	cmedium(OXYGEN), cmedium(GLUCOSE), cmedium(LACTATE), cmedium(DRUG_A:DRUG_A+2), cmedium(DRUG_B:DRUG_B+2), &
 	cbdry(OXYGEN), cbdry(GLUCOSE), cbdry(LACTATE), cbdry(DRUG_A:DRUG_A+2), cbdry(DRUG_B:DRUG_B+2), &
 	doubling_time, r_G, r_P, r_A, r_I, rint(ndoublings), P_utilisation ]
-write(nfres,'(a,a,2a12,i8,3e12.4,26i7,37e12.4)') trim(header),' ',gui_run_version, dll_run_version, &
-	istep, hour, vol_mm3, diam_um, Ncells_type(1:2), &
+write(nfres,'(a,a,2a12,i8,7e12.4,26i7,37e12.4)') trim(header),' ',gui_run_version, dll_run_version, &
+	istep, hour, vol_mm3, diameter_um, Ncells_type(1:2), &
     NATP_dead(1:2), Nanoxia_dead(1:2), Naglucosia_dead(1:2), Ndrug_dead(1,1:2), &
     Ndrug_dead(2,1:2), Nradiation_dead(1:2), &
     Ntagged_ATP(1:2), Ntagged_anoxia(1:2), Ntagged_aglucosia(1:2), Ntagged_drug(1,1:2), &
@@ -2003,7 +2011,7 @@ end subroutine
 ! The idea is to use a sheaf of chords in each axis direction instead of a single one,
 ! e.g. a 5x5 = 25 sheaf.
 !-----------------------------------------------------------------------------------------
-subroutine getNecroticVolume(vol)
+subroutine getNecroticVolume1(vol)
 real(REAL_KIND) :: vol
 real(REAL_KIND) :: rmin(3), rmax(3), cblob(3), cb(3), c(3), r, smin, smax, R3, Rn(3), Rdiv, Rsum
 integer :: kcell, i, j, k, js, ix0, iy0, iz0
@@ -2179,376 +2187,6 @@ vol = (4./3.)*PI*R3
 !write(*,'(a,e12.3)') 'vol: ',vol
 end subroutine
 
-!-----------------------------------------------------------------------------------------
-! Estimate necrotic volume by determining the range in the three axis directions
-!-----------------------------------------------------------------------------------------
-subroutine getNecroticVolume1(vol)
-real(REAL_KIND) :: vol
-real(REAL_KIND) :: rmin(3), rmax(3), rng(3), cblob(3), c(3), r, smin, smax, R3, Rn(3), Rdiv
-integer :: kcell, k, js, ix, iy, iz, ixx, iyy, izz
-logical :: overlap, hit1, hit2
-type(cell_type), pointer :: cp
-real(REAL_KIND) :: fac = 1.5
-
-! First estimate blob centre location
-rmin = 1.0e10
-rmax = 0
-do kcell = 1,nlist
-	if (cell_list(kcell)%state == DEAD) cycle
-	cp => cell_list(kcell)
-	do k = 1,cp%nspheres
-		rmin = min(rmin,cp%centre(:,k)-cp%radius(k))
-		rmax = max(rmax,cp%centre(:,k)+cp%radius(k))
-	enddo
-enddo
-cblob(:) = (rmin(:) + rmax(:))/2	! approximate blob centre
-ix = cblob(1)/DELTA_X + 1
-iy = cblob(2)/DELTA_X + 1
-iz = cblob(3)/DELTA_X + 1
-!write(*,*) 'getNecroticVolume:'
-!write(*,'(a,3f8.4)') 'centre: ',cblob
-!write(*,'(a,3i4)') 'centre gridsite: ',ix,iy,iz
-! Check if any cells in this gridcell overlap with C(:)
-! A cell is treated here as a cube with side = cell diameter
-overlap = .false.
-do k = 1,grid(ix,iy,iz)%nc
-	kcell = grid(ix,iy,iz)%cell(k)
-	cp => cell_list(kcell)
-	do js = 1,cp%nspheres
-		r = fac*cp%radius(js)
-		c = cp%centre(:,js)
-!		write(*,'(a,i6,3(2f8.4,2x))') 'kcell,bnds: ',kcell,c(1)-r,c(1)+r,c(2)-r,c(2)+r,c(3)-r,c(3)+r
-		if ((cblob(1) >= c(1)-r .and. cblob(1) <= c(1)+r) .and. &
-			(cblob(2) >= c(2)-r .and. cblob(2) <= c(2)+r) .and. &
-			(cblob(3) >= c(3)-r .and. cblob(3) <= c(3)+r)) then
-			overlap = .true.
-			exit
-		endif
-	enddo
-	if (overlap) exit
-enddo
-if (overlap) then
-	vol = 0
-	return
-endif
-! There is a gap in the centre, find the gap extent in each axis direction
-! X direction.  
-!write(*,*) 'seeking rmin, rmax in X direction'
-smin = 1.0e10
-smax = 0
-hit1 = .false.
-hit2 = .false.
-do ixx = 1,NX-1
-	do k = 1,grid(ixx,iy,iz)%nc
-		kcell = grid(ixx,iy,iz)%cell(k)
-		cp => cell_list(kcell)
-		do js = 1,cp%nspheres
-			r = fac*cp%radius(js)
-			c = cp%centre(:,js)
-			if ((cblob(2) > c(2)-r .and. cblob(2) < c(2)+r) .and. &
-				(cblob(3) > c(3)-r .and. cblob(3) < c(3)+r)) then
-!				write(*,'(3(2f8.4,2x))') c(1)-r,c(1)+r,c(2)-r,c(2)+r,c(3)-r,c(3)+r
-				if (smax < c(1)+r .and. cblob(1) > c(1)+r) then
-					smax = c(1)+r
-!					write(*,'(a,f8.4)') 'smax: ',smax
-					hit1 = .true.
-				endif
-				if (smin > c(1)-r .and. cblob(1) < c(1)-r) then
-					smin = c(1)-r
-!					write(*,'(a,f8.4)') 'smin: ',smin
-					hit2 = .true.
-				endif
-			endif
-		enddo
-	enddo
-enddo
-if (hit1) then
-	rmin(1) = smax
-else
-	write(nflog,*) 'Error: not hit1'
-	stop
-endif
-if (hit2) then
-	rmax(1) = smin
-else
-	write(nflog,*) 'Error: not hit2'
-	stop
-endif
-! Y direction.  
-!write(*,*) 'seeking rmin, rmax in Y direction'
-smin = 1.0e10
-smax = 0
-hit1 = .false.
-hit2 = .false.
-do iyy = 1,NY-1
-	do k = 1,grid(ix,iyy,iz)%nc
-		kcell = grid(ix,iyy,iz)%cell(k)
-		cp => cell_list(kcell)
-		do js = 1,cp%nspheres
-			r = fac*cp%radius(js)
-			c = cp%centre(:,js)
-			if ((cblob(1) > c(1)-r .and. cblob(1) < c(1)+r) .and. &
-				(cblob(3) > c(3)-r .and. cblob(3) < c(3)+r)) then
-!				write(*,'(3(2f8.4,2x))') c(1)-r,c(1)+r,c(2)-r,c(2)+r,c(3)-r,c(3)+r
-				if (smax < c(2)+r .and. cblob(2) > c(2)+r) then
-					smax = c(2)+r
-!					write(*,'(a,f8.4)') 'smax: ',smax
-					hit1 = .true.
-				endif
-				if (smin > c(2)-r .and. cblob(2) < c(2)-r) then
-					smin = c(2)-r
-!					write(*,'(a,f8.4)') 'smin: ',smin
-					hit2 = .true.
-				endif
-			endif
-		enddo
-	enddo
-enddo
-if (hit1) then
-	rmin(2) = smax
-else
-	write(nflog,*) 'Error: not hit1'
-	stop
-endif
-if (hit2) then
-	rmax(2) = smin
-else
-	write(nflog,*) 'Error: not hit2'
-	stop
-endif
-!write(*,*) 'seeking rmin, rmax in Z direction'
-smin = 1.0e10
-smax = 0
-hit1 = .false.
-hit2 = .false.
-do izz = 1,NZ-1
-	do k = 1,grid(ix,iy,izz)%nc
-		kcell = grid(ix,iy,izz)%cell(k)
-		cp => cell_list(kcell)
-		do js = 1,cp%nspheres
-			r = fac*cp%radius(js)
-			c = cp%centre(:,js)
-			if ((cblob(2) > c(2)-r .and. cblob(2) < c(2)+r) .and. &
-				(cblob(1) > c(1)-r .and. cblob(1) < c(1)+r)) then
-!				write(*,'(3(2f8.4,2x))') c(1)-r,c(1)+r,c(2)-r,c(2)+r,c(3)-r,c(3)+r
-				if (smax < c(3)+r .and. cblob(3) > c(3)+r) then
-					smax = c(3)+r
-!					write(*,'(a,f8.4)') 'smax: ',smax
-					hit1 = .true.
-				endif
-				if (smin > c(3)-r .and. cblob(3) < c(3)-r) then
-					smin = c(3)-r
-!					write(*,'(a,f8.4)') 'smin: ',smin
-					hit2 = .true.
-				endif
-			endif
-		enddo
-	enddo
-enddo
-if (hit1) then
-	rmin(3) = smax
-else
-	write(nflog,*) 'Error: not hit1'
-	stop
-endif
-if (hit2) then
-	rmax(3) = smin
-else
-	write(nflog,*) 'Error: not hit2'
-	stop
-endif
-
-#if 0
-write(nflog,*) 'seeking rmax in X direction'
-smin = 1.0e10
-hit = .false.
-do ixx = 1,NX-1
-	do k = 1,grid(ixx,iy,iz)%nc
-		kcell = grid(ixx,iy,iz)%cell(k)
-		cp => cell_list(kcell)
-		do js = 1,cp%nspheres
-			r = fac*cp%radius(js)
-			c = cp%centre(:,js)
-			if ((cblob(2) > c(2)-r .and. cblob(2) < c(2)+r) .and. &
-				(cblob(3) > c(3)-r .and. cblob(3) < c(3)+r)) then
-				write(nflog,'(3(2f8.4,2x))') c(1)-r,c(1)+r,c(2)-r,c(2)+r,c(3)-r,c(3)+r
-				if (smin > c(1)-r .and. cblob(1) < c(1)-r) then
-					smin = c(1)-r
-					write(nflog,'(a,f8.4)') 'smin: ',smin
-					hit = .true.
-				endif
-			endif
-		enddo
-	enddo
-enddo
-if (hit) then
-	rmax(1) = smin
-else
-	write(nflog,*) 'Error: not hit'
-	stop
-endif
-
-! Y direction.  
-write(nflog,*) 'Y direction'
-do iyy = iy,1,-1
-	hit = .false.
-	smax = 0
-	do k = 1,grid(ix,iyy,iz)%nc
-		kcell = grid(ix,iyy,iz)%cell(k)
-		cp => cell_list(kcell)
-		do js = 1,cp%nspheres
-			r = fac*cp%radius(js)
-			c = cp%centre(:,js)
-!			write(*,'(i2,f8.4)') kcell,c(2)+r
-			if ((smax < c(2)+r .and. cblob(2) > c(2)+r) .and. &
-				(cblob(1) > c(1)-r .and. cblob(1) < c(1)+r) .and. &
-				(cblob(3) > c(3)-r .and. cblob(3) < c(3)+r)) then
-				smax = c(2)+r
-				hit = .true.
-			endif
-		enddo
-	enddo
-	if (hit) then
-		rmin(2) = smax
-		write(nflog,'(a,f8.4)') 'rmin(2): ',rmin(2)
-		exit
-	endif
-enddo
-if (.not.hit) then
-	write(nflog,*) 'Error: not hit'
-	stop
-endif
-do iyy = iy,NY-1
-	hit = .false.
-	smin = 1.0e10
-	do k = 1,grid(ix,iyy,iz)%nc
-		kcell = grid(ix,iyy,iz)%cell(k)
-		cp => cell_list(kcell)
-		do js = 1,cp%nspheres
-			r = fac*cp%radius(js)
-			c = cp%centre(:,js)
-!			write(*,'(i2,f8.4)') kcell,c(2)-r
-			if ((smin > c(2)-r .and. cblob(2) < c(2)-r) .and. &
-				(cblob(1) > c(1)-r .and. cblob(1) < c(1)+r) .and. &
-				(cblob(3) > c(3)-r .and. cblob(3) < c(3)+r)) then
-				smin = c(2)-r
-				hit = .true.
-			endif
-		enddo
-	enddo
-	if (hit) then
-		rmax(2) = smin
-		write(nflog,'(a,f8.4)') 'rmax(2): ',rmax(2)
-		exit
-	endif
-enddo
-if (.not.hit) then
-	write(nflog,*) 'Error: not hit'
-	stop
-endif
-! Z direction.  
-write(nflog,*) 'Z direction'
-do izz = iz,1,-1
-	hit = .false.
-	smax = 0
-	do k = 1,grid(ix,iy,izz)%nc
-		kcell = grid(ix,iy,izz)%cell(k)
-		cp => cell_list(kcell)
-		do js = 1,cp%nspheres
-			r = fac*cp%radius(js)
-			c = cp%centre(:,js)
-			if ((smax < c(3)+r .and. cblob(3) > c(3)+r) .and. &
-				(cblob(2) > c(2)-r .and. cblob(2) < c(2)+r) .and. &
-				(cblob(1) > c(1)-r .and. cblob(1) < c(1)+r)) then
-				smax = c(3)+r
-				hit = .true.
-			endif
-		enddo
-	enddo
-	if (hit) then
-		rmin(3) = smax
-		write(nflog,'(a,f8.4)') 'rmin(3): ',rmin(3)
-		exit
-	endif
-enddo
-if (.not.hit) then
-	write(nflog,*) 'Error: not hit'
-	stop
-endif
-do izz = iz,NZ-1
-	hit = .false.
-	smin = 1.0e10
-	do k = 1,grid(ix,iy,izz)%nc
-		kcell = grid(ix,iy,izz)%cell(k)
-		cp => cell_list(kcell)
-		do js = 1,cp%nspheres
-			r = fac*cp%radius(js)
-			c = cp%centre(:,js)
-			if ((cblob(2) > c(2)-r .and. cblob(2) < c(2)+r) .and. &
-				(cblob(1) > c(1)-r .and. cblob(1) < c(1)+r)) then
-				write(nflog,*) cblob(3),c(3)-r
-				if ((smin > c(3)-r .and. cblob(3) < c(3)-r)) then
-					smin = c(3)-r
-					hit = .true.
-				endif
-			endif
-		enddo
-	enddo
-	if (hit) then
-		rmax(3) = smin
-		write(nflog,'(a,f8.4)') 'rmax(3): ',rmax(3)
-		exit
-	endif
-enddo
-if (.not.hit) then
-	write(nflog,*) 'Error: not hit'
-	stop
-endif
-Rn = (rmax - rmin)/2
-#endif
-
-Rn = (rmax - rmin)/2
-R3 = (1./3.)*(Rn(1)**3 + Rn(2)**3 + Rn(3)**3)
-Rdiv = (3*Vdivide0/(4*PI))**(1./3.)
-!write(*,'(a,e12.3)') 'Rdiv: ',Rdiv
-!write(*,'(a,3e12.3)') 'Rn: ',Rn
-if (Rn(1) < 0 .or. Rn(2) < 0 .or. Rn(3) < 0) then
-	write(nflog,*) 'Rn < 0'
-	stop
-endif
-if (R3 > 0) then
-	R = R3**(1./3)
-	if (R < 4*Rdiv) then
-		R3 = 0
-		vol = 0
-	endif
-elseif (R3 == 0) then
-	R = 0
-else
-	write(nflog,*) 'Error: getNecroticVolume: R3 < 0: ',R3
-	stop
-endif
-vol = (4./3.)*PI*R3 
-!write(*,'(a,2e12.3)') 'getNecroticVolume: R, vol: ',R, vol
-end subroutine
-
-subroutine write_bdryconcs
-integer :: bcells(3,2)
-real(REAL_KIND) :: c(3,2)
-integer :: ichemo, iaxis, iend, kcell
-
-call getBdryCells(bcells)
-do ichemo = 1,2
-	do iaxis = 1,3
-		do iend = 1,2
-			kcell = bcells(iaxis,iend)
-			c(iaxis,iend) = cell_list(kcell)%Cex(ichemo)
-		enddo
-	enddo
-	write(nflog,'(a,6f8.4,a,f8.4)') chemo(ichemo)%name,c,'  ave: ',sum(c)/6
-enddo
-	
-end subroutine
 
 !-----------------------------------------------------------------------------------------
 ! EC values should be average in the medium.
