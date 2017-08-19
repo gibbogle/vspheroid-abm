@@ -36,6 +36,7 @@ contains
 ! SER_OER is the product of the SER and OER, where
 ! SER = Sensitivity Enhancement Ratio which is drug dependent
 ! OER = Oxygen Enhancement Ratio which is a function of intracellular O2 conc.
+! (Note: OER for PL uses OER_alpha, for L uses OER_beta)
 ! Over the duration of the exposure repair is also occurring (this will be
 ! insignificant if the duration is very short).
 !--------------------------------------------------------------------------
@@ -231,7 +232,7 @@ end function
 ! Time unit = hour
 ! This may need to be changed, because it implicitly assumes that no more
 ! than one repair and one misrepair of each type can occur within a time step.
-! The fix would be to dubdivide the time step, as in the damage subroutine.
+! The fix would be to subdivide the time step, as in the damage subroutine.
 !--------------------------------------------------------------------------
 subroutine repair(cp, ccp, dt)
 type(cell_type), pointer :: cp
