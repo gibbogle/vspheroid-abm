@@ -558,6 +558,14 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "G2 mean delay (h)",
      "Mean of the random component of time spent in phase G2 (exponentially distributed)"},
 
+     {"APOPTOSIS_RATE_1", 0.1, 0, 0,
+     "Apoptosis rate/hr",
+     "The rate of passage from state = DYING to state = DEAD, probability/hour"},
+
+     {"APOPTOSIS_RATE_2", 0.1, 0, 0,
+     "Apoptosis rate/hr",
+     "The rate of passage from state = DYING to state = DEAD, probability/hour"},
+
      {"RMR_ETA_PL_1", 0.6, 0, 0,
      "PL lesion L1 creation rate",
      "Coefficient of rate of creation of L1 potentially lethal lesions: eta_PL"},
@@ -681,10 +689,6 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
        A multiplying factor on both r_G and r_P, f, is calculated as a ramp from 0 - 1 as f_A varies from ATP_G - ATPramp*ATP_G\n\
        i.e. the reduction starts when f_A = ATPramp*ATP_G (f = 1), and when f_A = ATP_G, f = 0.  f_G = f*f_Gn, f_P = f*f_Pn"},
 
-     {"ATP_MM_KM_1", 2, 0, 0,
-      "ATP Michaelis-Menten Km (uM)",
-      "The target ATP production rate depends on C_O2 via a Michaelis-Menten function, ensuring that the target rate -> threshold value as C_O2 -> 0"},
-
      {"K_PL_1", 0.1, 0, 0,
      "Pyruvate -> lactate rate constant",
      "The forward rate constant K_PL of the pyruvate-lactate reaction, i.e. the rate constant for conversion of pyruvate to lactate"},
@@ -696,10 +700,6 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
       {"PYRUVATE_MM_KM_1", 20, 0, 0,
       "Pyruvate Michaelis-Menten Km (uM)",
       "Pyruvate Michaelis-Menten Km (uM). fMM = C_P/(Km + C_P) is a multiple of pyruvate oxidation rate, ensuring that the rate -> 0 as C_P -> 0"},
-
-      {"APOPTOSIS_RATE_1", 0.1, 0, 0,
-      "Apoptosis rate/hr",
-      "The rate of passage from state = DYING to state = DEAD, probability/hour"},
 
       {"N_GA_2", 2, 0, 0,
       "ATP moles produced per glucose mole",
@@ -777,10 +777,6 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
          A multiplying factor on both r_G and r_P, f, is calculated as a ramp from 0 - 1 as f_A varies from ATP_G - ATPramp*ATP_G\n\
          i.e. the reduction starts when f_A = ATPramp*ATP_G (f = 1), and when f_A = ATP_G, f = 0.  f_G = f*f_Gn, f_P = f*f_Pn"},
 
-       {"ATP_MM_KM_2", 2, 0, 0,
-       "ATP Michaelis-Menten Km (uM)",
-       "The target ATP production rate depends on C_O2 via a Michaelis-Menten function, ensuring that the target rate -> threshold value as C_O2 -> 0"},
-
       {"K_PL_2", 0.1, 0, 0,
       "Pyruvate -> lactate rate constant",
       "The forward rate constant of the pyruvate-lactate reaction, i.e. the rate constant for conversion of pyruvate to lactate"},
@@ -792,10 +788,6 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
        {"PYRUVATE_MM_KM_2", 20, 0, 0,
        "Pyruvate Michaelis-Menten Km",
        "Pyruvate Michaelis-Menten Km (uM). fMM = C_P/(Km + C_P) is a multiple of pyruvate oxidation rate, ensuring that the rate -> 0 as C_P -> 0"},
-
-       {"APOPTOSIS_RATE_2", 0.1, 0, 0,
-       "Apoptosis rate/hr",
-       "The rate of passage from state = DYING to state = DEAD, probability/hour"},
 
 // Old parameters
 //           {"USE_METABOLISM", 1,0,1,

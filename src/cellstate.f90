@@ -280,7 +280,7 @@ logical :: flag
 type(cell_type), pointer :: cp
 type(drug_type), pointer :: dp
 real(REAL_KIND) :: p_tag = 0.3
-logical :: allow_anoxia = .false.
+logical :: allow_anoxia = .true.
 
 !write(nflog,*) 'CellDeath'
 ok = .true.

@@ -411,6 +411,8 @@ read(nf,*) ccp%G1_mean_delay(1)
 read(nf,*) ccp%G1_mean_delay(2)
 read(nf,*) ccp%G2_mean_delay(1)
 read(nf,*) ccp%G2_mean_delay(2)
+read(nf,*) Apoptosis_rate(1)
+read(nf,*) Apoptosis_rate(2)
 read(nf,*) ccp%eta_PL
 read(nf,*) ccp%eta_L(1)
 read(nf,*) ccp%eta_L(2)
@@ -459,16 +461,16 @@ do ityp = 1,Ncelltypes
 	read(nf,*) f_ATPs(ityp)
 	read(nf,*) f_ATPg(ityp)
 	read(nf,*) f_ATPramp(ityp)
-	read(nf,*) ATP_Km(ityp)
+!	read(nf,*) ATP_Km(ityp)
 	read(nf,*) K_PL(ityp)
 	read(nf,*) K_LP(ityp)
 	read(nf,*) Hill_Km_P(ityp)
-	read(nf,*) Apoptosis_rate(ityp)
+!	read(nf,*) Apoptosis_rate(ityp)
 enddo
 PDKmin(:) = 0.3
 Hill_N_P = 1
 Hill_Km_P = Hill_Km_P/1000		! uM -> mM
-ATP_Km = ATP_Km/1000			! uM -> mM
+!ATP_Km = ATP_Km/1000			! uM -> mM
 end subroutine
 
 !-----------------------------------------------------------------------------------------
@@ -496,7 +498,7 @@ do ityp = 1,Ncelltypes
 	read(nf,*) K_PL(ityp)
 	read(nf,*) K_LP(ityp)
 	read(nf,*) Hill_Km_P(ityp)
-	read(nf,*) Apoptosis_rate(ityp)
+!	read(nf,*) Apoptosis_rate(ityp)
 enddo
 !PDKmin(:) = 0.3
 Hill_N_P = 1
@@ -894,7 +896,7 @@ call logger('completed Setup')
 nspeedtest = 100000
 rrsum = 0
 total_dose_time = 0
-!call testOGL
+!call testOGL1
 !stop
 
 end subroutine

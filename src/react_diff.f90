@@ -1918,16 +1918,29 @@ end subroutine
 !-------------------------------------------------------------------------------------- 
 subroutine update_IC
 integer :: kcell, ic, ichemo, ix, iy, iz, it, nt=10
+integer :: k_P_min, k_P_max, k_I_min, k_I_max
 real(REAL_KIND) :: alfa(3), dCdt(3), Kin, Kout, dtt, area_factor, vol_cm3, tstart, y(3), rate(3)
+real(REAL_KIND) :: r_P, r_I, r_P_min, r_P_max, r_I_min, r_I_max
 type(cell_type), pointer :: cp
 type(metabolism_type), pointer :: mp
 real(REAL_KIND), pointer :: Cextra(:,:,:), Fcurr(:,:,:)
 real(REAL_KIND) :: average_volume = 1.2
-logical :: ok
+logical :: ok, debug
+
+debug = .false.
+!debug = (istep >= 70 .and. istep <= 100)
+if (debug) then
+	r_P_min = 99999
+	r_I_min = 99999
+	r_P_max = -r_P_min
+	r_I_max = -r_I_min
+endif
 
 !write(*,*) 'update_IC: '
 area_factor = (average_volume)**(2./3.)
 
+
+! Can't use $omp parallel with debug
 !$omp parallel do private(cp, alfa, ix, iy, iz, ic, ichemo, Cextra, tstart, dtt, Kin, Kout, ok)
 do kcell = 1,nlist
 	cp => cell_list(kcell)
@@ -1966,8 +1979,35 @@ do kcell = 1,nlist
 		Kout = chemo(ichemo)%membrane_diff_out
 		cp%dMdt(ichemo) = area_factor*(Kin*cp%Cex(ichemo) - Kout*cp%Cin(ichemo))
 	enddo
+	if (debug) then
+		r_P = cp%metab%P_rate/r_P_norm
+		r_I = cp%metab%I_rate/r_I_norm
+		if (r_P < r_P_min) then
+			k_P_min = kcell
+			r_P_min = r_P
+		endif
+		if (r_P > r_P_max) then
+			k_P_max = kcell
+			r_P_max = r_P
+		endif
+		if (r_I < r_I_min) then
+			k_I_min = kcell
+			r_I_min = r_I
+		endif
+		if (r_I > r_I_max) then
+			k_I_max = kcell
+			r_I_max = r_I
+		endif
+		if (kcell == 2280) then
+			write(nflog,'(a,2i6,4e12.3)') 'istep,kcell, CO2,CG,r_P,r_I: ',istep,kcell,cp%Cin(1),cp%Cin(2),r_P,r_I
+		endif
+	endif		
 enddo
-!$omp end parallel do
+!$omp end parallel do 
+!if (debug) then
+!	write(nflog,'(a,i6,4x,4i6)') 'istep: k_P_min,k_P_max,k_I_min,k_I_max: ',istep, k_P_min,k_P_max,k_I_min,k_I_max
+!	write(nflog,'(a,4e12.3)') 'r_P_min,r_P_max,r_I_min,r_I_max: ',r_P_min,r_P_max,r_I_min,r_I_max
+!endif
 
 do ichemo = OXYGEN,LACTATE
 	Fcurr => Cflux(:,:,:,ichemo)

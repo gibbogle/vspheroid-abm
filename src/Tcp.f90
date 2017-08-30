@@ -33,11 +33,11 @@ real(REAL_KIND) :: Tb, alpha
 ePL = epsilon_PL    ! /h
 e = epsilon_PL/sum(epsilon_2PL)
 Kcp = Kcp_set
-
+write(*,'(a,4e12.3)') 'ePL, epsilon_PL, epsilon_2PL: ',ePL,epsilon_PL, epsilon_2PL
 Tcp(0) = 0
 do i = 1,np
     n0 = i
-    !write(*,'(a,f6.0)') 'n0: ',n0
+!    write(*,'(a,f6.0)') 'n0: ',n0
     do k = 1,10000
         T1 = k*0.01
         auc = getAUC(n0,T1)
@@ -45,7 +45,7 @@ do i = 1,np
         if (T1 > Kcp*auc) exit
     enddo
     Tcp(i) = T1
-!    write(*,'(a,f6.0,f6.2)') 'n0, Tcp: ',n0,T1
+    write(*,'(a,f6.0,f6.2)') 'n0, Tcp: ',n0,T1
 enddo
 ! Blend with linear variation
 nb = 2/Kcp + 2

@@ -382,7 +382,7 @@ real(REAL_KIND) :: f_ATPs(MAX_CELLTYPES)	! threshold ATP production rate fractio
 real(REAL_KIND) :: f_ATPramp(MAX_CELLTYPES)	! multiplying factor for ramp start for reducing r_G, r_P
 real(REAL_KIND) :: ATPg(MAX_CELLTYPES)		! threshold ATP production rates for cell growth
 real(REAL_KIND) :: ATPs(MAX_CELLTYPES)		! threshold ATP production rates for cell survival
-real(REAL_KIND) :: ATP_Km(MAX_CELLTYPES)	! Michaelis-Menten Km for dependence of target ATP rate on C_O2
+!real(REAL_KIND) :: ATP_Km(MAX_CELLTYPES)	! Michaelis-Menten Km for dependence of target ATP rate on C_O2
 real(REAL_KIND) :: CO_H(MAX_CELLTYPES)		! threshold O2 for Ofactor
 real(REAL_KIND) :: CG_H(MAX_CELLTYPES)		! threshold glucose for Gfactor
 type(metabolism_type), target :: metabolic(MAX_CELLTYPES)
