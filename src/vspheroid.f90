@@ -1461,7 +1461,8 @@ done = .false.
 do while (.not.done)
 	nit = nit + 1
 	t0 = mytimer()
-	call fmover(dt,done,ok)
+!	call fmover(dt,done,ok)
+	call fmover_LAS(dt,done,ok)
 	t1 = mytimer()
 	tmover = tmover + t1 - t0
 	if (.not.ok) then
