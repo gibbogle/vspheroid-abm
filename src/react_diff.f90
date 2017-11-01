@@ -1580,7 +1580,8 @@ do ic = 1,nchemo
 	icc = ichemo - 1
 	allocate(rhs(nrow_b))
 	allocate(x(nrow_b))
-	allocate(a_b(MAX_CHEMO*nrow_b))
+!	allocate(a_b(MAX_CHEMO*nrow_b))
+	allocate(a_b(nnz_b))
 	Fcurr => Cflux(:,:,:,ichemo)
 	Cave_b => chemo(ichemo)%Cave_b
 	Cprev_b => chemo(ichemo)%Cprev_b
@@ -1704,7 +1705,8 @@ do ic = 1,nfinemap
 	if (chemo(ichemof)%constant) cycle
 	allocate(rhs(nrow))
 	allocate(x(nrow))
-	allocate(a(MAX_CHEMO*nrow))
+!	allocate(a(MAX_CHEMO*nrow))
+	allocate(a(nnz))
 	im1 = 0
 	if (ichemof <= TRACER) then
 		im2 = 0

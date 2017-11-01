@@ -20,6 +20,8 @@
 #define CELL_VOLUME 12
 #define O2_BY_VOL 13
 
+#define MAX_VARS O2_BY_VOL + 1
+
 // The intracellular (IC) dataIndex is the same as extracellular, from the tag determine which
 #define IC_MULTI -1
 #define IC_CFSE 0
@@ -86,6 +88,8 @@ namespace Global
     extern double *FACS_data;
     extern int nFACS_cells;
     extern int nFACS_dim;
+    extern double FACS_vmin[MAX_VARS];
+    extern double FACS_vmax[MAX_VARS];
 
     extern double *histo_data;
     extern double *histo_data_log;
@@ -97,7 +101,6 @@ namespace Global
     extern double histo_vmax_log[3*32];
     extern int histo_celltype;
 
-//    extern int summaryData[100];
     extern double summaryData[100];
     extern int i_hypoxia_cutoff;
     extern int i_growth_cutoff;
@@ -121,12 +124,9 @@ namespace Global
     extern double oxy_v0;
     extern double oxy_dv;
 
-//    extern double distData[4000];
-//    extern bool dist_used[20];
     extern int dist_nv;
     extern DIST_SET distParams[20];
 
-//    extern int cell_list[N_CELLINFO*MAX_CELLS];
     extern int ncell_list;
     extern CELL_DATA cell_list[MAX_CELLS];
     extern double blobcentre[3];
@@ -139,6 +139,12 @@ namespace Global
     extern bool showingField;
     extern bool recordingField;
     extern bool dropped;
+
+    extern bool celltypecolours2D;
+    extern bool only2colours2D;
+    extern QColor celltype_colour[3];
+
+    extern int volume_scaling;
 
     extern bool simulate_colony;
     extern double colony_days;

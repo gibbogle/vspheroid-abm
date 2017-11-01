@@ -131,11 +131,14 @@ private slots:
     void onSelectCellConstituent();
     void onSelectFieldConstituent();
 
-    void on_verticalSliderTransparency_sliderMoved(int position);
+    void on_verticalSliderTransparency1_sliderMoved(int position);
+    void on_verticalSliderTransparency2_sliderMoved(int position);
     void on_checkBox_CELLDISPLAY_1_toggled(bool display);
     void on_checkBox_CELLDISPLAY_2_toggled(bool display);
     void on_comboBox_CELLCOLOUR_1_currentIndexChanged(int index);
     void on_comboBox_CELLCOLOUR_2_currentIndexChanged(int index);
+    void on_checkBox_celltypecolours2D_toggled(bool checked);
+    void on_checkBox_only2colours2D_toggled(bool checked);
 
     void on_cbox_SAVE_PROFILE_DATA_toggled(bool checked);
     void on_cbox_SAVE_SLICE_DATA_toggled(bool checked);
@@ -192,6 +195,7 @@ public slots:
     void on_buttonGroup_celltype_buttonClicked(QAbstractButton* button);
     void on_buttonGroup_histotype_buttonClicked(QAbstractButton* button);
     void on_checkBox_histo_logscale_toggled();
+    void on_checkBox_volume_scaling_toggled(bool checked);
     void on_buttonGroup_drug_buttonClicked(QAbstractButton* button);
     void updateCkill();
 
@@ -203,6 +207,9 @@ public slots:
     void makeDrugPlot(int idrug, int kset, int ictyp, double *maxdose, QString plotStr, QVector<double> *x, QVector<double> *y);
     void makeDrugRadiationPlot(int idrug, int kset, int ictyp, double *maxO2, QString plotStr, QVector<double> *x, QVector<double> *y);
     void processGroupBoxClick(QString);
+
+    void on_pushButton_update_FACS_Histo_clicked();
+
 signals:
     void facs_update();
     void histo_update();
@@ -242,7 +249,7 @@ private:
     void setGraphsActive();
     void initDrugComboBoxes();
     void test_histo();
-    void makeHistoPlot(int numValues, double xmin, double width, QVector<double> values);
+    void makeHistoPlot(int ivar, int numValues, double xmin, double width, QVector<double> values);
     void showBool(QString, bool);
 
 	double erf(double z);

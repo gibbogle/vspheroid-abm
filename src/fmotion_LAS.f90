@@ -54,7 +54,7 @@ logical, allocatable :: big(:)
 real(REAL_KIND), allocatable :: force(:,:,:), famp(:,:)
 real(REAL_KIND) :: fmax, fsump(0:8), fave, fbig, dx1(3), dx2(3), f(3), F2(3,2), ddt_move
 real(REAL_KIND) :: big_factor = 5
-integer :: nits = 10
+integer :: nits = 5	! was 10
 type(cell_type), pointer :: cp, cp1
 logical :: use_cell_radius = .true.
 
@@ -62,7 +62,7 @@ done = .false.
 ok = .true.
 dt_move = ndt*delta_tmove
 if (ncells <= 1 .and. cell_list(1)%Iphase) then
-	dt_move = DELTA_T	! one time step of DELTA_T
+	dt_move = DELTA_T	! one time step of DELTA_T 
 	done = .true.
 	return
 endif
@@ -150,7 +150,7 @@ do
 enddo
 else
 	dt_move = RAVERAGE*kdrag/(fave*30)
-	ndt = min(30.,dt_move/delta_tmove)
+	ndt = min(40.,dt_move/delta_tmove)	! was 30
 	dt_move = ndt*delta_tmove
 endif
 if (dt_move + t_fmover > DELTA_T) then
@@ -174,8 +174,9 @@ do k1 = 1,ncells
 		big(k1) = .true.
 	endif
 enddo
+!write(*,*) 'ndt, nbig: ',ndt,nbig
 
-!write(*,'(a,i6,i3,e12.3,2i6)') 'istep, ndt, dt_move, ncells, nbig: ',istep, ndt, dt_move, ncells, nbig
+!write(*,'(a,i6,i3,e12.3,2i6)') 'Move big F: istep, ndt, dt_move, ncells, nbig: ',istep, ndt, dt_move, ncells, nbig
 
 ! Move cells with big forces
 badforce = .false.
@@ -199,9 +200,11 @@ do it = 1,nits
 			cp%centre(:,2) = cp%centre(:,2) + dx2
 		endif
 	enddo
+	if (badforce) exit
 enddo
 if (badforce) then
-	write(*,*) 'badforce'
+!	write(*,*) 'badforce: it, k1, kcell: ',it,k1,kcell
+	write(nflog,*) 'badforce: it, k1, kcell: ',it,k1,kcell
 	stop
 endif
 
@@ -554,13 +557,22 @@ else
 		F = 0
 		return
 	endif
-	if (x < x0_force) then
-		write(logmsg,'(a,3e12.3,2f8.3,a,L2)') 'Error: get_force: x < x0: ',R1,R2,d,x,x0_force,' incontact: ',incontact
-		call logger(logmsg)
-		F = 0
-		ok = .false.
-		return
-	!	stop
+!	if (x < x0_force) then
+!		write(logmsg,'(a,3e12.3,2f8.3,a,L2)') 'Error: get_force: x < x0: ',R1,R2,d,x,x0_force,' incontact: ',incontact
+!		call logger(logmsg)
+!		F = 0
+!		ok = .false.
+!		return
+	if (x < x0_force + dx0) then
+	    if (allow_penetration) then
+	        F = e/x
+	    else
+		    write(logmsg,'(a,3e12.3,2f8.3,a,L2)') 'Error: get_force: x < x0: ',R1,R2,d,x,x0_force,' incontact: ',incontact
+		    call logger(logmsg)
+		    F = 0
+		    ok = .false.
+		    return
+	    endif
 	else
 		F = a_force/((x-x0_force)*(x1_force-x)) + b_force
 	endif
