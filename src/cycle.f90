@@ -44,7 +44,7 @@ subroutine radiation_damage(cp, ccp, dose, SER_OER, tmin)
 type(cell_type), pointer :: cp
 type(cycle_parameters_type), pointer :: ccp
 real(REAL_KIND) :: dose, SER_OER(2), tmin
-real(REAL_KIND) :: dDdt, rnL(2), rnPL, drnPLdt, drnLdt, dtmin, dthour, fraction, Krepair, Kmissum, dr, R
+real(REAL_KIND) :: dDdt, rnL(2), rnPL, drnPLdt, drnLdt(2), dtmin, dthour, fraction, Krepair, Kmissum, dr, R
 integer :: nt, it, n, dn, k, ityp, kpar=0
 
 dtmin = 0.01
@@ -65,20 +65,14 @@ else
     else
         fraction = 1 - (cp%S_time - tnow)/ccp%T_S(ityp)
     endif
-!    if (fraction < 0 .or. fraction > 1) then
-!        write(*,'(a,f6.3,4f8.0)') 'radiation_damage: bad fraction: ', fraction,cp%S_time,tnow,cp%S_time - tnow,ccp%T_S(ityp)
-!    endif
     Krepair = ccp%Krepair_base + fraction*(ccp%Krepair_max - ccp%Krepair_base)
 endif
 do it = 1,nt
     drnPLdt = ccp%eta_PL*SER_OER(1)*dDdt - Krepair*rnPL - Kmissum*rnPL**2
     rnPL = rnPL + drnPLdt*dthour
-    do k = 1,2
-	    drnLdt = ccp%eta_L(k)*SER_OER(2)*dDdt + ccp%Kmisrepair(k)*rnPL**2
-	    rnL(k) = rnL(k) + drnLdt*dthour
-	enddo
+    drnLdt = ccp%eta_L*SER_OER(2)*dDdt + ccp%Kmisrepair*rnPL**2
+    rnL = rnL + drnLdt*dthour
 enddo
-!write(*,'(4f8.2)') rnPL, rnL
 n = rnPL
 dr = rnPL - n
 R = par_uni(kpar)
@@ -88,7 +82,6 @@ cp%NL1 = cp%NL1 + n + dn
 do k = 1,2
     n = rnL(k)
     dr = rnL(k) - n
-!    write(*,'(a,i2,f8.4,i4,f8.4)') 'k, rnL, n, dr: ',k, rnL(k), n, dr
     R = par_uni(kpar)
     dn = 0
     if (R < dr) dn = 1
@@ -114,19 +107,20 @@ if (cp%dVdt == 0) then
 	if (phase == G1_phase .or. phase == S_phase .or. phase == G2_phase) return
 endif
 ityp = cp%celltype
-if (.not.colony_simulation .and. (phase == Checkpoint1)) then    ! check for starvation arrest
-    cf_O2 = cp%Cin(OXYGEN)/anoxia_threshold
-    pcp_O2 = getPcp_release(cf_O2,dt)
-    cf_glucose = cp%Cin(GLUCOSE)/aglucosia_threshold
-    pcp_glucose = getPcp_release(cf_glucose,dt)
-    pcp_starvation = pcp_O2*pcp_glucose
-    if (pcp_starvation == 0) then
-        return
-    elseif (pcp_starvation < 1) then
-!        call random_number(R)
-        R = par_uni(kpar)
-        if (R < pcp_starvation) return
-    endif
+if (.not.use_metabolism) then
+	if (.not.colony_simulation .and. (phase == Checkpoint1)) then    ! check for starvation arrest
+		cf_O2 = cp%Cin(OXYGEN)/anoxia_threshold
+		pcp_O2 = getPcp_release(cf_O2,dt)
+		cf_glucose = cp%Cin(GLUCOSE)/aglucosia_threshold
+		pcp_glucose = getPcp_release(cf_glucose,dt)
+		pcp_starvation = pcp_O2*pcp_glucose
+		if (pcp_starvation == 0) then
+			return
+		elseif (pcp_starvation < 1) then
+			R = par_uni(kpar)
+			if (R < pcp_starvation) return
+		endif
+	endif	
 endif
 if (phase == G1_phase) then
     if (use_volume_based_transition) then
@@ -142,18 +136,21 @@ if (phase == G1_phase) then
     endif
 elseif (phase == Checkpoint1) then  ! this checkpoint combines the release from G1 delay and the G1S repair check
     if (.not.cp%G1_flag) then
-!        call random_number(R)
         R = par_uni(kpar)
         cp%G1_flag = (R < ccp%Pk_G1(ityp)*dt)
     endif
     cp%G1S_flag = (cp%NL1 == 0 .or. tnow > cp%G1S_time)
+    if (use_metabolism) then
+		cp%G1S_flag = cp%G1S_flag .and. (cp%metab%A_rate > ATPg(ityp))
+	endif
     if (cp%G1_flag .and. cp%G1S_flag) then
         cp%phase = S_phase
-        if (cp%dVdt > 0) then
-	        cp%S_time = tnow + (max_growthrate(ityp)/cp%dVdt)*ccp%T_S(ityp)    
-	    else	! why does dVdt = 0 ?????
-	        cp%S_time = tnow + ccp%T_S(ityp)
-	    endif
+! Note: now %I_rate has been converted into equivalent %dVdt, to simplify code
+!        if (use_metabolism) then
+!	        cp%S_time = tnow + (cp%metab%I_rate_max/cp%metab%I_rate)*ccp%T_S(ityp)
+!	    else
+	        cp%S_time = tnow + (max_growthrate(ityp)/cp%dVdt)*ccp%T_S(ityp)
+!	    endif
     endif
 elseif (phase == S_phase) then
     if (use_volume_based_transition) then
@@ -163,14 +160,23 @@ elseif (phase == S_phase) then
     endif
     if (switch) then
         cp%phase = G2_phase
-        cp%G2_time = tnow + (max_growthrate(ityp)/cp%dVdt)*ccp%T_G2(ityp)
+! Note: now %I_rate has been converted into equivalent %dVdt, to simplify code
+!        if (use_metabolism) then
+!	        cp%G2_time = tnow + (cp%metab%I_rate_max/cp%metab%I_rate)*ccp%T_G2(ityp)
+!	    else
+			cp%G2_time = tnow + (max_growthrate(ityp)/cp%dVdt)*ccp%T_G2(ityp)
+!		endif
     endif
 elseif (phase == G2_phase) then
     if (use_volume_based_transition) then
         switch = (cp%V > cp%G2_V)
     else
-!        switch = (tnow > cp%G2_time)
-        switch = (tnow > cp%G2_time .and. cp%V > cp%divide_volume) ! try this to prevent volumes decreasing 
+! Note: now %I_rate has been converted into equivalent %dVdt, to simplify code
+!		if (use_metabolism) then
+!			switch = (tnow > cp%G2_time .and. cp%metab%Itotal > cp%metab%I2divide) ! try this to prevent volumes decreasing 
+!		else
+			switch = (tnow > cp%G2_time .and. cp%V > cp%divide_volume) ! try this to prevent volumes decreasing 
+!		endif
     endif
     if (switch) then
         cp%phase = Checkpoint2
@@ -180,11 +186,13 @@ elseif (phase == G2_phase) then
     endif
 elseif (phase == Checkpoint2) then ! this checkpoint combines the release from G2 delay and the G2M repair check
     if (.not.cp%G2_flag) then
-!        call random_number(R)
         R = par_uni(kpar)
         cp%G2_flag = (R < ccp%Pk_G2(ityp)*dt)
     endif
     cp%G2M_flag = (cp%NL1 == 0 .or. tnow > cp%G2M_time)
+    if (use_metabolism) then
+		cp%G2M_flag = cp%G2M_flag .and. (cp%metab%A_rate > ATPg(ityp))
+	endif
     if (cp%G2_flag .and. cp%G2M_flag) then
         cp%phase = M_phase
         cp%M_time = tnow + ccp%T_M (ityp)   
@@ -196,7 +204,7 @@ elseif (phase == M_phase) then
     endif
 endif    
 if (cp%NL1 > 0) then
-    call repair(cp, ccp, dt)
+    call radiation_repair(cp, ccp, dt)
 endif
 end subroutine
 
@@ -234,7 +242,7 @@ end function
 ! than one repair and one misrepair of each type can occur within a time step.
 ! The fix would be to subdivide the time step, as in the damage subroutine.
 !--------------------------------------------------------------------------
-subroutine repair(cp, ccp, dt)
+subroutine radiation_repair(cp, ccp, dt)
 type(cell_type), pointer :: cp
 type(cycle_parameters_type), pointer :: ccp
 real(REAL_KIND) :: dt
@@ -253,19 +261,14 @@ else
     else
         fraction = 1 - (cp%S_time - tnow)/ccp%T_S(ityp)
     endif
-!    if (fraction < 0 .or. fraction > 1) then
-!        write(*,*) 'repair: bad fraction: ', fraction
-!    endif
     Krepair = ccp%Krepair_base + fraction*(ccp%Krepair_max - ccp%Krepair_base)
 endif
-!call random_number(R)
 R = par_uni(kpar)
 if (R < cp%NL1*Krepair*dthour) then
     cp%NL1 = cp%NL1 - 1
     if (cp%NL1 == 0) return
 endif
 do i = 1,2
-!    call random_number(R)
     R = par_uni(kpar)
     if (R < cp%NL1**2*ccp%Kmisrepair(i)*dthour) then
         cp%NL1 = cp%NL1 - 1

@@ -450,26 +450,36 @@ void MyVTK::renderCells()
     just_dropped = false;
 //    LOG_QMSG("renderCells");
     if (Global::dropped) {
-        LOG_MSG("dropped");
         just_dropped = !dropped;
         dropped = true;
     }
-//    sprintf(msg,"Global_dropped, dropped, just_dropped: %d %d %d",Global::dropped,dropped,just_dropped);
-//    LOG_MSG(msg)
     if (first_VTK || just_dropped) {
-		LOG_MSG("Initializing the renderer");
+        LOG_MSG("Initializing the renderer");
         sprintf(msg,"NX: %d DELTA_X: %6.1f",Global::NX,Global::DELTA_X);
         LOG_MSG(msg);
-        if (just_dropped) {
-            sqactor->SetPosition(Global::droppedcentre[1],0,Global::droppedcentre[0]);
-            ren->AddActor(sqactor);
-        }
+//        if (just_dropped) {
+//            sqactor->SetPosition(Global::droppedcentre[1],0,Global::droppedcentre[0]);
+//            ren->AddActor(sqactor);
+//        }
 
         ren->ResetCamera();
-//        ren->GetActiveCamera()->SetPosition(0, 0, 0);
-//        ren->GetActiveCamera()->SetFocalPoint(x0, x0, x0);
     }
-//    ren->GetActiveCamera()->SetPosition(x0, x0, -100);
+
+    if (dropped) {
+        if (show_bottom) {
+            sqactor->SetPosition(Global::droppedcentre[1],0,Global::droppedcentre[0]);
+            if (!bottom_added) {
+                sqactor->SetScale(bottom_radius/100);
+                ren->AddActor(sqactor);
+                bottom_added = true;
+            }
+        } else {
+            if (bottom_added) {
+                ren->RemoveActor(sqactor);
+                bottom_added = false;
+            }
+        }
+    }
     iren->Render();
     first_VTK = false;
 }
@@ -538,7 +548,8 @@ void MyVTK::process_Tcells()
 {
     int i, tag, maxtag;
     double r, g, b;
-	CELL_POS cp;
+    double xmin, xmax;
+    CELL_POS cp;
 	int axis_centre = -2;	// identifies the ellipsoid centre
 	int axis_end    = -3;	// identifies the ellipsoid extent in 5 directions
 	int axis_bottom = -4;	// identifies the ellipsoid extent in the -Y direction, i.e. bottom surface
@@ -581,6 +592,8 @@ void MyVTK::process_Tcells()
 
     // This is the render loop.  Here we need to traverse the list in order of distance (z), maximum first.
     // We need order[] such that cp = TCpos_list[order[i]]
+    xmin = 1.0e10;
+    xmax = 0;
     for (i=0; i<np; i++) {
         cp = TCpos_list[i];
         tag = cp.tag;
@@ -641,9 +654,12 @@ void MyVTK::process_Tcells()
 //        }
         ap->actor->SetPosition(cp.x, cp.y, cp.z);
         ap->actor->SetScale(cp.diameter);
+        xmin = qMin(cp.x,xmin);
+        xmax = qMax(cp.x,xmax);
 //        sprintf(msg,"x,y,z,r,r,g,b: %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f %6.3f",cp.x, cp.y, cp.z,cp.diameter,r,g,b);
 //        LOG_MSG(msg);
 	}
+    bottom_radius = (xmax-xmin)/2;
     for (int k=0; k<T_Actor_list.length(); k++) {
         ap = &T_Actor_list[k];
         if (ap->active && !in_pos_list[k]) {
