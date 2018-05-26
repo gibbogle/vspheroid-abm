@@ -52,7 +52,8 @@ public:
     void saveGradient2D(int k);
     void getProfiles();
     void getFACS();
-	void pause();
+    void getHisto();
+    void pause();
 	void unpause();
 	void stop();
 //    void wait_to_go();

@@ -33,9 +33,12 @@ using namespace std;
 
 #include <qwt_plot.h>
 #include <qwt_plot_grid.h>
+#ifdef QWT_VER5
 #include <qwt_interval_data.h>
 #include "histogram_item.h"
-
+#else
+#include <qwt_plot_histogram.h>
+#endif
 #include "qcustomplot.h"
 #include "plotwin.h"
 
@@ -144,6 +147,12 @@ private slots:
     void on_cbox_SAVE_PROFILE_DATA_toggled(bool checked);
     void on_cbox_SAVE_SLICE_DATA_toggled(bool checked);
     void on_cbox_SAVE_FACS_DATA_toggled(bool checked);
+    void on_cbox_USE_DIVIDE_TIME_DIST_toggled(bool checked);
+    void on_pushButton_update_FACS_Histo_clicked();
+    void on_pushButton_saveHisto_clicked();
+    void on_pushButton_saveFACS_clicked();
+    void saveFACSImage();
+    void saveHistoImage();
 
     void LoadProtocol(QString);
 //    void SaveProtocol(QString, int);
@@ -209,8 +218,6 @@ public slots:
     void makeDrugRadiationPlot(int idrug, int kset, int ictyp, double *maxO2, QString plotStr, QVector<double> *x, QVector<double> *y);
     void processGroupBoxClick(QString);
 
-    void on_pushButton_update_FACS_Histo_clicked();
-
 signals:
     void facs_update();
     void histo_update();
@@ -219,8 +226,9 @@ private:
     void createActions();
 	void createLists();
 	void drawDistPlots();
-    void initFACSPlot();
-    void initHistoPlot();
+    void createFACSPage();
+//    void initFACSPlot();
+//    void initHistoPlot();
     void setupParamList();
 	void loadParams();
 	void reloadParams();
@@ -250,7 +258,7 @@ private:
     void setGraphsActive();
     void initDrugComboBoxes();
     void test_histo();
-    void makeHistoPlot(int ivar, int numValues, double xmin, double width, QVector<double> values);
+    void makeHistoPlot(int numValues, double xmin, double width, QVector<double> values, QString xlabel);
     void showBool(QString, bool);
 
 	double erf(double z);
@@ -306,11 +314,29 @@ private:
 
 	QList<QWidget *> widget_list;
 
+    QGroupBox *groupBox_FACS;
+    QGroupBox *groupBox_FACS_x_vars;
+    QGroupBox *groupBox_FACS_y_vars;
+    QGroupBox *groupBox_Histo;
+    QGroupBox *groupBox_Histo_x_vars;
+    QCheckBox *checkBox_FACS_log_x;
+    QCheckBox *checkBox_FACS_log_y;
+    QCheckBox *checkBox_histo_logscale;
+    QButtonGroup *buttonGroup_celltype;
+    QButtonGroup *buttonGroup_histotype;
+
     QwtPlot *qpFACS;
     QwtPlotCurve *curveFACS;
     QwtPlot *qpHistoBar, *qpHistoLine;
+#ifdef QWT_VER5
     HistogramItem *histogram;
+#else
+    QwtPlotHistogram *histogram;
+#endif
     QCustomPlot *colony_plot;
+    double *xQpval, *yQpval;
+    QwtSymbol FACS_sym;
+    QwtPlotCurve FACS_crv;
 
 	int nDistPts;
 	int nTicks;

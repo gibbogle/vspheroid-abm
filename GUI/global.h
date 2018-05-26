@@ -19,8 +19,9 @@
 #define GROWTH_RATE 11      // we pretend that this is a concentration
 #define CELL_VOLUME 12
 #define O2_BY_VOL 13
+#define CYCLE_PHASE 14
 
-#define MAX_VARS O2_BY_VOL + 1
+#define MAX_VARS CYCLE_PHASE + 1
 
 // The intracellular (IC) dataIndex is the same as extracellular, from the tag determine which
 #define IC_MULTI -1
@@ -38,6 +39,7 @@
 #define IC_GROWTH_RATE 11      // we pretend that this is a concentration
 #define IC_CELL_VOLUME 12
 #define IC_O2_BY_VOL 13
+#define IC_CYCLE_PHASE 14
 
 #define DIST_NV 20
 

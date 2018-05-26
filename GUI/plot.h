@@ -14,6 +14,9 @@
 #include <qwt_scale_draw.h>
 #include <qwt_math.h>
 #include <qwt_scale_engine.h>
+#ifdef QWT_VER6
+#include <qwt_plot_renderer.h>
+#endif
 
 using namespace std;
 

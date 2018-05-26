@@ -896,7 +896,7 @@ subroutine old_divider(kcell1, ok)
 integer :: kcell1
 logical :: ok
 integer :: kcell2, ityp, nbrs0
-real(REAL_KIND) :: r(3), c(3), cfse0, cfse1, V0, Tdiv
+real(REAL_KIND) :: r(3), c(3), cfse0, cfse1, V0, Tdiv, gfactor
 type(cell_type), pointer :: cp1, cp2
 
 !write(*,*) 'divider:'
@@ -930,7 +930,7 @@ cp1%site = cp1%centre(:,1)/DELTA_X + 1
 cp1%d = 0
 cp1%birthtime = tnow
 !cp1%divide_volume = get_divide_volume1()
-cp1%divide_volume = get_divide_volume(ityp,V0,Tdiv)
+cp1%divide_volume = get_divide_volume(ityp,V0,Tdiv,gfactor)
 cp1%divide_time = Tdiv
 cp1%d_divide = (3*cp1%divide_volume/PI)**(1./3.)
 cp1%mitosis = 0
@@ -969,7 +969,7 @@ cp2%site = cp2%centre(:,1)/DELTA_X + 1
 cp2%d = 0
 cp2%birthtime = tnow
 !cp2%divide_volume = get_divide_volume1()
-cp2%divide_volume = get_divide_volume(ityp,V0,Tdiv)
+cp2%divide_volume = get_divide_volume(ityp,V0,Tdiv,gfactor)
 cp2%divide_time = Tdiv
 cp2%d_divide = (3*cp2%divide_volume/PI)**(1./3.)
 cp2%mitosis = 0
@@ -1024,11 +1024,10 @@ subroutine divider(kcell1, ok)
 integer :: kcell1
 logical :: ok
 integer :: kcell2, ityp, nbrs0
-real(REAL_KIND) :: r(3), c(3), cfse0, cfse2, V0, Tdiv
+real(REAL_KIND) :: r(3), c(3), cfse0, cfse2, V0, Tdiv, gfactor
 type(cell_type), pointer :: cp1, cp2
 type(cycle_parameters_type), pointer :: ccp
 
-!write(*,*) 'divider:'
 !write(logmsg,*) 'divider: ',kcell1 
 !call logger(logmsg)
 ok = .true.
@@ -1038,6 +1037,7 @@ if (colony_simulation) then
 else
 	cp1 => cell_list(kcell1)
 endif
+!write(nflog,'(a,i6,4e12.3)') 'divider: ',kcell1,cp1%mitosis,cp1%V,cp1%radius(1:2)
 if (ngaps > 0) then
     kcell2 = gaplist(ngaps)
     ngaps = ngaps - 1
@@ -1068,8 +1068,9 @@ cp1%site = cp1%centre(:,1)/DELTA_X + 1
 cp1%d = 0
 cp1%birthtime = tnow
 !cp1%divide_volume = get_divide_volume1()
-cp1%divide_volume = get_divide_volume(ityp,V0,Tdiv)
+cp1%divide_volume = get_divide_volume(ityp,V0,Tdiv,gfactor)
 cp1%divide_time = Tdiv
+cp1%fg = gfactor
 cp1%d_divide = (3*cp1%divide_volume/PI)**(1./3.)
 if (use_metabolism) then	! Fraction of I needed to divide = fraction of volume needed to divide
 	cp1%metab%I2Divide = get_I2Divide(cp1)
@@ -1117,8 +1118,9 @@ cp1%t_divide_last = tnow
 cp2 = cp1
 
 ! These are the variations from cp1
-cp2%divide_volume = get_divide_volume(ityp,V0,Tdiv)
+cp2%divide_volume = get_divide_volume(ityp,V0,Tdiv,gfactor)
 cp2%divide_time = Tdiv
+cp2%fg = gfactor
 if (use_metabolism) then	! Fraction of I needed to divide = fraction of volume needed to divide
 	cp2%metab%I2Divide = get_I2Divide(cp2)
 	cp2%metab%Itotal = 0

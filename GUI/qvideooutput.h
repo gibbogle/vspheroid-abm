@@ -24,9 +24,6 @@ extern "C" {
 #include "libswscale/swscale.h"
 }
 
-//#define vtkRenderingCore_AUTOINIT 4(vtkInteractionStyle,vtkRenderingFreeType,vtkRenderingFreeTypeOpenGL,vtkRenderingOpenGL)
-//#define vtkRenderingVolume_AUTOINIT 1(vtkRenderingVolumeOpenGL)
-
 #include <QPainter>
 #include <QWidget>
 #include <QFileDialog>
@@ -40,6 +37,9 @@ extern "C" {
 #include <qwt_painter.h>
 #include <qwt_plot_canvas.h>
 #include <myqgraphicsview.h>
+#ifdef QWT_VER6
+#include <qwt_plot_renderer.h>
+#endif
 
 #define VTK_SOURCE 0
 #define QWT_FACS_SOURCE 1
@@ -99,7 +99,7 @@ protected:
    int width;
    int height;
    int frameCount;
-   int source;  // 0 = VTK, 1 = FACS
+   int source;  // 0 = VTK, 1 = FACS, 2 = field
 
 //   QWidget *dlgWidget;
    bool openedMediaFile;

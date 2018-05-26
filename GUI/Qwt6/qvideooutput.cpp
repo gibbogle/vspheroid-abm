@@ -655,11 +655,10 @@ void QVideoOutput::recorder()
         LOG_QMSG("QWT_FACS_SOURCE");
         QImage image( qp->size(), QImage::Format_RGB32 );
         image.fill( QColor( Qt::white ).rgb() ); // guess you don't need this line
-//        QPainter p( &image );
-//        qp->drawCanvas( &p );
-//        p.drawImage( 0, 0, image );
-
-        qp->print(image);
+        QPainter p( &image );
+        QwtPlotRenderer renderer;
+        QRectF rect = QRectF(0,0,qp->size().width(),qp->size().height());
+        renderer.render(qp,&p,rect);
         im = image;
         imwidth = im.width();
         imheight = im.height();

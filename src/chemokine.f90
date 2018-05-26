@@ -6,6 +6,8 @@ use global
 
 implicit none
 
+integer, parameter :: N1D = 0
+
 type chemokine_type
 	character(24) :: name
 	logical :: used
@@ -129,6 +131,7 @@ do ichemo = 1,MAX_CHEMO
 enddo
 end subroutine
 
+#if 0
 !----------------------------------------------------------------------------------
 ! Computes metabolism rate as a fraction of the maximum cell rate
 ! Use the "soft landing" option for Hill_N = 1 if MM_threshold = 0
@@ -185,6 +188,7 @@ else
 	glucose_metab = 0
 endif
 end function
+#endif
 
 !----------------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------------

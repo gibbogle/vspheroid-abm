@@ -455,6 +455,11 @@ k = ivar*nvarlen
 cvar_index(ivar) = O2_BY_VOL
 name = 'Cell O2xVol'
 call copyname(name,name_array(k),nvarlen)
+ivar = ivar + 1
+k = ivar*nvarlen
+cvar_index(ivar) = CYCLE_PHASE
+name = 'Cycle phase'
+call copyname(name,name_array(k),nvarlen)
 nvars = ivar + 1
 write(nflog,*) 'did get_cell_constituents'
 end subroutine
@@ -499,7 +504,7 @@ integer :: k, kcell, iextra, ichemo, ivar, nvars, var_index(32)
 real(REAL_KIND) :: cfse_min, Vcell_pL
 logical :: volscale
 
-!write(nflog,*) 'get_FACS'
+write(nflog,*) 'get_FACS'
 volscale = (volume_scaling == 1)
 nvars = 1	! CFSE
 var_index(nvars) = 0
@@ -532,6 +537,8 @@ do kcell = 1,nlist
 			val = Vcell_pL
 		elseif (ichemo == O2_BY_VOL) then
 			val = Vcell_pL*cell_list(kcell)%Cin(OXYGEN)
+		elseif (ichemo == CYCLE_PHASE) then
+			val = cell_list(kcell)%phase
 		endif
 		if (volscale .and. (ichemo >= DRUG_A .and. ichemo <= DRUG_B + 2)) then
 			val = val*Vcell_pL
@@ -565,7 +572,9 @@ integer :: n(3), i, ih, k, kcell, ict, ichemo, ivar, nvars, var_index(32)
 integer,allocatable :: cnt(:,:,:)
 real(REAL_KIND),allocatable :: dv(:,:), valmin(:,:), valmax(:,:)
 integer,allocatable :: cnt_log(:,:,:)
+integer :: phase_cnt(3,7), ivar_phase
 real(REAL_KIND),allocatable :: dv_log(:,:), valmin_log(:,:), valmax_log(:,:)
+type(cell_type), pointer :: cp
 logical :: volscale
 !real(REAL_KIND) :: vmin_log(100), vmax_log(100)
 !real(REAL_KIND),allocatable :: histo_data_log(:)
@@ -585,6 +594,9 @@ nvars = nvars + 1
 var_index(nvars) = CELL_VOLUME
 nvars = nvars + 1
 var_index(nvars) = O2_BY_VOL
+nvars = nvars + 1
+var_index(nvars) = CYCLE_PHASE
+ivar_phase = nvars
 
 allocate(cnt(3,nvars,nhisto))
 allocate(dv(3,nvars))
@@ -603,21 +615,24 @@ valmin_log = 1.0e10
 valmax_log = -1.0e10
 n = 0
 do kcell = 1,nlist
-	if (cell_list(kcell)%state == DEAD) cycle
-	Vcell_pL = cm3_pL*cell_list(kcell)%V
-	ict = cell_list(kcell)%celltype
+	cp => cell_list(kcell)
+	if (cp%state == DEAD) cycle
+	ict = cp%celltype
+	Vcell_pL = cm3_pL*cp%V
 	do ivar = 1,nvars
 		ichemo = var_index(ivar)
 		if (ichemo == 0) then
-			val = cell_list(kcell)%CFSE
+			val = cp%CFSE
 		elseif (ichemo <= MAX_CHEMO) then
-			val = cell_list(kcell)%Cin(ichemo)
+			val = cp%Cin(ichemo)
 		elseif (ichemo == GROWTH_RATE) then
-			val = cm3_pL*cell_list(kcell)%dVdt
+			val = cm3_pL*cp%dVdt
 		elseif (ichemo == CELL_VOLUME) then
 			val = Vcell_pL
 		elseif (ichemo == O2_BY_VOL) then
-			val = cell_list(kcell)%Cin(OXYGEN)*Vcell_pL
+			val = cp%Cin(OXYGEN)*Vcell_pL
+		elseif (ichemo == CYCLE_PHASE) then
+			val = cp%phase
 		endif
 		if (volscale .and. (ichemo >= DRUG_A .and. ichemo <= DRUG_B + 2)) then
 			val = val*Vcell_pL
@@ -653,22 +668,28 @@ dv = (valmax - valmin)/nhisto
 dv_log = (valmax_log - valmin_log)/nhisto
 !write(nflog,*) 'dv_log'
 !write(nflog,'(e12.3)') dv_log
+phase_cnt = 0
 do kcell = 1,nlist
-	if (cell_list(kcell)%state == DEAD) cycle
-	Vcell_pL = cm3_pL*cell_list(kcell)%V
-	ict = cell_list(kcell)%celltype
+	cp => cell_list(kcell)
+	if (cp%state == DEAD) cycle
+	ict = cp%celltype
+	Vcell_pL = cm3_pL*cp%V
 	do ivar = 1,nvars
 		ichemo = var_index(ivar)
 		if (ichemo == 0) then
-			val = cell_list(kcell)%CFSE
+			val = cp%CFSE
 		elseif (ichemo <= MAX_CHEMO) then
-			val = cell_list(kcell)%Cin(ichemo)
+			val = cp%Cin(ichemo)
 		elseif (ichemo == GROWTH_RATE) then
-			val = cm3_pL*cell_list(kcell)%dVdt
+			val = cm3_pL*cp%dVdt
 		elseif (ichemo == CELL_VOLUME) then
 			val = Vcell_pL
 		elseif (ichemo == O2_BY_VOL) then
-			val = cell_list(kcell)%Cin(OXYGEN)*Vcell_pL
+			val = cp%Cin(OXYGEN)*Vcell_pL
+		elseif (ichemo == CYCLE_PHASE) then
+			val = cp%phase
+			phase_cnt(1,cp%phase) = phase_cnt(1,cp%phase) + 1
+			phase_cnt(ict+1,cp%phase) = phase_cnt(ict+1,cp%phase) + 1
 		endif
 		if (volscale .and. (ichemo >= DRUG_A .and. ichemo <= DRUG_B + 2)) then
 			val = val*Vcell_pL
@@ -721,6 +742,16 @@ do i = 1,3
 			enddo
 		enddo
 	endif
+	! Now overwrite CYCLE_PHASE data
+	ivar = ivar_phase
+	do ih = 1,nhisto
+		k = (i-1)*nvars*nhisto + (ivar-1)*nhisto + ih
+		if (ih <= 7) then
+			histo_data(k) = (100.*phase_cnt(i,ih))/n(i)
+		else
+			histo_data(k) = 0
+		endif
+	enddo
 enddo
 deallocate(cnt)
 deallocate(dv)

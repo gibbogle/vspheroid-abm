@@ -120,7 +120,7 @@ if (.not.use_metabolism) then
 			R = par_uni(kpar)
 			if (R < pcp_starvation) return
 		endif
-	endif	
+	endif
 endif
 if (phase == G1_phase) then
     if (use_volume_based_transition) then
@@ -131,7 +131,6 @@ if (phase == G1_phase) then
     if (switch) then
         cp%phase = Checkpoint1
         cp%G1_flag = .false.
-        cp%G1S_flag = .false.
         cp%G1S_time = tnow + ccp%Tcp(cp%NL1)
     endif
 elseif (phase == Checkpoint1) then  ! this checkpoint combines the release from G1 delay and the G1S repair check
@@ -145,11 +144,12 @@ elseif (phase == Checkpoint1) then  ! this checkpoint combines the release from 
 	endif
     if (cp%G1_flag .and. cp%G1S_flag) then
         cp%phase = S_phase
-! Note: now %I_rate has been converted into equivalent %dVdt, to simplify code
+! Note: now %I_rate has been converted into equivalent %dVdt, to simplify code 
 !        if (use_metabolism) then
 !	        cp%S_time = tnow + (cp%metab%I_rate_max/cp%metab%I_rate)*ccp%T_S(ityp)
 !	    else
-	        cp%S_time = tnow + (max_growthrate(ityp)/cp%dVdt)*ccp%T_S(ityp)
+			cp%S_start_time = tnow
+	        cp%S_time = tnow + (max_growthrate(ityp)/cp%dVdt)*cp%fg*ccp%T_S(ityp)
 !	    endif
     endif
 elseif (phase == S_phase) then
@@ -164,7 +164,7 @@ elseif (phase == S_phase) then
 !        if (use_metabolism) then
 !	        cp%G2_time = tnow + (cp%metab%I_rate_max/cp%metab%I_rate)*ccp%T_G2(ityp)
 !	    else
-			cp%G2_time = tnow + (max_growthrate(ityp)/cp%dVdt)*ccp%T_G2(ityp)
+			cp%G2_time = tnow + (max_growthrate(ityp)/cp%dVdt)*cp%fg*ccp%T_G2(ityp)
 !		endif
     endif
 elseif (phase == G2_phase) then
@@ -181,7 +181,6 @@ elseif (phase == G2_phase) then
     if (switch) then
         cp%phase = Checkpoint2
         cp%G2_flag = .false.
-        cp%G2M_flag = .false.
         cp%G2M_time = tnow + ccp%Tcp(cp%NL1)
     endif
 elseif (phase == Checkpoint2) then ! this checkpoint combines the release from G2 delay and the G2M repair check

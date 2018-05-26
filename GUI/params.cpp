@@ -65,6 +65,10 @@ Off-lattice model: Dimension of the fine grid (number of grid pts in X,Y and Z d
 "Initial number of tumour cells",
 "Initial number of tumour cells"},
 
+//{"USE_DIVIDE_TIME_DIST", 1, 0, 1,
+//"Use divide time distribution",
+//"The divide time will be a random variate from a log-normal distribution."},
+
 {"DIVIDE_TIME_1_MEDIAN", 24, 0, 0,
 "Median (h)",
 "The time taken for tumour cell division has a lognormal distribution, described by the median and shape parameters. \n\

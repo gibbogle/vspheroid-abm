@@ -65,8 +65,9 @@ integer, parameter :: MAX_CHEMO = DRUG_B + 2
 integer, parameter :: GROWTH_RATE = MAX_CHEMO + 1	! (not used here, used in the GUI)
 integer, parameter :: CELL_VOLUME = MAX_CHEMO + 2
 integer, parameter :: O2_BY_VOL = MAX_CHEMO + 3
+integer, parameter :: CYCLE_PHASE = MAX_CHEMO + 4
 
-integer, parameter :: N_EXTRA = O2_BY_VOL - MAX_CHEMO + 1	! = 4 = total # of variables - MAX_CHEMO
+integer, parameter :: N_EXTRA = CYCLE_PHASE - MAX_CHEMO + 1	! = 4 = total # of variables - MAX_CHEMO
 integer, parameter :: NCONST = MAX_CHEMO
 integer, parameter :: LIMIT_THRESHOLD = 1500
 
@@ -153,6 +154,7 @@ type cell_type
 	real(REAL_KIND) :: ATP_rate_factor	! to introduce some random variation 
 	real(REAL_KIND) :: divide_volume ! actual volume (cm3)
 	real(REAL_KIND) :: divide_time
+	real(REAL_KIND) :: fg				! to make sum(T_G1, T_S, T_G2) consistent with Tdivide
 	real(REAL_KIND) :: t_divide_last
 	real(REAL_KIND) :: t_divide_next
 	real(REAL_KIND) :: t_anoxia
@@ -189,6 +191,7 @@ type cell_type
     real(REAL_KIND) :: G1_V, S_V, G2_V
     real(REAL_KIND) :: G1S_time, G2M_time, M_time
     real(REAL_KIND) :: doubling_time
+    real(REAL_KIND) :: S_start_time	! for PI labelling
     integer :: NL1, NL2(2)
 
 	type(metabolism_type) :: metab
@@ -746,7 +749,7 @@ end subroutine
 !    (b) use_V_dependence = false
 ! NOTE: %volume and %divide_volume are NOT normalised in this version.
 !-----------------------------------------------------------------------------------------
-function get_divide_volume(ityp,V0,Tdiv) result(Vdiv)
+function get_divide_volume2(ityp,V0,Tdiv) result(Vdiv)
 integer :: ityp
 real(REAL_KIND) :: V0, Tdiv
 real(REAL_KIND) :: Vdiv
@@ -775,6 +778,49 @@ else
 	endif
 	Tdiv = Tmean
 endif
+end function	
+
+!-----------------------------------------------------------------------------------------
+! ityp = cell type
+! V0 = cell starting volume (after division) = %volume
+! Two approaches:
+! 1. Use Vdivide0 and dVdivide to generate a volume
+! 2. Use the divide time log-normal distribution 
+!    (use_V_dependence = false)
+!-----------------------------------------------------------------------------------------
+function get_divide_volume(ityp,V0,Tdiv,fg) result(Vdiv)
+integer :: ityp
+real(REAL_KIND) :: V0, Tdiv, fg
+real(REAL_KIND) :: Vdiv, Tfixed, Tgrowth0, Tgrowth, rVmax
+real(REAL_KIND) :: b, R
+integer :: kpar=0
+type(cycle_parameters_type), pointer :: ccp
+
+ccp => cc_parameters
+
+rVmax = max_growthrate(ityp)
+Tgrowth0 = ccp%T_G1(ityp) + ccp%T_S(ityp) + ccp%T_G2(ityp)
+Tfixed = ccp%T_M(ityp) + ccp%G1_mean_delay(ityp) + ccp%G2_mean_delay(ityp)
+if (use_divide_time_distribution) then
+	Tdiv = DivideTime(ityp)
+	Tgrowth = Tdiv - Tfixed
+	fg = Tgrowth/Tgrowth0
+	Vdiv = V0 + Tgrowth*rVmax
+else
+	if (use_constant_divide_volume) then
+		Vdiv = Vdivide0
+		Tdiv = Tgrowth0 + Tfixed
+		fg = 1
+	else
+		R = par_uni(kpar)
+		Vdiv = Vdivide0 + dVdivide*(2*R-1)
+		Tgrowth = (Vdiv - V0)/rVmax
+		fg = Tgrowth/Tgrowth0
+		Tdiv = Tgrowth + Tfixed
+	endif
+endif
+!write(*,'(a,4e11.3)') 'get_divide_volume: rVmax,Vdiv,Tdiv, Tmean: ',rVmax,Vdiv,Tdiv/3600,divide_time_mean(ityp)/3600
+
 end function	
 
 !--------------------------------------------------------------------------------------

@@ -295,7 +295,7 @@ subroutine colony_divider(kcell1, ok)
 integer :: kcell1
 logical :: ok
 integer :: kcell2, ityp, nbrs0
-real(REAL_KIND) :: r(3), c(3), cfse0, cfse2, V0, Tdiv
+real(REAL_KIND) :: r(3), c(3), cfse0, cfse2, V0, Tdiv, gfactor
 type(cell_type), pointer :: cp1, cp2
 
 !write(*,*) 'divider:'
@@ -336,8 +336,9 @@ cp1%generation = cp1%generation + 1
 V0 = cp1%V/2
 cp1%V = V0
 cp1%birthtime = tnow
-cp1%divide_volume = get_divide_volume(ityp,V0,Tdiv)
+cp1%divide_volume = get_divide_volume(ityp,V0,Tdiv,gfactor)
 cp1%divide_time = Tdiv
+cp1%fg = gfactor
 cp1%mitosis = 0
 cfse0 = cp1%CFSE
 cp1%CFSE = generate_CFSE(cfse0/2)
@@ -366,8 +367,9 @@ cp1%t_divide_last = tnow
 cp2 = cp1
 
 ! These are the variations from cp1
-cp2%divide_volume = get_divide_volume(ityp,V0,Tdiv)
+cp2%divide_volume = get_divide_volume(ityp,V0,Tdiv,gfactor)
 cp2%divide_time = Tdiv
+cp2%fg = gfactor
 cp2%CFSE = cfse2
 if (cp2%radiation_tag) then
 	Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1

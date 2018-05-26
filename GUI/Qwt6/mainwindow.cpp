@@ -4,11 +4,7 @@
 
 #include <QtGui>
 
-#ifdef QWT_VER5
 #include "mainwindow.h"
-#else
-#include "Qwt6/mainwindow.h"
-#endif
 #include "log.h"
 #include "params.h"
 #include "graphs.h"
@@ -196,6 +192,8 @@ void MainWindow::createActions()
     action_show_gradient3D->setEnabled(false);
     action_show_gradient2D->setEnabled(false);
     action_field->setEnabled(false);
+//    action_start_recording->setEnabled(true);
+//    action_stop_recording->setEnabled(false);
     text_more->setEnabled(false);
     connect(action_open_input, SIGNAL(triggered()), this, SLOT(readInputFile()));
     connect(action_load_results, SIGNAL(triggered()), this, SLOT(loadResultFile()));
@@ -516,7 +514,7 @@ void MainWindow:: drawDistPlots()
         qp->setAxisScale(QwtPlot::xBottom, 0.0, xmax, 0.0);
         QwtPlotCurve *curve = new QwtPlotCurve("title");
         curve->attach(qp);
-        curve->setData(x, prob, n);
+        curve->setSamples(x, prob, n);
         curve_list[j] = curve;
 		qp->replot();
 	}
@@ -1207,6 +1205,7 @@ void MainWindow::on_buttonGroup_histotype_buttonClicked(QAbstractButton* button)
 {
     showHisto();
 }
+
 
 //-------------------------------------------------------------
 // Loops through the workingParameterList and fills in the GUI.
@@ -3466,7 +3465,7 @@ void MainWindow::redrawDistPlot()
             create_lognorm_dist(median,shape,nDistPts,x,prob);
             int n = dist_limit(prob,nDistPts);
             double xmax = x[n];
-            curve_list[k]->setData(x, prob, n);
+            curve_list[k]->setSamples(x, prob, n);
             qp->setAxisScale(QwtPlot::xBottom, 0.0, xmax, 0.0);
             qp->replot();
 			delete [] x;
@@ -3863,52 +3862,6 @@ void MainWindow::setupGraphSelector()
     groupBox_graphselect->setGeometry(rect);
 }
 
-//--------------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------------
-void MainWindow::processGroupBoxClick(QString text)
-{
-    LOG_QMSG("processGroupBoxClick: " + text);
-    QwtPlot *plot;
-
-    if (text.compare("Histo") == 0) {
-        LOG_MSG("save Histo plot");
-//        bool use_HistoBar = radioButton_histotype_1->isChecked();
-        bool use_HistoBar = (buttonGroup_histotype->checkedId() == 1);
-        if (use_HistoBar) {
-            plot = qpHistoBar;
-            qpHistoLine->hide();
-        } else {
-            plot = qpHistoLine;
-            qpHistoBar->hide();
-        }
-    } else if (text.compare("FACS") == 0) {
-        LOG_MSG("save FACS plot");
-        plot = qpFACS;
-    } else {
-        return;
-    }
-
-    int w = plot->width();
-    int h = plot->height();
-    QPixmap pixmap(w, h);
-    pixmap.fill(Qt::white); // Qt::transparent ?
-
-    QwtPlotPrintFilter filter;
-    int options = QwtPlotPrintFilter::PrintAll;
-    options &= ~QwtPlotPrintFilter::PrintBackground;
-    options |= QwtPlotPrintFilter::PrintFrameWithScales;
-    filter.setOptions(options);
-
-    plot->print(pixmap, filter);
-
-//		QString fileName = getImageFile();
-    QString fileName = QFileDialog::getSaveFileName(0,"Select image file", ".",
-        "Image files (*.png *.jpg *.tif *.bmp)");
-    if (fileName.isEmpty()) {
-        return;
-    }
-    pixmap.save(fileName,0,-1);
-}
 
 //--------------------------------------------------------------------------------------------------------
 // Note that the initial selection of active graphs is now set in params.cpp
