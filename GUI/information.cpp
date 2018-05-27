@@ -43,8 +43,10 @@ QMyCheckBox::QMyCheckBox(QWidget *parent) : QCheckBox(parent)
 void QMyCheckBox::mousePressEvent (QMouseEvent *event) {
     event->accept();
     QString text;
+    LOG_MSG("QMyCheckBox::mousePressEvent");
     if (objectName().contains("cbox_")) {
         QString sname = objectName().mid(5);
+        LOG_QMSG("cbox_" + sname);
         // Find which cbox_ sent the signal, and read its text
         for (int k=0; k<parm->nParams; k++) {
             PARAM_SET param = parm->get_param(k);
@@ -58,6 +60,7 @@ void QMyCheckBox::mousePressEvent (QMouseEvent *event) {
     if (event->button() == Qt::LeftButton) {
         this->toggle();
     }
+    LOG_QMSG("emit checkBoxClicked: " + text);
     emit checkBoxClicked(text);
 };
 

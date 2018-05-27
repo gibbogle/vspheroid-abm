@@ -2,12 +2,14 @@
 *.user
 */*.pro
 */*.user
-build/**/*
 docs/
 docs/**/*
 execution/
 execution/**/*
 vspheroid_GUI-build/**/*
+vspheroid_GUI6-build/**/*
 /GUI/vspheroid_GUI.pro.user
 /GUI/vspheroid_GUI.pro
+/GUI/vspheroid_GUI6.pro.user
+/GUI/vspheroid_GUI6.pro
 VBA/**/*

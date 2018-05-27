@@ -160,10 +160,42 @@ void MainWindow::createFACSPage()
     qpHistoBar->setTitle("Histogram");
     qpHistoBar->replot();
     qpHistoLine->hide();
-    connect((QObject *)groupBox_FACS,SIGNAL(groupBoxClicked(QString)),this,SLOT(processGroupBoxClick(QString)));
-    connect((QObject *)groupBox_Histo,SIGNAL(groupBoxClicked(QString)),this,SLOT(processGroupBoxClick(QString)));
+
+    connect(checkBox_histo_logscale,SIGNAL(stateChanged(int)),this,SLOT(checkBox_histo_logscale_stateChanged(int)));
+    connect(buttonGroup_celltype,SIGNAL(buttonClicked(QAbstractButton*)),this,SLOT(buttonGroup_celltype_buttonClicked(QAbstractButton*)));
+    connect(buttonGroup_histotype,SIGNAL(buttonClicked(QAbstractButton*)),this,SLOT(buttonGroup_histotype_buttonClicked(QAbstractButton*)));
+//    connect((QObject *)groupBox_FACS,SIGNAL(groupBoxClicked(QString)),this,SLOT(processGroupBoxClick(QString)));
+//    connect((QObject *)groupBox_Histo,SIGNAL(groupBoxClicked(QString)),this,SLOT(processGroupBoxClick(QString)));
 }
 
+//--------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------
+void MainWindow::buttonGroup_celltype_buttonClicked(QAbstractButton* button)
+{
+    LOG_MSG("on_buttonGroup_celltype_buttonClicked");
+    if (button->text() == "Cell type 1") {
+        Global::histo_celltype = 1;
+    } else if (button->text() == "Cell type 2") {
+        Global::histo_celltype = 2;
+    } else {
+        Global::histo_celltype = 0; // both cell types
+    }
+    showHisto();
+}
+
+//--------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------
+void MainWindow::checkBox_histo_logscale_stateChanged(int state)
+{
+    showHisto();
+}
+
+//--------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------
+void MainWindow::buttonGroup_histotype_buttonClicked(QAbstractButton* button)
+{
+    showHisto();
+}
 
 //--------------------------------------------------------------------------------------------------------
 // Possible variables to plot are Global::vars_used[]
@@ -530,6 +562,7 @@ void MainWindow::makeHistoPlot(int numValues, double xmin, double width,
         QwtPlotCurve *curve = new QwtPlotCurve("");
         QPen *pen = new QPen();
         pen->setColor(Qt::black);
+        pen->setWidth(3);
         curve->attach(plot);
         curve->setPen(*pen);
         curve->setSamples(x, y, numValues);

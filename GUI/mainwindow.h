@@ -202,9 +202,9 @@ public slots:
     void on_line_CELLPERCENT_1_textEdited(QString pc1_str);
     void on_line_CELLPERCENT_2_textEdited(QString pc2_str);
     void radioButtonChanged(QAbstractButton *b);
-    void on_buttonGroup_celltype_buttonClicked(QAbstractButton* button);
-    void on_buttonGroup_histotype_buttonClicked(QAbstractButton* button);
-    void on_checkBox_histo_logscale_toggled();
+    void buttonGroup_celltype_buttonClicked(QAbstractButton* button);
+    void buttonGroup_histotype_buttonClicked(QAbstractButton* button);
+    void checkBox_histo_logscale_stateChanged(int);
     void on_checkBox_volume_scaling_toggled(bool checked);
     void on_buttonGroup_drug_buttonClicked(QAbstractButton* button);
     void updateCkill();
