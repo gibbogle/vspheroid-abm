@@ -1139,40 +1139,6 @@ else
     cp%NL2 = 0
     ! Need to assign phase, volume to complete phase, current volume
     call SetInitialCellCycleStatus(cp)
-#if 0
-! THIS MUST BE REPLACED-------------------------------------------------------------------------------------
-    ! Need to assign phase, volume to complete phase, current volume
-    ! Simplest way to assign phase fractions is in proportion to phase durations
-    ! (exclude M-phase)
-    p(1) = ccp%T_G1(ityp)
-    p(2) = ccp%T_S(ityp)
-    p(3) = ccp%T_G2(ityp)
-    p = p/sum(p)
-    k = random_choice(p,3,kpar)
-    if (k == 1) then
-        cp%phase = G1_phase
-        cp%G1_flag = .false.
-        R = par_uni(kpar)
-        cp%G1_time = R*ccp%T_G1(ityp)
-        cp%V = V0 + max_growthrate(ityp)*R*ccp%T_G1(ityp)
-        cp%G1_V = V0 + max_growthrate(ityp)*ccp%T_G1(ityp)
-        cp%t_divide_last = cp%G1_time - ccp%T_G1(ityp)
-    elseif (k == 2) then
-        cp%phase = S_phase
-        R = par_uni(kpar)
-        cp%S_time = R*ccp%T_S    (ityp)
-        cp%V = V0 + max_growthrate(ityp)*(ccp%T_G1(ityp) + R*ccp%T_S(ityp))
-        cp%S_V = V0 + max_growthrate(ityp)*(ccp%T_G1(ityp) + ccp%T_S(ityp))
-        cp%t_divide_last = cp%S_time - ccp%T_S(ityp) - ccp%T_G1(ityp) - ccp%G1_mean_delay(ityp)
-    elseif (k == 3) then
-        cp%phase = G2_phase
-        R = par_uni(kpar)
-        cp%G2_time = R*ccp%T_G2(ityp)
-        cp%V = V0 + max_growthrate(ityp)*(ccp%T_G1(ityp) + ccp%T_S(ityp) + R*ccp%T_G2(ityp))
-        cp%S_V = V0 + max_growthrate(ityp)*(ccp%T_G1(ityp) + ccp%T_S(ityp) + ccp%T_G2(ityp))
-        cp%t_divide_last = cp%G2_time - ccp%T_G2(ityp) - ccp%T_S(ityp) - ccp%T_G1(ityp) - ccp%G1_mean_delay(ityp)
-    endif
-#endif
 endif
 
 cp%radius(1) = (3*cp%V/(4*PI))**(1./3.)
@@ -1183,7 +1149,6 @@ cp%birthtime = 0
 !cp%growthrate = test_growthrate
 !cp2%divide_volume = get_divide_volume()
 cp%d_divide = (3*cp%divide_volume/PI)**(1./3.)
-cp%mitosis = 0
 
 cp%drug_tag = .false.
 cp%radiation_tag = .false.

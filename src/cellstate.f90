@@ -539,7 +539,6 @@ do kcell = 1,nlist0
 				cp%mitosis = 0
 				cp%t_start_mitosis = tnow
 				ncells_mphase = ncells_mphase + 1
-#ifdef SIMULATE_FORCES
 				cp%nspheres = 2
 				call get_random_vector3(rr)	! set initial axis direction
 				cp%d = 0.1*small_d
@@ -547,7 +546,6 @@ do kcell = 1,nlist0
 				cp%centre(:,1) = c + (cp%d/2)*rr
 				cp%centre(:,2) = c - (cp%d/2)*rr
 				cp%d_divide = 2.0**(2./3)*cp%radius(1)
-#endif				
 	        endif
 	    else
 	        in_mitosis = .true.
@@ -578,7 +576,6 @@ do kcell = 1,nlist0
 				cp%mitosis = 0
 				cp%t_start_mitosis = tnow
 				ncells_mphase = ncells_mphase + 1
-#ifdef SIMULATE_FORCES
 				call get_random_vector3(rr)	! set initial axis direction
 				rrsum = rrsum + rr
 				cp%d = 0.1*small_d
@@ -586,7 +583,6 @@ do kcell = 1,nlist0
 				cp%centre(:,1) = c + (cp%d/2)*rr
 				cp%centre(:,2) = c - (cp%d/2)*rr
 				cp%d_divide = 2.0**(2./3)*cp%radius(1)
-#endif				
             endif
             in_mitosis = .true.
         endif

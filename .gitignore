@@ -6,6 +6,8 @@ docs/
 docs/**/*
 execution/
 execution/**/*
+Build/*
+Build/**/*
 vspheroid_GUI-build/**/*
 vspheroid_GUI6-build/**/*
 /GUI/vspheroid_GUI.pro.user
