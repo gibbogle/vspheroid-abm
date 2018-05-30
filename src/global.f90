@@ -446,7 +446,8 @@ logical :: colony_simulation
 logical :: medium_change_step
 logical :: dbug = .false.
 
-integer :: kcell_now, kcell_test=-34
+integer :: kcell_now, kcell_test=1
+integer :: ndivided
 
 !dec$ attributes dllexport :: nsteps, DELTA_T
 

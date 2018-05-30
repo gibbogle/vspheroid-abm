@@ -104,7 +104,10 @@ logical :: switch
 
 phase = cp%phase
 if (cp%dVdt == 0) then
-	if (phase == G1_phase .or. phase == S_phase .or. phase == G2_phase) return
+!	if (phase == G1_phase .or. phase == S_phase .or. phase == G2_phase) then
+		write(nflog,*) 'dVdt=0, kcell, phase: ',kcell_now,phase
+		stop
+!	endif
 endif
 ityp = cp%celltype
 if (.not.use_metabolism) then
@@ -132,12 +135,18 @@ if (phase == G1_phase) then
         cp%phase = Checkpoint1
         cp%G1_flag = .false.
         cp%G1S_time = tnow + ccp%Tcp(cp%NL1)
+        ! TESTING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !cp%G1S_time = cp%G1S_time + ccp%G1_mean_delay(1)
+        !
     endif
 elseif (phase == Checkpoint1) then  ! this checkpoint combines the release from G1 delay and the G1S repair check
     if (.not.cp%G1_flag) then
         R = par_uni(kpar)
         cp%G1_flag = (R < ccp%Pk_G1(ityp)*dt)
     endif
+    ! TESTING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !cp%G1_flag = (tnow > cp%G1S_time)
+    !
     cp%G1S_flag = (cp%NL1 == 0 .or. tnow > cp%G1S_time)
     if (use_metabolism) then
 		cp%G1S_flag = cp%G1S_flag .and. (cp%metab%A_rate > ATPg(ityp))
@@ -182,12 +191,18 @@ elseif (phase == G2_phase) then
         cp%phase = Checkpoint2
         cp%G2_flag = .false.
         cp%G2M_time = tnow + ccp%Tcp(cp%NL1)
+        ! TESTING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !cp%G2M_time = cp%G2M_time + ccp%G2_mean_delay(1)
+        !
     endif
 elseif (phase == Checkpoint2) then ! this checkpoint combines the release from G2 delay and the G2M repair check
     if (.not.cp%G2_flag) then
         R = par_uni(kpar)
         cp%G2_flag = (R < ccp%Pk_G2(ityp)*dt)
     endif
+    ! TESTING !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    !cp%G2_flag = (tnow > cp%G2M_time)
+    !
     cp%G2M_flag = (cp%NL1 == 0 .or. tnow > cp%G2M_time)
     if (use_metabolism) then
 		cp%G2M_flag = cp%G2M_flag .and. (cp%metab%A_rate > ATPg(ityp))

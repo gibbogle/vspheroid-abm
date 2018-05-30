@@ -21,6 +21,7 @@ contains
 subroutine GrowCells(dt,changed, ok)
 real(REAL_KIND) :: dt
 logical :: changed, ok
+type(cell_type),pointer :: cp
 
 !call logger('GrowCells')
 !tnow = istep*DELTA_T
@@ -41,6 +42,9 @@ endif
 !	call CellMigration(ok)
 !	if (.not.ok) return
 !endif
+!cp => cell_list(kcell_test)
+!write(nflog,*) 'ndivided: ',ndivided
+!write(nflog,'(a,2i6,2f8.3,e12.3)') 'kcell_test: ',kcell_test,cp%phase,tnow/3600,cp%mitosis,cp%dVdt
 end subroutine
 
 !-----------------------------------------------------------------------------------------
@@ -555,7 +559,9 @@ do kcell = 1,nlist0
 !	    if (cp%dVdt == 0) then
 !			write(nflog,*) 'dVdt=0: kcell, phase: ',kcell,cp%phase 
 !		endif
-        call timestep(cp, ccp, dt)
+	    if (cp%dVdt > 0) then
+			call timestep(cp, ccp, dt)
+		endif
         if (.not.cp%radiation_tag .and.(cp%NL2(1) > 0 .or. cp%NL2(2) > 0)) then	! irrepairable damage
 			! For now, tag for death at mitosis
 			cp%radiation_tag = .true.	! new_grower
@@ -734,7 +740,7 @@ subroutine growcell(cp, dt)
 type(cell_type), pointer :: cp
 real(REAL_KIND) :: dt
 real(REAL_KIND) :: Cin_0(NCONST), Cex_0(NCONST)		! at some point NCONST -> MAX_CHEMO
-real(REAL_KIND) :: dVdt,  Vin_0, dV, metab_O2, metab_glucose, metab, dVdt_new
+real(REAL_KIND) :: dVdt,  Vin_0, dV, metab_O2, metab_glucose, metab
 logical :: oxygen_growth, glucose_growth
 integer :: ityp
 integer :: C_option = 1	! we must use this
@@ -751,10 +757,11 @@ else
 	if (use_metabolism) then
 		cp%metab%Itotal = cp%metab%Itotal + dt*cp%metab%I_rate
 		! need to set cp%dVdt from cp%metab%I_rate
-		dVdt = max_growthrate(ityp)*cp%metab%I_rate/cp%metab%I_rate_max
+!		dVdt = max_growthrate(ityp)*cp%metab%I_rate/cp%metab%I_rate_max
 !		dVdt = cp%growth_rate_factor*dVdt
 !		cp%V = cp%V + cp%dVdt*dt
-		metab = 1
+		metab = cp%metab%I_rate/cp%metab%I_rate_max
+		dVdt = get_dVdt(cp,metab)
 		Cin_0 = cp%Cin
 !		if (kcell_now == 1) then
 !			write(*,*) 'cp%growth_rate_factor: ',cp%growth_rate_factor
@@ -812,15 +819,15 @@ real(REAL_KIND) :: r_mean, c_rate
 
 ityp = cp%celltype
 if (use_cell_cycle) then
-    if (cp%phase == G1_phase .or. cp%phase == S_phase .or. cp%phase == G2_phase) then
+!    if (cp%phase == G1_phase .or. cp%phase == S_phase .or. cp%phase == G2_phase) then
         if (use_constant_growthrate) then
             dVdt = max_growthrate(ityp)
         else
             dVdt = metab*max_growthrate(ityp)
         endif
-    else
-        dVdt = 0
-    endif
+!    else
+!        dVdt = 0
+!    endif
 else
     if (use_V_dependence) then
 	    if (use_constant_divide_volume) then
@@ -855,6 +862,7 @@ real(REAL_KIND) :: C_O2, C_glucose, metab, metab_O2, metab_glucose, dVdt
 logical :: oxygen_growth, glucose_growth
 type(cell_type), pointer :: cp
 
+write(nflog,*) 'SetInitialGrowthRate'
 oxygen_growth = chemo(OXYGEN)%controls_growth
 glucose_growth = chemo(GLUCOSE)%controls_growth
 do kcell = 1,nlist
@@ -1034,6 +1042,7 @@ else
 	cp1 => cell_list(kcell1)
 endif
 !write(nflog,'(a,i6,4e12.3)') 'divider: ',kcell1,cp1%mitosis,cp1%V,cp1%radius(1:2)
+!write(nflog,'(a,i6,f6.2)') 'divided in time: ',kcell1,(tnow - cp1%t_divide_last)/3600
 if (ngaps > 0) then
     kcell2 = gaplist(ngaps)
     ngaps = ngaps - 1
@@ -1087,11 +1096,10 @@ if (cp1%growth_delay) then
 	cp1%N_delayed_cycles_left = cp1%N_delayed_cycles_left - 1
 	cp1%growth_delay = (cp1%N_delayed_cycles_left > 0)
 endif
-if (use_metabolism) then
-    cp1%G1_time = tnow + (cp1%metab%I_rate_max/cp1%metab%I_rate)*ccp%T_G1(ityp)
-else
-	cp1%G1_time = tnow + (max_growthrate(ityp)/cp1%dVdt)*ccp%T_G1(ityp)    ! time spend in G1 varies inversely with dV/dt
-endif
+!if (use_metabolism .and. cp1%dVdt == 0) then
+!	cp1%dVdt = (cp1%metab%I_rate/cp1%metab%I_rate_max)*max_growthrate(ityp)
+!endif
+cp1%G1_time = tnow + (max_growthrate(ityp)/cp1%dVdt)*cp1%fg*ccp%T_G1(ityp)    ! time spend in G1 varies inversely with dV/dt
 
 if (.not.colony_simulation) then
     nbrs0 = cp1%nbrs
@@ -1104,7 +1112,6 @@ cp1%G2_M = .false.
 cp1%Iphase = .true.
 cp1%nspheres = 1
 cp1%phase = G1_phase
-cp1%G1_time = tnow + (max_growthrate(ityp)/cp1%dVdt)*ccp%T_G1(ityp)    ! time spend in G1 varies inversely with dV/dt
 
 ndoublings = ndoublings + 1
 doubling_time_sum = doubling_time_sum + tnow - cp1%t_divide_last
@@ -1137,6 +1144,7 @@ if (.not.colony_simulation) then
     call update_nbrlist(kcell2)
 endif
 ! Note: any cell that has kcell1 in its nbrlist now needs to add kcell2 to the nbrlist.
+ndivided = ndivided + 1
 end subroutine
 
 !----------------------------------------------------------------------------------

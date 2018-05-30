@@ -431,10 +431,8 @@ ccp%T_M = 3600*ccp%T_M
 ccp%G1_mean_delay = 3600*ccp%G1_mean_delay
 ccp%G2_mean_delay = 3600*ccp%G2_mean_delay
 
-ccp%Pk_G1 = 1./ccp%G1_mean_delay    ! /sec
-ccp%Pk_G2 = 1./ccp%G2_mean_delay    ! /sec
 call logger('makeTCP')
-call makeTCP(ccp%tcp,NTCP,ccp%Krepair_base,ccp%Kmisrepair,ccp%Kcp) ! set checkpoint repair time limits 
+call makeTCPradiation(ccp%tcp,NTCP,ccp%Krepair_base,ccp%Kmisrepair,ccp%Kcp) ! set checkpoint repair time limits 
 call logger('did makeTCP')
 end subroutine
 
@@ -457,6 +455,9 @@ do ityp = 1,2
 	ccp%G1_mean_delay(ityp) = tfactor*ccp%G1_mean_delay(ityp)
 	ccp%G2_mean_delay(ityp)= tfactor*ccp%G2_mean_delay(ityp)
 enddo
+ccp%Pk_G1 = 1./ccp%G1_mean_delay    ! /sec
+ccp%Pk_G2 = 1./ccp%G2_mean_delay    ! /sec
+write(nflog,'(a,4e12.3)') 'Pk_G1, Pk_G2: ',ccp%Pk_G1,ccp%Pk_G2
 end subroutine
 
 
@@ -841,9 +842,15 @@ endif
 ! Growth occurs at a constant rate for (divide_time - mitosis_duration)
 ! This is option A.
 ! Try a different option: B
+
 Vdivide0 = (2.0/1.5)*(4.*PI/3.)*Raverage**3
-dVdivide = dVdivide*Vdivide0	
 Rdivide0 = Raverage*(2.0/1.5)**(1./3.)
+! TESTING like monolayer_m
+!Vdivide0 = Vdivide0*Vcell_cm3
+!Rdivide0 = (3*Vdivide0/(4*PI))**(1./3.)
+!
+
+dVdivide = dVdivide*Vdivide0	
 d_nbr_limit = 1.2*2*Rdivide0	! 1.5 is an arbitrary choice - was 1.2
 
 !test_growthrate = Vdivide0/(2*(divide_time_median(1) - mitosis_duration))	! um3/sec
@@ -859,12 +866,14 @@ endif
 ccp => cc_parameters
 tgrowth = ccp%T_G1 + ccp%T_S + ccp%T_G2
 max_growthrate = Vdivide0/(2*tgrowth)
+write(nflog,*) 'Vdivide0, max_growthrate: ',Vdivide0, max_growthrate
 
 call setup_force_parameters
 
 call make_jumpvec
 call PlaceCells(ok)
 call logger('did PlaceCells')
+call setTestCell(kcell_test)
 !do kcell = 1,nlist
 !	write(nflog,'(i6,3f8.1)') kcell,1.0e4*cp%centre(:,1)
 !enddo
@@ -896,6 +905,7 @@ Ncells_dying = 0
 ndoublings = 0
 doubling_time_sum = 0
 ncells_mphase = 0
+ndivided = 0
 
 is_dropped = .false.
 
@@ -922,6 +932,7 @@ nspeedtest = 100000
 rrsum = 0
 total_dose_time = 0
 !call showallcells
+call averages
 
 end subroutine
 
@@ -1087,7 +1098,6 @@ else
 endif
 nlist = kcell
 ncells = kcell
-	
 end subroutine
 
 !--------------------------------------------------------------------------------
@@ -1285,6 +1295,7 @@ do iphase = 1,6
 	endif
 	fsum = fsum + phase_fraction(iphase)
 enddo
+cp%metab = metabolic(ityp)
 !write(*,*)
 !write(*,'(a,3f8.3)') 'Tdiv, Tmean, fg: ',Tdiv/3600,Tmean/3600,fg
 !write(*,'(a,6f8.3)') 'phase_time: ',phase_time/3600
@@ -1292,6 +1303,41 @@ enddo
 !write(*,'(a,i2,5f8.3,e12.3)') 'iphase, R,x,y,z,tlast,V: ',iphase,R,x,y,z,cp%t_divide_last/3600,cp%V
 !if (iphase >= 5) write(*,'(a,2e12.3)') 'Vdiv, V: ',cp%divide_volume, cp%V
 !write(*,'(a,2f8.3)') 'Tdiv,sum of phases: ',Tdiv/3600,(phase_time(1) + phase_time(2) + phase_time(3) + phase_time(4) + phase_time(5) + phase_time(6))/3600
+end subroutine
+
+!--------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------
+subroutine setTestCell(kcell)
+integer :: kcell
+integer :: ityp
+real(REAL_KIND) :: V0, Tdiv, Tgrowth, Tgrowth0, Tfixed, rVmax, phase_time1
+type(cell_type), pointer :: cp
+type(cycle_parameters_type), pointer :: ccp
+
+ccp => cc_parameters
+cp => cell_list(kcell)
+ityp = 1
+V0 = Vdivide0/2
+Tdiv = divide_time_mean(ityp)
+cp%divide_time = Tdiv
+rVmax = max_growthrate(ityp)
+Tgrowth0 = ccp%T_G1(ityp) + ccp%T_S(ityp) + ccp%T_G2(ityp)
+Tfixed = ccp%T_M(ityp) + ccp%G1_mean_delay(ityp) + ccp%G2_mean_delay(ityp)
+Tgrowth = Tdiv - Tfixed
+cp%fg = Tgrowth/Tgrowth0
+cp%divide_volume = V0 + Tgrowth*rVmax
+phase_time1 = cp%fg*ccp%T_G1(ityp)
+cp%phase = G1_phase
+cp%G1_time = phase_time1
+cp%V = V0
+cp%t_divide_last = 0
+write(nflog,*) 'setTestCell'
+write(nflog,*) 'phase: ',cp%phase
+write(nflog,*) 'divide_time:', cp%divide_time
+write(nflog,*) 'V: ',cp%V
+write(nflog,*) 'divide_volume: ',cp%divide_volume
+write(nflog,*) 'fg: ',cp%fg
+write(nflog,*) 'G1_time: ',cp%G1_time
 end subroutine
 
 !--------------------------------------------------------------------------------
@@ -1624,6 +1670,7 @@ do while (.not.done)
 		call make_perm_index(ok)
 	endif
 enddo
+write(nflog,*) 'istep,tnow: ',istep,tnow
 call update_all_nbrlists
 
 if (saveprofile%active) then
@@ -1695,7 +1742,37 @@ if (mod(istep,nt_hour) == 0) then
 	call set_bdry_conc()
     call showcells
 endif
+!call averages
 res = 0
+end subroutine
+
+!-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
+subroutine averages
+real(REAL_KIND) :: ave_V, ave_dVdt, ave_fg
+integer :: kcell, n
+type(cell_type), pointer :: cp
+
+ave_V = 0
+ave_dVdt = 0
+ave_fg = 0
+n = 0
+do kcell = 1,Ncells
+	cp => cell_list(kcell)
+	if (cp%state == DEAD) continue
+!	if (cp%dVdt /= max_growthrate(1)) then
+!		write(nflog,'(a,i6,2e12.3)') 'dVdt: ',kcell,cp%dVdt,max_growthrate(1)
+!		stop
+!	endif
+	n = n+1
+	ave_V = ave_V + cp%V
+	ave_dVdt = ave_dVdt + cp%dVdt
+	ave_fg = ave_fg + cp%fg
+	if (istep >= 145) then
+		if (cp%generation == 1) write(nflog,*) 'gen=1: ',kcell,cp%phase
+	endif
+enddo
+write(nflog,'(a,3e12.3)') 'averages: V,dVdt,fg: ',ave_V/n,ave_dVdt/n, ave_fg/n
 end subroutine
 
 !-----------------------------------------------------------------------------------------
