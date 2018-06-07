@@ -493,33 +493,137 @@ end subroutine
 subroutine new_grower(dt, changed, ok)
 real(REAL_KIND) :: dt
 logical :: changed, ok
-integer :: k, kcell, nlist0, ityp, idrug, prev_phase, kpar=0
-type(cell_type), pointer :: cp
-type(cycle_parameters_type), pointer :: ccp
-real(REAL_KIND) :: rr(3), c(3), rad, d_desired, R
+integer :: nlivecells
+integer, allocatable :: livelist(:)
+integer :: k, kcell, idrug, ityp
+logical :: divide, drug_killed(2), radiation_killed
 integer, parameter :: MAX_DIVIDE_LIST = 10000
 integer :: ndivide, divide_list(MAX_DIVIDE_LIST)
-logical :: drugkilled
-logical :: mitosis_entry, in_mitosis, divide, tagged
+integer, parameter :: MAX_DRUG_LIST = 10000
+integer :: ndrug_kill(2), drug_kill_list(2,MAX_DRUG_LIST)
+integer, parameter :: MAX_RADIATION_LIST = 10000
+integer :: nradiation_kill, radiation_kill_list(MAX_RADIATION_LIST)
+type(cell_type), pointer :: cp
 
 ok = .true.
 changed = .false.
-ccp => cc_parameters
-nlist0 = nlist
 ndivide = 0
 !tnow = istep*DELTA_T !+ t_fmover
 !if (colony_simulation) write(*,*) 'grower: ',nlist0,use_volume_method,tnow
 
-do kcell = 1,nlist0
-	kcell_now = kcell
+allocate(livelist(nlist))
+nlivecells = 0
+do kcell = 1,nlist
 	if (colony_simulation) then
 	    cp => ccell_list(kcell)
 	else
     	cp => cell_list(kcell)
     endif
 	if (cp%state == DEAD) cycle
+	nlivecells = nlivecells + 1
+	livelist(nlivecells) = kcell
+enddo
+
+ndivide = 0
+ndrug_kill = 0
+nradiation_kill = 0
+call omp_set_num_threads(Mnodes)
+!$omp parallel do private(kcell, divide, drug_killed, radiation_killed, idrug)
+do k = 1,nlivecells
+	kcell = livelist(k)
+	call omp_grower(dt, kcell, divide, drug_killed, radiation_killed)
+	if (divide) then
+		ndivide = ndivide + 1
+		if (ndivide > MAX_DIVIDE_LIST) then
+		    write(logmsg,*) 'Error: growcells: MAX_DIVIDE_LIST exceeded: ',MAX_DIVIDE_LIST
+		    call logger(logmsg)
+		    ok = .false.
+!		    return
+		endif
+		divide_list(ndivide) = kcell
+	endif
+	do idrug = 1,2
+		if (drug_killed(idrug)) then
+			ndrug_kill(idrug) = ndrug_kill(idrug) + 1
+			drug_kill_list(idrug,ndrug_kill(idrug)) = kcell
+		endif
+	enddo
+	if (radiation_killed) then
+		nradiation_kill = nradiation_kill + 1
+		radiation_kill_list(nradiation_kill) = kcell
+	endif
+enddo
+!$omp end parallel do
+
+do idrug = 1,2
+	do k = 1,ndrug_kill(idrug)
+		changed = .true.
+		kcell = drug_kill_list(idrug,k)
+		if (colony_simulation) then
+			cp => ccell_list(kcell)
+		else
+    		cp => cell_list(kcell)
+		endif
+		ityp = cp%celltype
+		call CellDies(kcell,cp)
+		Ndrug_dead(idrug,ityp) = Ndrug_dead(idrug,ityp) + 1
+	enddo
+enddo
+
+do k = 1,nradiation_kill
+	changed = .true.
+	kcell = radiation_kill_list(k)
+	if (colony_simulation) then
+		cp => ccell_list(kcell)
+	else
+		cp => cell_list(kcell)
+	endif
 	ityp = cp%celltype
-	divide = .false.
+	call CellDies(kcell,cp)
+	Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
+enddo
+
+do k = 1,ndivide
+	changed = .true.
+	kcell = divide_list(k)
+	if (colony_simulation) then
+	    cp => ccell_list(kcell)
+	else
+    	cp => cell_list(kcell)
+    endif
+	call divider(kcell, ok)
+	if (.not.ok) return
+enddo
+deallocate(livelist)
+end subroutine
+
+!-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
+subroutine omp_grower(dt, kcell, divide, drug_killed, radiation_killed)
+real(REAL_KIND) :: dt
+integer :: kcell
+logical :: divide, drug_killed(2), radiation_killed
+
+integer :: k, ityp, idrug, prev_phase, kpar=0
+type(cell_type), pointer :: cp
+type(cycle_parameters_type), pointer :: ccp
+real(REAL_KIND) :: rr(3), c(3), rad, d_desired, R
+logical :: mitosis_entry, in_mitosis, tagged
+logical :: dbug
+
+dbug = (kcell == -977)
+divide = .false.
+drug_killed = .false.
+radiation_killed = .false.
+ccp => cc_parameters
+
+	if (colony_simulation) then
+	    cp => ccell_list(kcell)
+	else
+    	cp => cell_list(kcell)
+    endif
+	ityp = cp%celltype
+!	divide = .false.
 	mitosis_entry = .false.
 	in_mitosis = .false.
 	tagged = cp%anoxia_tag .or. cp%aglucosia_tag .or. (cp%state == DYING)
@@ -555,12 +659,14 @@ do kcell = 1,nlist0
 	        in_mitosis = .true.
 	    endif
 	else
+		if (dbug) write(*,*) 'phase: ',cp%phase
 	    prev_phase = cp%phase
 !	    if (cp%dVdt == 0) then
 !			write(nflog,*) 'dVdt=0: kcell, phase: ',kcell,cp%phase 
 !		endif
 	    if (cp%dVdt > 0) then
 			call timestep(cp, ccp, dt)
+			if (dbug) write(*,*) 'after timestep, phase: ',cp%phase
 		endif
         if (.not.cp%radiation_tag .and.(cp%NL2(1) > 0 .or. cp%NL2(2) > 0)) then	! irrepairable damage
 			! For now, tag for death at mitosis
@@ -591,24 +697,26 @@ do kcell = 1,nlist0
 				cp%d_divide = 2.0**(2./3)*cp%radius(1)
             endif
             in_mitosis = .true.
+!            write(*,*) 'in_mitosis: ',kcell
         endif
 		if (cp%phase < Checkpoint2 .and. cp%phase /= Checkpoint1) then
 		    call growcell(cp,dt)
 		endif	
 	endif
-!	if (mitosis_entry) then
+	
 	if (in_mitosis) then
-		drugkilled = .false.
+!		drugkilled = .false.
 		do idrug = 1,ndrugs_used
 			if (cp%drug_tag(idrug)) then
-				call CellDies(kcell,cp)
-				changed = .true.
-				Ndrug_dead(idrug,ityp) = Ndrug_dead(idrug,ityp) + 1
-				drugkilled = .true.
-				exit
+!				call CellDies(kcell,cp)
+!				changed = .true.
+!				Ndrug_dead(idrug,ityp) = Ndrug_dead(idrug,ityp) + 1
+!				cycle
+				drug_killed(idrug) = .true.
+				return
 			endif
 		enddo
-		if (drugkilled) cycle
+!		if (drugkilled) cycle
 
 		cp%mitosis = (tnow - cp%t_start_mitosis)/mitosis_duration
 		d_desired = max(cp%mitosis*cp%d_divide,small_d)
@@ -631,32 +739,38 @@ do kcell = 1,nlist0
 					if (tnow > cp%t_growth_delay_end) then
 						cp%G2_M = .false.
 					else
-						cycle
+!						cycle
+						return
 					endif
 				else
 					cp%t_growth_delay_end = tnow + cp%dt_delay
 					cp%G2_M = .true.
-					cycle
+!					cycle
+					return
 				endif
 			endif
 			! try moving death prob test to here
 			if (cp%radiation_tag) then
 				R = par_uni(kpar)
 				if (R < cp%p_rad_death) then
-					call CellDies(kcell,cp)
-					changed = .true.
-					Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
-					cycle
+!					call CellDies(kcell,cp)
+!					changed = .true.
+!					Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
+!					cycle
+					radiation_killed = .true.
+					return
 				endif
 			endif		
 		else
 		    ! Check for cell death by radiation lesions
 !		    if (cp%NL1 > 0 .or. cp%NL2(2) > 0) then
 			if (cp%radiation_tag) then
-				call CellDies(kcell,cp)
-				changed = .true.
-				Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
-				cycle
+!				call CellDies(kcell,cp)
+!				changed = .true.
+!				Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
+!				cycle
+				radiation_killed = .true.
+				return
 			endif		        
 		endif
 		
@@ -665,28 +779,7 @@ do kcell = 1,nlist0
 			divide = .true.
 		endif
 	endif
-	if (divide) then
-		ndivide = ndivide + 1
-		if (ndivide > MAX_DIVIDE_LIST) then
-		    write(logmsg,*) 'Error: growcells: MAX_DIVIDE_LIST exceeded: ',MAX_DIVIDE_LIST
-		    call logger(logmsg)
-		    ok = .false.
-		    return
-		endif
-		divide_list(ndivide) = kcell
-	endif
-enddo
-do k = 1,ndivide
-	changed = .true.
-	kcell = divide_list(k)
-	if (colony_simulation) then
-	    cp => ccell_list(kcell)
-	else
-    	cp => cell_list(kcell)
-    endif
-	call divider(kcell, ok)
-	if (.not.ok) return
-enddo
+	
 end subroutine
 
 

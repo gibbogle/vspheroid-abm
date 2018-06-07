@@ -1148,7 +1148,7 @@ else
     cp%NL1 = 0
     cp%NL2 = 0
     ! Need to assign phase, volume to complete phase, current volume
-    call SetInitialCellCycleStatus(cp)
+    call SetInitialCellCycleStatus(kcell,cp)
 endif
 
 cp%radius(1) = (3*cp%V/(4*PI))**(1./3.)
@@ -1219,7 +1219,8 @@ end subroutine
 !	%t_divide_last
 ! Note: no cells start in mitosis - set all phase=6 cells at the end of G2 checkpoint
 !--------------------------------------------------------------------------------
-subroutine SetInitialCellCycleStatus(cp)
+subroutine SetInitialCellCycleStatus(kcell,cp)
+integer :: kcell
 type(cell_type), pointer :: cp
 type(cycle_parameters_type),pointer :: ccp
 integer :: ityp, iphase
@@ -1471,6 +1472,7 @@ real(REAL_KIND) :: t0, t1, tmover, tgrower, ave_cin(0:2), ave_cex(0:2)
 real(REAL_KIND), parameter :: FULL_NBRLIST_UPDATE_HOURS = 4
 type(cell_type), pointer :: cp
 logical :: ok, done, changed, dotimer
+integer :: count_0, count_1, count_2, count_3, count_rate, count_max
 
 !call testmetab
 !call test_finesolver
@@ -1606,11 +1608,14 @@ if (ngaps > 2000 .or. mod(istep,nt_nbr) == 0) then
 	if (ngaps > 2000) then
 		call squeezer
 	endif
+	call system_clock(count_0, count_rate, count_max)
 	call setup_nbrlists(ok)
 	if (.not.ok) then
 		res = 5
 		return
 	endif
+	call system_clock(count_1, count_rate, count_max)
+	write(nflog,'(a,f8.2)') 'time: setup_nbrlists: ',real(count_1-count_0)/count_rate
 endif
 
 if (use_metabolism) then
@@ -1627,7 +1632,7 @@ else
 endif
 dt = DELTA_T/nt_diff
 call setup_grid_cells
-!call update_all_nbrlists
+call system_clock(count_0, count_rate, count_max)
 do it_diff = 1,nt_diff
 	call diff_solver(dt,ok)
 	if (.not.ok) then
@@ -1636,6 +1641,7 @@ do it_diff = 1,nt_diff
 	endif
 enddo
 medium_change_step = .false.
+call system_clock(count_1, count_rate, count_max)
 
 t_fmover = 0
 nit = 0
@@ -1670,9 +1676,15 @@ do while (.not.done)
 		call make_perm_index(ok)
 	endif
 enddo
-write(nflog,*) 'istep,tnow: ',istep,tnow
+call system_clock(count_2, count_rate, count_max)
 call update_all_nbrlists
+call system_clock(count_3, count_rate, count_max)
 
+write(nflog,'(a,3f8.2)') 'times: solver,mover,update: ', &
+	real(count_1-count_0)/count_rate, &
+	real(count_2-count_1)/count_rate, &
+	real(count_3-count_2)/count_rate
+	
 if (saveprofile%active) then
 	if (istep*DELTA_T >= saveprofile%it*saveprofile%dt) then
 		call WriteProfileData
@@ -1768,9 +1780,6 @@ do kcell = 1,Ncells
 	ave_V = ave_V + cp%V
 	ave_dVdt = ave_dVdt + cp%dVdt
 	ave_fg = ave_fg + cp%fg
-	if (istep >= 145) then
-		if (cp%generation == 1) write(nflog,*) 'gen=1: ',kcell,cp%phase
-	endif
 enddo
 write(nflog,'(a,3e12.3)') 'averages: V,dVdt,fg: ',ave_V/n,ave_dVdt/n, ave_fg/n
 end subroutine

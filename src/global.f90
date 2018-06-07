@@ -71,7 +71,7 @@ integer, parameter :: N_EXTRA = CYCLE_PHASE - MAX_CHEMO + 1	! = 4 = total # of v
 integer, parameter :: NCONST = MAX_CHEMO
 integer, parameter :: LIMIT_THRESHOLD = 1500
 
-integer, parameter :: nbr_list_max = 50
+integer, parameter :: NBR_LIST_MAX = 50
 
 integer, parameter :: MITOSIS_MODE = TERMINAL_MITOSIS
 
@@ -168,7 +168,7 @@ type cell_type
 	real(REAL_KIND) :: wt(8)
 	
 	integer :: nbrs
-	type(neighbour_type) :: nbrlist(nbr_list_max)
+	type(neighbour_type) :: nbrlist(NBR_LIST_MAX+10)
 	real(REAL_KIND) :: Cin(NCONST)
 	real(REAL_KIND) :: Cex(NCONST)
 	real(REAL_KIND) :: dCdt(NCONST)

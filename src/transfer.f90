@@ -793,6 +793,7 @@ do kcell = 1,nlist
 	v = cell_list(kcell)%V
 	k = (v - Vmin)/dv + 1
 	k = min(k,nv)
+	k = max(k,1)
 	prob(k) = prob(k) + 1
 	n = n+1
 enddo

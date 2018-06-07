@@ -7,9 +7,209 @@ implicit none
 contains
 
 !-----------------------------------------------------------------------------------------
-! Dumb version to start
+!-----------------------------------------------------------------------------------------
+subroutine getquads(cp,ix1,ix2,iy1,iy2,iz1,iz2,bcentre)
+type(cell_type), pointer :: cp
+integer :: ix1,ix2,iy1,iy2,iz1,iz2
+real(REAL_KIND) :: bcentre(3)
+integer :: nspheres
+real(REAL_KIND) :: c(3)
+real(REAL_KIND) :: dtol = 4*Raverage
+
+!write(nflog,'(a,3f8.4)') 'bcentre: ',bcentre
+!write(nflog,'(a,3f8.4)') 'dtol: ',dtol
+!write(nflog,'(a,3f8.4)') 'bcentre+dtol: ',bcentre+dtol
+!write(nflog,'(a,3f8.4)') 'bcentre-dtol: ',bcentre-dtol
+!write(nflog,'(a,4f8.4)') 'c1: ',cp%centre(:,1), cp%radius(1)
+nspheres = cp%nspheres
+c = cp%centre(:,1)
+!if (nspheres == 2) write(nflog,*) 'c2: ',cp%centre(:,2),cp%radius(2)
+! for x
+if (c(1) < bcentre(1) - dtol) then
+	ix1 = 1
+	ix2 = 1
+elseif (c(1) > bcentre(1) + dtol) then
+	ix1 = 2
+	ix2 = 2
+else
+	ix1 = 1
+	ix2 = 2
+endif
+if (nspheres == 2) then
+	c = cp%centre(:,2)
+	if (c(1) < bcentre(1) - dtol) then
+		ix1 = min(ix1,1)
+	elseif (c(1) > bcentre(1) + dtol) then
+		ix2 = max(ix2,2)
+	else
+		ix1 = 1
+		ix2 = 2
+	endif
+endif
+!write(nflog,*) 'ix1,ix2: ',ix1,ix2
+! for y
+if (c(2) < bcentre(2) - dtol) then
+	iy1 = 1
+	iy2 = 1
+elseif (c(2) > bcentre(2) + dtol) then
+	iy1 = 2
+	iy2 = 2
+else
+	iy1 = 1
+	iy2 = 2
+endif
+if (nspheres == 2) then
+	c = cp%centre(:,2)
+	if (c(2) < bcentre(2) - dtol) then
+		iy1 = min(iy1,1)
+	elseif (c(2) > bcentre(2) + dtol) then
+		iy2 = max(iy2,2)
+	else
+		iy1 = 1
+		iy2 = 2
+	endif
+endif
+!write(nflog,*) 'iy1,iy2: ',iy1,iy2
+! for z
+if (c(3) < bcentre(3) - dtol) then
+	iz1 = 1
+	iz2 = 1
+elseif (c(3) > bcentre(3) + dtol) then
+	iz1 = 2
+	iz2 = 2
+else
+	iz1 = 1
+	iz2 = 2
+endif
+if (nspheres == 2) then
+	c = cp%centre(:,2)
+	if (c(3) < bcentre(3) - dtol) then
+		iz1 = min(iz1,1)
+	elseif (c(3) > bcentre(3) + dtol) then
+		iz2 = max(iz2,2)
+	else
+		iz1 = 1
+		iz2 = 2
+	endif
+endif
+!write(nflog,*) 'iz1,iz2: ',iz1,iz2
+!stop
+end subroutine
+
+!-----------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------
 subroutine setup_nbrlists(ok)
+logical :: ok
+type(cell_type), pointer :: cp1, cp2
+real(REAL_KIND) :: R1, c1(3), R2, c2(3), v(3), d2, d, Rsum, dfactor, c(3), bcentre(3)
+integer :: kcell, k2, k, isphere1, nspheres1, isphere2, nspheres2, nbrs, i, j
+integer :: nbrlist(1000), t(1000)
+real(REAL_KIND) :: nbr_d(1000)
+logical :: near, incontact, contact(2,2)
+integer :: ix1, ix2, iy1, iy2, iz1, iz2, ix, iy, iz, kount(2,2,2), listmax
+integer, allocatable :: clist(:,:,:,:)
+logical :: dbug = .false.
+
+listmax = max(1000,nlist/2)
+allocate(clist(2,2,2,listmax))
+bcentre = blobcentre0
+!write(*,*) 'bcentre: ',bcentre
+kount = 0
+do kcell = 1,nlist
+	cp1 => cell_list(kcell)
+	if (cp1%state == DEAD) cycle
+    call getquads(cp1,ix1,ix2,iy1,iy2,iz1,iz2,bcentre)
+!	write(nflog,'(7i6)') kcell,ix1,ix2,iy1,iy2,iz1,iz2
+	do ix = ix1,ix2
+		do iy = iy1, iy2
+			do iz = iz1, iz2
+				kount(ix,iy,iz) = kount(ix,iy,iz) + 1
+				if (kount(ix,iy,iz) > listmax) then
+					write(*,*) 'Error: setup_nbrlists: kount > listmax: ',ix,iy,iz,kount(ix,iy,iz)
+					write(nflog,*) 'Error: setup_nbrlists: kount > listmax: ',ix,iy,iz,kount(ix,iy,iz)
+					stop
+				endif
+				clist(ix,iy,iz,kount(ix,iy,iz)) = kcell
+			enddo
+		enddo
+	enddo
+enddo
+!write(*,*) 'kount: ',kount
+
+do kcell = 1,nlist
+	cp1 => cell_list(kcell)
+	if (cp1%state == DEAD) cycle
+    call getquads(cp1,ix1,ix2,iy1,iy2,iz1,iz2,bcentre)
+    nspheres1 = cp1%nspheres
+	nbrs = 0
+	do ix = ix1,ix2
+		do iy = iy1,iy2
+			do iz = iz1,iz2
+				do j = 1,kount(ix,iy,iz)
+					k2 = clist(ix,iy,iz,j)
+					if (k2 == kcell) cycle
+					cp2 => cell_list(k2)
+					nspheres2 = cp2%nspheres
+					near = .false.
+					do isphere1 = 1,nspheres1
+!						R1 = cp1%radius(isphere1)
+						c1 = cp1%centre(:,isphere1)
+						do isphere2 = 1,nspheres2
+!							R2 = cp2%radius(isphere2)
+							c2 = cp2%centre(:,isphere2)
+!							Rsum = R1 + R2
+							v = c2 - c1
+							d2 = dot_product(v,v)
+							d = sqrt(d2)
+							if (d < d_nbr_limit) then
+								near = .true.
+								exit
+							endif
+						enddo
+						if (near) exit
+					enddo
+					if (near) then
+						nbrs = nbrs + 1
+						if (nbrs > 1000) then
+							write(logmsg,'(a,5i6)') 'Size of nbrlist exceeded: istep, kcell, ncells: ',istep,kcell,ncells,nbrs,1000
+							call logger(logmsg)
+							write(nflog,'(10i6)') nbrlist(:)
+							ok = .false.
+							return
+						endif
+						nbrlist(nbrs) = k2
+						nbr_d(nbrs) = d
+					endif
+				enddo
+			enddo
+		enddo
+	enddo
+!   Note: replacing method of creating nbrlist with one that orders the neighbours by distance, and keeps the closest.
+	do i = 1,nbrs
+		t(i) = i
+	enddo
+	if (nbrs == 0) then
+!		write(*,*) 'setup_nbrlists: nbrs = 0: kcell: ',kcell
+	else
+		call qqsort(nbr_d,nbrs,t)     ! sort in increasing order
+	endif
+	! Now the ith nearest is nbrlist(t(i))
+	! set cp1%nbrlist(:) as the closest #
+	cp1%nbrs = min(nbrs,NBR_LIST_MAX)
+	do i = 1,cp1%nbrs
+		cp1%nbrlist(i)%indx = nbrlist(t(i))
+	enddo
+!	write(nflog,*) 'cell, nbrs: ',kcell,cp1%nbrs
+enddo
+deallocate(clist)
+!stop
+end subroutine
+
+!-----------------------------------------------------------------------------------------
+! Dumb version to start
+! This takes a lot of time when Ncells gets large: about 40% of time when Ncells = 25k
+!-----------------------------------------------------------------------------------------
+subroutine setup_nbrlists1(ok)
 logical :: ok
 type(cell_type), pointer :: cp1, cp2
 real(REAL_KIND) :: R1, c1(3), R2, c2(3), v(3), d2, d, Rsum, dfactor
@@ -109,7 +309,7 @@ do kcell = 1,nlist
 	endif
 	! Now the ith nearest is nbrlist(t(i))
 	! set cp1%nbrlist(:) as the closest #
-	cp1%nbrs = min(nbrs,nbr_list_max)
+	cp1%nbrs = min(nbrs,NBR_LIST_MAX)
 	do i = 1,cp1%nbrs
 		cp1%nbrlist(i)%indx = nbrlist(t(i))
 	enddo
@@ -183,7 +383,7 @@ enddo
 call qqsort(nbr_d,nbrs,t)     ! sort in increasing order
 ! Now the ith nearest is nbrlist(t(i))
 ! set cp1%nbrlist(:) as the closest #
-cp1%nbrs = min(nbrs,nbr_list_max)
+cp1%nbrs = min(nbrs,NBR_LIST_MAX)
 do i = 1,cp1%nbrs
 	cp1%nbrlist(i)%indx = nbrlist(t(i))
 enddo

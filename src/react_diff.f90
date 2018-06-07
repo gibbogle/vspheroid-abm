@@ -1525,6 +1525,9 @@ logical :: do_fine = .true.
 logical :: use_const = .true.
 logical :: test_symmetry = .false.
 real(REAL_KIND) :: tdiff, tmetab, t0, t1
+! To write .mtx file
+integer :: i1, i2
+real(REAL_KIND) :: aval
 
 if (dbug) write(*,'(a,L2,f8.2)') 'diff_solver: medium_change_step,dt: ',medium_change_step,dt
 ok = .true.
@@ -1613,6 +1616,43 @@ do ic = 1,nchemo
 	if (ierr /= 0) then
 		ok = .false.
 	endif
+	
+!	if (ichemo == OXYGEN) then
+!	write(nflog,*) 'Writing CSR file'
+!	write(*,*) 'Writing CSR file'
+!	open(202, file='a.csr',status='replace')
+!	write(202,*) nrow_b
+!	write(202,*) nnz_b
+!	write(202,*) 'a'
+!	write(202,'(10e12.3)') a_b(1:nnz_b)
+!	write(202,*) 'ia'
+!	write(202,'(10i8)') ia_b(1:nrow_b+1)
+!	write(202,*) 'ja'
+!	write(202,'(10i8)') ja_b(1:nnz_b)
+!	close(202)
+!	open(202, file='b.dat',status='replace')
+!	write(202,*) nrow_b
+!	write(202,'(10e12.3)') rhs(1:nrow_b)
+!	close(202)
+!	write(nflog,*) 'Writing MTX file'
+!	write(*,*) 'Writing MTX file'
+!	open(202, file='a.mtx',status='replace')
+!	write(202,'(a)') '%%MatrixMarket matrix coordinate real nonsymmetric'
+!	write(202,*) nrow_b, nrow_b, nnz_b
+!	k = 0
+!	do irow = 1,nrow_b
+!		i1 = ia_b(irow)
+!		i2 = ia_b(irow+1)-1
+!		do i = i1,i2
+!			k = k+1
+!			icol = ja_b(k)
+!			aval = a_b(k)
+!			write(202,'(2i6,e12.3)') irow,icol,aval
+!		enddo
+!	enddo
+!	close(202)
+!	stop
+!	endif
 		
 	if (ILUtype == 1) then
 		call itsol_create_precond_ILUK(icc,nfill,ierr)
