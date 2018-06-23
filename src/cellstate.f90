@@ -316,7 +316,7 @@ do kcell = 1,nlist
 !		if (cp%metab%A_rate*cp%V < cp%ATP_rate_factor*ATPs(ityp)*Vcell_cm3) then
 		! Suppress death by anoxia for debugging
 		if (allow_anoxia) then
-		if (cp%metab%A_rate < cp%ATP_rate_factor*ATPs(ityp)) then
+		if (cp%metab%A_rate < cp%ATP_rate_factor*ATPs) then
 			cp%state = DYING
 			cp%ATP_tag = .true.
 			cp%dVdt = 0
@@ -965,18 +965,22 @@ do kcell = 1,nlist
         cp => cell_list(kcell)
     endif
 	if (cp%state == DEAD) cycle
-	C_O2 = chemo(OXYGEN)%bdry_conc
-	C_glucose = chemo(GLUCOSE)%bdry_conc
-	if (oxygen_growth .and. glucose_growth) then
-	    metab_O2 = O2_metab(C_O2)
-		metab_glucose = glucose_metab(C_glucose)
-		metab = metab_O2*metab_glucose
-	elseif (oxygen_growth) then
-	    metab_O2 = O2_metab(C_O2)
-		metab = metab_O2
-	elseif (glucose_growth) then
-		metab_glucose = glucose_metab(C_glucose)
-		metab = metab_glucose
+	if (use_metabolism) then
+		metab = 1
+	else
+		C_O2 = chemo(OXYGEN)%bdry_conc
+		C_glucose = chemo(GLUCOSE)%bdry_conc
+		if (oxygen_growth .and. glucose_growth) then
+			metab_O2 = O2_metab(C_O2)
+			metab_glucose = glucose_metab(C_glucose)
+			metab = metab_O2*metab_glucose
+		elseif (oxygen_growth) then
+			metab_O2 = O2_metab(C_O2)
+			metab = metab_O2
+		elseif (glucose_growth) then
+			metab_glucose = glucose_metab(C_glucose)
+			metab = metab_glucose
+		endif
 	endif
 	dVdt = get_dVdt(cp,metab)
 	if (suppress_growth) then	! for checking solvers

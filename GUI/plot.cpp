@@ -54,6 +54,11 @@ Plot::~Plot()
 void Plot::mousePressEvent (QMouseEvent *event) {
 	event->accept();
 	if (event->button() == Qt::RightButton) {
+		QString fileName = getImageFile();
+		if (fileName.isEmpty()) {
+			return;
+		}
+#ifdef QWT_VER5
 		int w = this->width();
 		int h = this->height();
 		QPixmap pixmap(w, h);
@@ -64,14 +69,13 @@ void Plot::mousePressEvent (QMouseEvent *event) {
 		options &= ~QwtPlotPrintFilter::PrintBackground;
 		options |= QwtPlotPrintFilter::PrintFrameWithScales;
 		filter.setOptions(options);
-
 		this->print(pixmap, filter);
-
-		QString fileName = getImageFile();
-		if (fileName.isEmpty()) {
-			return;
-		}
 		pixmap.save(fileName,0,-1);
+#else
+        QSizeF size(120,120);
+        QwtPlotRenderer renderer;
+        renderer.renderDocument(this,fileName,size,85);
+#endif
 	}
 }
 
@@ -188,144 +192,4 @@ void Plot::redraw(double *x, double *y, int n, QString name, QString tag, double
     delete pen;
 }
 
-/*
-//-----------------------------------------------------------------------------------------
-//-----------------------------------------------------------------------------------------
-void Plot::redraw(double *x, double *y, int n, QString name, QString tag)
-{
-    QwtLegend *legend;
-	if (n == 1) { // That is, this is the first plotting instance.
-        yscale = max(yscale,calc_yscale(y[0]));
-		setAxisScale(QwtPlot::yLeft, 0, yscale, 0);
-        if (USE_LEGEND){
-            legend = this->legend();
-            if (legend == NULL) {
-                legend = new QwtLegend();
-                this->insertLegend(legend, QwtPlot::RightLegend);
-            }
-        }
-    }
-	// Note: Number of pen colors should match ncmax
-	QColor pencolor[] = {Qt::black, Qt::red, Qt::blue, Qt::darkGreen, Qt::magenta, Qt::darkCyan };
-	QPen *pen = new QPen();
-	for (int k=0; k<ncmax; k++) {
-		if (curve[k] == 0) continue;
-		if (name.compare(curve[k]->title().text()) == 0) {
-			// Just in case someone set ncmax > # of pen colors (currently = 6)
-			if (k < 6) {
-				pen->setColor(pencolor[k]);
-			} else {
-				pen->setColor(pencolor[0]);
-			}
-			curve[k]->setPen(*pen);
-			curve[k]->setData(x, y, n);
-//            legend = new QwtLegend();
-//            this->insertLegend(legend, QwtPlot::RightLegend);
-//            LOG_MSG("did insertLegend");
-            double ylast = y[n-1];
-			if (ylast > yscale) {
-                yscale = max(yscale,calc_yscale(ylast));
-                setAxisScale(QwtPlot::yLeft, 0, yscale, 0);
-            }
-			replot();
-        }
-	}
-	delete pen;
-}
-*/
 
-//-----------------------------------------------------------------------------------------
-//-----------------------------------------------------------------------------------------
-//double Plot::calc_yscale(double yval)
-//{
-//    double v;
-//    int iv;
-//    double yscale;
-//    if (yval > 10) {
-//        v = int(1.3*yval);
-//        yscale = double(v);
-//    } else if (yval > 1) {
-//        v = int(13.*yval);
-//        yscale = v/10.;
-//    } else if (yval > 0.1) {
-//        v = int(130.*yval);
-//        yscale = v/100.;
-//    } else {
-//        yscale = 0.1;
-//    }
-//    v = log10(yval);
-//    iv = int(v);
-//    v = pow(10.,iv);
-//    if (yval > v) {
-//        yscale = 13.*v;
-//    } else {
-//        yscale = 1.3*v;
-//    }
-//    sprintf(msg,"calc_yscale: yval: %f v: %d yscale: %f",yval,v,yscale);
-//    LOG_MSG(msg);
-//    return yscale;
-//}
-
-/*
-
-//-----------------------------------------------------------------------------------------
-// This is to plot the total number of cognate cells (y2 = ytotal), and the number of 
-// "seed" cells (y1 = yseed)
-//-----------------------------------------------------------------------------------------
-void Plot::redraw2(double *x1, double *y1, double *x2, double *y2, int n1, int n2)
-{
-	LOG_MSG("redraw2");
-	if (n1 == 1) { // That is, this is the first plotting instance.
-		yscale = max(yscale,calc_yscale(y1[0]));
-		yscale = max(yscale,calc_yscale(y2[0]));
-		setAxisScale(QwtPlot::yLeft, 0, yscale, 0);
-	}
-    curve[0]->setData(x1, y1, n1);
-    curve[1]->setData(x2, y2, n2);
-	QPen *pen = new QPen();
-	pen->setColor(Qt::red);
-	curve[1]->setPen(*pen);
-	delete pen;
-    QwtLegend *legend = new QwtLegend();
-//	this->insertLegend(&QwtLegend(), QwtPlot::RightLegend);
-    this->insertLegend(legend, QwtPlot::RightLegend);
-    double ylast = y1[n1-1];
-	double ylast2 = y2[n2-1];
-	if (ylast2 > ylast) {
-		ylast = ylast2;
-	}
-	if (ylast > yscale) {
-        yscale = calc_yscale(ylast);
-		setAxisScale(QwtPlot::yLeft, 0, yscale, 0);
-	}
-    replot();
-}
-
-//-----------------------------------------------------------------------------------------
-// This is for a one-off plot of y1 vs x1 and y2 vs x2, where there are n1 data points
-// for y1 and n2 for y2, and n1 and n2 may differ, as may x1 and x2.
-// curve is the current simulation output, curve2 is the previous run
-// Note: assumes that data are hourly.
-//-----------------------------------------------------------------------------------------
-void Plot::draw2(double *x1, double *y1, double *x2, double *y2, int n1, int n2)
-{
-    curve[0]->setData(x1, y1, n1);
-    curve[1]->setData(x2, y2, n2);
-	QPen *pen = new QPen();
-	pen->setColor(Qt::red);
-	curve[1]->setPen(*pen);
-	delete pen;
-    QwtLegend *legend = new QwtLegend();
-//	this->insertLegend(&QwtLegend(), QwtPlot::RightLegend);
-    this->insertLegend(legend, QwtPlot::RightLegend);
-    double ylast = 0;
-	for (int i=0; i<n1; i++)
-		ylast = max(ylast,y1[i]);
-	for (int i=0; i<n2; i++)
-		ylast = max(ylast,y2[i]);
-    yscale = calc_yscale(ylast);
-	setAxisScale(QwtPlot::yLeft, 0, yscale, 0);
-    replot();
-}
-
-*/

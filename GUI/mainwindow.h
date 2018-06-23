@@ -161,8 +161,9 @@ private slots:
     bool ProtocolUsesDrug();
     void on_pushButton_savedrugdata_clicked();
 
-    void ConnectKillParameterSignals();
+    void connectKillParameterSignals();
     double computeCkill(int idrug, int kset, int ictyp);
+    void connectForceParameterSignals();
 
 public slots:
 	void preConnection();
@@ -218,6 +219,8 @@ public slots:
     void makeDrugRadiationPlot(int idrug, int kset, int ictyp, double *maxO2, QString plotStr, QVector<double> *x, QVector<double> *y);
     void processGroupBoxClick(QString);
 
+    void drawForcePlot();
+
 signals:
     void facs_update();
     void histo_update();
@@ -266,6 +269,7 @@ private:
     double plognorm(double x1, double x2, double mu, double sig);
     void create_lognorm_dist(double p1, double p2,int n, double *x, double *prob);
 	int dist_limit(double *p, int n);
+    void create_force_function(int n, double *x, double *F, double *xmax, double *ymin, double *ymax);
 	QString parse_rbutton(QString wtag, int *rbutton_case);
 	void setBdryRadioButton(QRadioButton *w_rb, int val);
 	void setLineEditVisibility(QString wname, int val);
@@ -311,6 +315,8 @@ private:
 
 	QwtPlot *distplot_list[5];
 	QwtPlotCurve *curve_list[5];
+
+    QwtPlot *forceplot;
 
 	QList<QWidget *> widget_list;
 

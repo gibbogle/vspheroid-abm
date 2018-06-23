@@ -651,11 +651,12 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
 
      {"K_PDK_1", 4.63e-5, 0, 0,
      "K_PDK",
-     "Representing PDK1 factor level by y in the range (0,1), the rate of change of y is: dy/dt = -K_PDK*(y - 1 + H) where H = HIF-1 level"},
+     "Representing PDK1 factor level by y in the range (PDKmin,1), the rate of change of y is: dy/dt = -K_PDK*(y - 1 + cH) where H = HIF-1 level, and c = 1 - PDKmin"},
 
       {"PDKMIN_1", 0.3, 0, 0,
       "PDKmin",
-      "Minimum value of the PDK1 factor"},
+      "Minimum value of the PDK1 factor.\n\
+      Representing PDK1 factor level by y in the range (PDKmin,1), the rate of change of y is: dy/dt = -K_PDK*(y - 1 + cH) where H = HIF-1 level, and c = 1 - PDKmin"},
 
       {"C_O2_NORM_1", 0.05, 0, 0,
       "Nominal normal IC O2 concentration",
@@ -705,93 +706,93 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
       "Pyruvate Michaelis-Menten Km (uM)",
       "Pyruvate Michaelis-Menten Km (uM). fMM = C_P/(Km + C_P) is a multiple of pyruvate oxidation rate, ensuring that the rate -> 0 as C_P -> 0"},
 
-      {"N_GA_2", 2, 0, 0,
-      "ATP moles produced per glucose mole",
-      "Number of ATP moles produced by the glycolysis of one glucose mole"},
+//      {"N_GA_2", 2, 0, 0,
+//      "ATP moles produced per glucose mole",
+//      "Number of ATP moles produced by the glycolysis of one glucose mole"},
 
-      {"N_PA_2", 14, 0, 0,
-      "ATP moles produced per pyruvate mole",
-      "Number of ATP moles produced by the oxidation of one pyruvate mole"},
+//      {"N_PA_2", 14, 0, 0,
+//      "ATP moles produced per pyruvate mole",
+//      "Number of ATP moles produced by the oxidation of one pyruvate mole"},
 
-      {"N_GI_2", 0.4, 0, 0,
-      "Intermediate moles produced per glucose mole",
-      "Number of moles of anabolic intermediates produced the glycolysis of one glucose mole"},
+//      {"N_GI_2", 0.4, 0, 0,
+//      "Intermediate moles produced per glucose mole",
+//      "Number of moles of anabolic intermediates produced the glycolysis of one glucose mole"},
 
-      {"N_PI_2", 0.4, 0, 0,
-      "Intermediate moles produced per pyruvate mole",
-      "Number of moles of anabolic intermediates produced the oxidation of one pyruvate mole"},
+//      {"N_PI_2", 0.4, 0, 0,
+//      "Intermediate moles produced per pyruvate mole",
+//      "Number of moles of anabolic intermediates produced the oxidation of one pyruvate mole"},
 
-      {"N_PO_2", 3, 0, 0,
-      "Oxygen moles consumed per pyruvate mole",
-      "Number of moles of oxygen consumed the oxidation of one pyruvate mole"},
+//      {"N_PO_2", 3, 0, 0,
+//      "Oxygen moles consumed per pyruvate mole",
+//      "Number of moles of oxygen consumed the oxidation of one pyruvate mole"},
 
-      {"K_H1_2", 140, 0, 0,
-      "K_H1",
-      "The rate of change of HIF-1 level H is given by: dH/dt = K_H2*(1 - H*exp(K_H1*C_O)), where C_O = oxygen concentration"},
+//      {"K_H1_2", 140, 0, 0,
+//      "K_H1",
+//      "The rate of change of HIF-1 level H is given by: dH/dt = K_H2*(1 - H*exp(K_H1*C_O)), where C_O = oxygen concentration"},
 
-      {"K_H2_2", 0.001, 0, 0,
-      "K_H2",
-       "The rate of change of HIF-1 level H is given by: dH/dt = K_H2*(1 - H*exp(K_H1*C_O)), where C_O = oxygen concentration"},
+//      {"K_H2_2", 0.001, 0, 0,
+//      "K_H2",
+//       "The rate of change of HIF-1 level H is given by: dH/dt = K_H2*(1 - H*exp(K_H1*C_O)), where C_O = oxygen concentration"},
 
-      {"K_HB_2", 0.2, 0, 0,
-      "K_HB",
-       "Glycolysis rate = K_HA*(1 + K_HB*H)*C_G^N/(C_G^N + Km^N)\n\
-        where: H = HIF-1 level, C_G = glucose concentration, K_HA is maximum glucose consumption rate when H=0, Km and N are the glucose consumption Hill function parameters"},
+//      {"K_HB_2", 0.2, 0, 0,
+//      "K_HB",
+//       "Glycolysis rate = K_HA*(1 + K_HB*H)*C_G^N/(C_G^N + Km^N)\n\
+//        where: H = HIF-1 level, C_G = glucose concentration, K_HA is maximum glucose consumption rate when H=0, Km and N are the glucose consumption Hill function parameters"},
 
-      {"K_PDK_2", 4.63e-5, 0, 0,
-      "K_PDK",
-      "Representing PDK1 factor level by y in the range (0,1), the rate of change of y is: dy/dt = -K_PDK*(y - 1 + H) where H = HIF-1 level"},
+//      {"K_PDK_2", 4.63e-5, 0, 0,
+//      "K_PDK",
+//      "Representing PDK1 factor level by y in the range (0,1), the rate of change of y is: dy/dt = -K_PDK*(y - 1 + H) where H = HIF-1 level"},
 
-       {"PDKMIN_2", 0.3, 0, 0,
-       "PDKmin",
-       "Minimum value of the PDK1 factor"},
+//       {"PDKMIN_2", 0.3, 0, 0,
+//       "PDKmin",
+//       "Minimum value of the PDK1 factor"},
 
-       {"C_O2_NORM_2", 0.05, 0, 0,
-       "Nominal normal IC O2 concentration",
-       "Nominal normal IC O2 concentration, used to set normal metabolic rates for unconstrained growth"},
+//       {"C_O2_NORM_2", 0.05, 0, 0,
+//       "Nominal normal IC O2 concentration",
+//       "Nominal normal IC O2 concentration, used to set normal metabolic rates for unconstrained growth"},
 
-       {"C_G_NORM_2", 2.5, 0, 0,
-       "Nominal normal IC glucose concentration",
-       "Nominal normal IC glucose concentration, used to set normal metabolic rates for unconstrained growth"},
+//       {"C_G_NORM_2", 2.5, 0, 0,
+//       "Nominal normal IC glucose concentration",
+//       "Nominal normal IC glucose concentration, used to set normal metabolic rates for unconstrained growth"},
 
-       {"C_L_NORM_2", 0.0, 0, 0,
-       "Nominal normal IC lactate concentration",
-       "Nominal normal IC lactate concentration, used to set normal metabolic rates for unconstrained growth"},
+//       {"C_L_NORM_2", 0.0, 0, 0,
+//       "Nominal normal IC lactate concentration",
+//       "Nominal normal IC lactate concentration, used to set normal metabolic rates for unconstrained growth"},
 
-//        {"CO_H_2", 0.005, 0, 0,
-//         "Oxygen H threshold for Ofactor",
-//         "When C_O2 < CO_H both f_G and f_P are reduced by Ofactor, which ranges from 0 to 1 when CO_L < C_O2 < CO_H.  CO_L = 0.8*CO_H"},
+////        {"CO_H_2", 0.005, 0, 0,
+////         "Oxygen H threshold for Ofactor",
+////         "When C_O2 < CO_H both f_G and f_P are reduced by Ofactor, which ranges from 0 to 1 when CO_L < C_O2 < CO_H.  CO_L = 0.8*CO_H"},
 
-//        {"CG_H_2", 0.05, 0, 0,
-//         "Glucose H threshold for Gfactor",
-//         "When C_G < CG_H f_G is reduced by Gfactor, which ranges from 0 to 1 when CG_L < C_G < CG_H.  CG_L = 0.8*CG_H"},
+////        {"CG_H_2", 0.05, 0, 0,
+////         "Glucose H threshold for Gfactor",
+////         "When C_G < CG_H f_G is reduced by Gfactor, which ranges from 0 to 1 when CG_L < C_G < CG_H.  CG_L = 0.8*CG_H"},
 
-      {"ATP_S_2", 0.3, 0, 0,
-      "ATP production threshold for survival (fraction of peak)",
-       "Cell death occurs when the ATP production rate falls below the fraction ATP_S of the maximum (no nutrient constraints) production rate"},
+//      {"ATP_S_2", 0.3, 0, 0,
+//      "ATP production threshold for survival (fraction of peak)",
+//       "Cell death occurs when the ATP production rate falls below the fraction ATP_S of the maximum (no nutrient constraints) production rate"},
 
-       {"ATP_G_2", 0.3, 0, 0,
-       "ATP production threshold for growth (fraction of peak)",
-       "Cell growth stops when the ATP production rate falls below the fraction ATP_G of the maximum (no nutrient constraints) production rate"},
+//       {"ATP_G_2", 0.3, 0, 0,
+//       "ATP production threshold for growth (fraction of peak)",
+//       "Cell growth stops when the ATP production rate falls below the fraction ATP_G of the maximum (no nutrient constraints) production rate"},
 
-       {"ATP_RAMP_2", 1.5, 0, 0,
-         "Ramp factor for reducing r_G, r_P based on ATP",
-        "Fractional rates of production of intermediates from glycolysis (r_G) and pyruvate (r_P) are reduced as ATP production rate falls.\n\
-         If the normal ATP rate is r_An, and the current rate is r_A, then the fractional production rate f_A = r_A/r_An.\n\
-         A multiplying factor on both r_G and r_P, f, is calculated as a ramp from 0 - 1 as f_A varies from ATP_G - ATPramp*ATP_G\n\
-         i.e. the reduction starts when f_A = ATPramp*ATP_G (f = 1), and when f_A = ATP_G, f = 0.  f_G = f*f_Gn, f_P = f*f_Pn"},
+//       {"ATP_RAMP_2", 1.5, 0, 0,
+//         "Ramp factor for reducing r_G, r_P based on ATP",
+//        "Fractional rates of production of intermediates from glycolysis (r_G) and pyruvate (r_P) are reduced as ATP production rate falls.\n\
+//         If the normal ATP rate is r_An, and the current rate is r_A, then the fractional production rate f_A = r_A/r_An.\n\
+//         A multiplying factor on both r_G and r_P, f, is calculated as a ramp from 0 - 1 as f_A varies from ATP_G - ATPramp*ATP_G\n\
+//         i.e. the reduction starts when f_A = ATPramp*ATP_G (f = 1), and when f_A = ATP_G, f = 0.  f_G = f*f_Gn, f_P = f*f_Pn"},
 
-      {"K_PL_2", 0.1, 0, 0,
-      "Pyruvate -> lactate rate constant",
-      "The forward rate constant of the pyruvate-lactate reaction, i.e. the rate constant for conversion of pyruvate to lactate"},
+//      {"K_PL_2", 0.1, 0, 0,
+//      "Pyruvate -> lactate rate constant",
+//      "The forward rate constant of the pyruvate-lactate reaction, i.e. the rate constant for conversion of pyruvate to lactate"},
 
-      {"K_LP_2", 0.1, 0, 0,
-      "Lactate -> pyruvate rate constant",
-       "The reverse rate constant of the pyruvate-lactate reaction, i.e. the rate constant for conversion of lactate to pyruvate"},
+//      {"K_LP_2", 0.1, 0, 0,
+//      "Lactate -> pyruvate rate constant",
+//       "The reverse rate constant of the pyruvate-lactate reaction, i.e. the rate constant for conversion of lactate to pyruvate"},
 
-       {"PYRUVATE_MM_KM_2", 20, 0, 0,
-       "Pyruvate Michaelis-Menten Km",
-       "Pyruvate Michaelis-Menten Km (uM). fMM = C_P/(Km + C_P) is a multiple of pyruvate oxidation rate, ensuring that the rate -> 0 as C_P -> 0"},
+//       {"PYRUVATE_MM_KM_2", 20, 0, 0,
+//       "Pyruvate Michaelis-Menten Km",
+//       "Pyruvate Michaelis-Menten Km (uM). fMM = C_P/(Km + C_P) is a multiple of pyruvate oxidation rate, ensuring that the rate -> 0 as C_P -> 0"},
 
 // Old parameters
 //           {"USE_METABOLISM", 1,0,1,
@@ -983,6 +984,10 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
 {"DRUG_THRESHOLD", 1.0e-6, 0, 0,
 "Drug Threshold",
 "Threshold drug concentration - when all intracellular and extracellular concentrations fall below this level, the drug concentrations everywhere are set to zero"},
+
+{"DRUG_LABEL_THRESHOLD", 0, 0, 0,
+"Label Threshold",
+"Threshold label-drug concentration - when a labelling drug (e.g. EDU) is used, this is the threshold for a cell to be considered as labelled"},
 
 {"SPCRAD", 200.0, 0, 0,
 "Spectral radius",

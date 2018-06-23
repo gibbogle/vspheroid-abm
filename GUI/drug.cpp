@@ -464,13 +464,13 @@ void MainWindow::makeHeaderText(QString *header, bool interact)
 
 //--------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------
-void MainWindow::ConnectKillParameterSignals()
+void MainWindow::connectKillParameterSignals()
 {
     int NactiveParams = 9;
     int activeParamNo[] = { 0, 1, 2, 6, 8, 9, 13, 15, 17 };
     QString basestr, ctypstr, numstr, objname;
 
-    LOG_QMSG("ConnectKillParameterSignals");
+    LOG_QMSG("connectKillParameterSignals");
     for (int kset=0; kset<3; kset++) {     // 0 = parent, 1 = metab_1, 2 = metab_2
         if (kset == 0) {
             basestr = "PARENT_";

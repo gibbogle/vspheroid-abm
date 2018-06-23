@@ -78,11 +78,11 @@ kcell_now = kcell
 Cin(1:3) = cp%Cin(1:3)
 Cex = cp%Cex(1)
 dC = min(Cex/10, 0.0001)
-call get_metab_rates(ict,mp,Cin)
+call get_metab_rates(mp,Cin)
 r0 = mp%O_rate
 C1 = Cin(1) - dC
 Cin(1) = C1
-call get_metab_rates(ict,mp,Cin)
+call get_metab_rates(mp,Cin)
 r1 = mp%O_rate
 a = r0
 b = (r1 - r0)/dC
@@ -117,7 +117,7 @@ kcell_now = kcell
 
 mp => cp%metab
 Cin(1:3) = cp%Cin(1:3)
-call Set_f_GP(cp%celltype,mp,Cin)	
+call Set_f_GP(mp,Cin)	
 if (use_SS_CO2) then
 	neqn = 2
 	cp%Cin(1) = get_CO2_SS(kcell)
@@ -159,7 +159,7 @@ endif
 ! This next step is to ensure that cp has the current rates.  May not be needed.
 ict = cp%celltype
 mp => cp%metab
-call get_metab_rates(ict,mp,cp%Cin(1:3))
+call get_metab_rates(mp,cp%Cin(1:3))
 
 end subroutine
 
@@ -517,7 +517,7 @@ if (neqn == 2) then
 else
 	Cin = y
 endif
-call get_metab_rates(ict,mp,Cin)
+call get_metab_rates(mp,Cin)
 !write(*,'(a,3e12.3)') 'rates: ',mp%O_rate,mp%G_rate,mp%L_rate
 do i = 1,neqn
 	! First process IC reactions
@@ -587,7 +587,7 @@ enddo
 ! Now vary Cex to account for H
 H = cp%metab%HIF1
 G = cp%Cex(2)
-a_G = (1 + K_Hb(ityp)*H)* G**Hill_N_G / (G**Hill_N_G + Hill_Km_G**Hill_N_G)
+a_G = (1 + K_Hb*H)* G**Hill_N_G / (G**Hill_N_G + Hill_Km_G**Hill_N_G)
 fPDK = cp%metab%PDK1
 a_O = fPDK*cp%Cex(1)/(Hill_Km_O2 + cp%Cex(1))
 CexG = (a_G/(1-a_G))*Hill_Km_G
@@ -608,7 +608,7 @@ do it = 1,10
 	enddo
 	! Reverse H transform:
 	G = cp%Cin(2)
-	b_G = G/((1 + K_Hb(ityp)*H)*(G**Hill_N_G + Hill_Km_G**Hill_N_G))
+	b_G = G/((1 + K_Hb*H)*(G**Hill_N_G + Hill_Km_G**Hill_N_G))
 	CinG = (b_G/(1-b_G))*Hill_Km_G
 	b_O = cp%Cin(1)/(fPDK*(cp%Cin(1) + Hill_Km_O2))
 	CinO = (b_O/(1-b_O))*Hill_Km_O2
@@ -639,8 +639,8 @@ mp%PDK1 = 0.6
 write(nflog,*) 'i  C_O2  C_G  C_L   A_rate   I_rate   P_rate   O_rate   HIF1 PDK1   C_P'
 do i = 1,50
 	Cin(1) = C_O2
-	call set_f_GP(ictype,mp,Cin)
-	call f_metab(ictype, mp, C_O2, C_G, C_L)
+	call set_f_GP(mp,Cin)
+	call f_metab(mp, C_O2, C_G, C_L)
 	r_A = mp%A_rate/r_A_norm
 	r_I = mp%I_rate/r_I_norm
 	r_P = mp%P_rate/r_P_norm

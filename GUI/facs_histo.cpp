@@ -21,6 +21,52 @@
 
 LOG_USE();
 
+//--------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------
+void MainWindow::processGroupBoxClick(QString text)
+{
+    LOG_QMSG("processGroupBoxClick: " + text);
+    QwtPlot *plot;
+
+    if (text.compare("Histo") == 0) {
+        LOG_MSG("save Histo plot");
+//        bool use_HistoBar = radioButton_histotype_1->isChecked();
+        bool use_HistoBar = (buttonGroup_histotype->checkedId() == 1);
+        if (use_HistoBar) {
+            plot = qpHistoBar;
+            qpHistoLine->hide();
+        } else {
+            plot = qpHistoLine;
+            qpHistoBar->hide();
+        }
+    } else if (text.compare("FACS") == 0) {
+        LOG_MSG("save FACS plot");
+        plot = qpFACS;
+    } else {
+        return;
+    }
+
+    int w = plot->width();
+    int h = plot->height();
+    QPixmap pixmap(w, h);
+    pixmap.fill(Qt::white); // Qt::transparent ?
+
+    QwtPlotPrintFilter filter;
+    int options = QwtPlotPrintFilter::PrintAll;
+    options &= ~QwtPlotPrintFilter::PrintBackground;
+    options |= QwtPlotPrintFilter::PrintFrameWithScales;
+    filter.setOptions(options);
+
+    plot->print(pixmap, filter);
+
+//		QString fileName = getImageFile();
+    QString fileName = QFileDialog::getSaveFileName(0,"Select image file", ".",
+        "Image files (*.png *.jpg *.tif *.bmp)");
+    if (fileName.isEmpty()) {
+        return;
+    }
+    pixmap.save(fileName,0,-1);
+}
 
 void MainWindow::createFACSPage()
 {

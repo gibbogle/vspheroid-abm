@@ -233,6 +233,7 @@ read(nfcell,*) iusecellcycle
 use_cell_cycle = (iusecellcycle == 1)
 ccp => cc_parameters
 call ReadCellCycleParameters(nfcell,ccp)
+apoptosis_rate = ccp%apoptosis_rate(1)		! we need only a single rate (I think)
 read(nfcell,*) iusemetabolism
 use_metabolism = (iusemetabolism == 1)
 call ReadMetabolismParameters(nfcell)
@@ -244,6 +245,7 @@ read(nfcell,*) growthcutoff(1)
 read(nfcell,*) growthcutoff(2)
 read(nfcell,*) growthcutoff(3)
 read(nfcell,*) Cthreshold
+read(nfcell,*) Clabel_threshold
 read(nfcell,*) spcrad_value
 read(nfcell,*) iuse_extra
 read(nfcell,*) iuse_relax
@@ -413,8 +415,8 @@ read(nf,*) ccp%G1_mean_delay(1)
 read(nf,*) ccp%G1_mean_delay(2)
 read(nf,*) ccp%G2_mean_delay(1)
 read(nf,*) ccp%G2_mean_delay(2)
-read(nf,*) Apoptosis_rate(1)
-read(nf,*) Apoptosis_rate(2)
+read(nf,*) ccp%Apoptosis_rate(1)
+read(nf,*) ccp%Apoptosis_rate(2)
 read(nf,*) ccp%eta_PL
 read(nf,*) ccp%eta_L(1)
 read(nf,*) ccp%eta_L(2)
@@ -465,69 +467,30 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine ReadMetabolismParameters(nf)
 integer :: nf
-integer :: ityp
 
-do ityp = 1,Ncelltypes
-	read(nf,*) N_GA(ityp)
-	read(nf,*) N_PA(ityp)
-	read(nf,*) N_GI(ityp)
-	read(nf,*) N_PI(ityp)
-	read(nf,*) N_PO(ityp)
-	read(nf,*) K_H1(ityp)
-	read(nf,*) K_H2(ityp)
-	read(nf,*) K_HB(ityp)
-	read(nf,*) K_PDK(ityp)
-	read(nf,*) PDKmin(ityp)
-	read(nf,*) C_O2_norm(ityp)
-	read(nf,*) C_G_norm(ityp)
-	read(nf,*) C_L_norm(ityp)
-!	read(nf,*) CO_H(ityp)
-!	read(nf,*) CG_H(ityp)
-	read(nf,*) f_ATPs(ityp)
-	read(nf,*) f_ATPg(ityp)
-	read(nf,*) f_ATPramp(ityp)
-!	read(nf,*) ATP_Km(ityp)
-	read(nf,*) K_PL(ityp)
-	read(nf,*) K_LP(ityp)
-	read(nf,*) Hill_Km_P(ityp)
-!	read(nf,*) Apoptosis_rate(ityp)
-enddo
-PDKmin(:) = 0.3
+read(nf,*) N_GA
+read(nf,*) N_PA
+read(nf,*) N_GI
+read(nf,*) N_PI
+read(nf,*) N_PO
+read(nf,*) K_H1
+read(nf,*) K_H2
+read(nf,*) K_HB
+read(nf,*) K_PDK
+read(nf,*) PDKmin
+read(nf,*) C_O2_norm
+read(nf,*) C_G_norm
+read(nf,*) C_L_norm
+read(nf,*) f_ATPs
+read(nf,*) f_ATPg
+read(nf,*) f_ATPramp
+read(nf,*) K_PL
+read(nf,*) K_LP
+read(nf,*) Hill_Km_P
+PDKmin = 0.3
 Hill_N_P = 1
 Hill_Km_P = Hill_Km_P/1000		! uM -> mM
 !ATP_Km = ATP_Km/1000			! uM -> mM
-end subroutine
-
-!-----------------------------------------------------------------------------------------
-!-----------------------------------------------------------------------------------------
-subroutine ReadMetabolismParameters1(nf)
-integer :: nf
-integer :: ityp
-
-do ityp = 1,Ncelltypes
-	read(nf,*) N_GA(ityp)
-	read(nf,*) N_PA(ityp)
-	read(nf,*) N_GI(ityp)
-	read(nf,*) N_PI(ityp)
-	read(nf,*) N_PO(ityp)
-	read(nf,*) K_H1(ityp)
-	read(nf,*) K_H2(ityp)
-	read(nf,*) K_HB(ityp)
-	read(nf,*) K_PDK(ityp)
-	read(nf,*) PDKmin(ityp)
-	read(nf,*) C_O2_norm(ityp)
-	read(nf,*) C_G_norm(ityp)
-	read(nf,*) C_L_norm(ityp)
-	read(nf,*) O2_baserate(ityp)
-	read(nf,*) f_ATPs(ityp)
-	read(nf,*) K_PL(ityp)
-	read(nf,*) K_LP(ityp)
-	read(nf,*) Hill_Km_P(ityp)
-!	read(nf,*) Apoptosis_rate(ityp)
-enddo
-!PDKmin(:) = 0.3
-Hill_N_P = 1
-Hill_Km_P = Hill_Km_P/1000	! uM -> mM
 end subroutine
 
 !-----------------------------------------------------------------------------------------
@@ -832,7 +795,8 @@ endif
 call SetupChemo
 call logger('did SetupChemo')
 if (use_metabolism) then
-	call SetupMetabolism
+	call SetupMetabolism(ok)
+	if (.not.ok) return
 endif
 
 ! Assume that Raverage is for cells midway in growth, i.e. between 0.8 and 1.6, at 1.2
@@ -1186,7 +1150,7 @@ cp%CFSE = generate_CFSE(1.d0)
 cp%ndt = ndt
 
 if (use_metabolism) then
-	cp%metab = metabolic(1)
+	cp%metab = metabolic
 	cp%growth_rate_factor = get_growth_rate_factor()
 	cp%ATP_rate_factor = get_ATP_rate_factor()
 	if (cp%metab%A_rate == 0) then
@@ -1296,7 +1260,7 @@ do iphase = 1,6
 	endif
 	fsum = fsum + phase_fraction(iphase)
 enddo
-cp%metab = metabolic(ityp)
+cp%metab = metabolic
 !write(*,*)
 !write(*,'(a,3f8.3)') 'Tdiv, Tmean, fg: ',Tdiv/3600,Tmean/3600,fg
 !write(*,'(a,6f8.3)') 'phase_time: ',phase_time/3600
@@ -1822,32 +1786,13 @@ do kcell = 1,nlist
 	mp => cp%metab
 	HIF1 = mp%HIF1
 	ityp = cp%celltype
-	call analyticSetHIF1(ityp,cp%Cin(OXYGEN),HIF1,dt)
+	call analyticSetHIF1(cp%Cin(OXYGEN),HIF1,dt)
 	mp%HIF1 = HIF1
 	PDK1 = mp%PDK1
-	call analyticSetPDK1(ityp,HIF1,PDK1,dt)
+	call analyticSetPDK1(HIF1,PDK1,dt)
 	mp%PDK1 = PDK1
 enddo
 end subroutine
-
-!-----------------------------------------------------------------------------------------
-!-----------------------------------------------------------------------------------------
-!subroutine get_centre
-!real(REAL_KIND) :: blob_centre(3)
-!integer :: n, kcell
-!type(cell_type), pointer :: cp
-!
-!n = 0
-!blob_centre = 0
-!do kcell = 1,nlist
-!	cp => cell_list(kcell)
-!	if (cp%state == DEAD) cycle
-!	n = n+1
-!	blob_centre = blob_centre + cp%centre(:,1)
-!enddo
-!write(logmsg,'(a,3f8.4)') 'blob_centre: ',blob_centre/n
-!call logger(logmsg)
-!end subroutine
 
 !-----------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------
@@ -2290,7 +2235,7 @@ if (ok) then
 else
 	call logger('=== Setup failed ===')
 	res = 1
-	stop
+	return
 endif
 execute_t1 = wtime()
 end subroutine

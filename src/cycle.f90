@@ -149,7 +149,7 @@ elseif (phase == Checkpoint1) then  ! this checkpoint combines the release from 
     !
     cp%G1S_flag = (cp%NL1 == 0 .or. tnow > cp%G1S_time)
     if (use_metabolism) then
-		cp%G1S_flag = cp%G1S_flag .and. (cp%metab%A_rate > ATPg(ityp))
+		cp%G1S_flag = cp%G1S_flag .and. (cp%metab%A_rate > ATPg)
 	endif
     if (cp%G1_flag .and. cp%G1S_flag) then
         cp%phase = S_phase
@@ -205,7 +205,7 @@ elseif (phase == Checkpoint2) then ! this checkpoint combines the release from G
     !
     cp%G2M_flag = (cp%NL1 == 0 .or. tnow > cp%G2M_time)
     if (use_metabolism) then
-		cp%G2M_flag = cp%G2M_flag .and. (cp%metab%A_rate > ATPg(ityp))
+		cp%G2M_flag = cp%G2M_flag .and. (cp%metab%A_rate > ATPg)
 	endif
     if (cp%G2_flag .and. cp%G2M_flag) then
         cp%phase = M_phase

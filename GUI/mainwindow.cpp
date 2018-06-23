@@ -175,6 +175,7 @@ MainWindow::MainWindow(QWidget *parent)
     pushButton_colony->setEnabled(false);
     Global::colony_days = lineEdit_colony_days->text().toDouble();
     setFields();
+    drawForcePlot();
     goToInputs();
 }
 
@@ -277,7 +278,8 @@ void MainWindow::createActions()
     connect(buttonGroup_farfield, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(radioButtonChanged(QAbstractButton*)));
     connect(buttonGroup_hypoxia, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(radioButtonChanged(QAbstractButton*)));
     connect(buttonGroup_profileaxis, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(radioButtonChanged(QAbstractButton*)));
-    ConnectKillParameterSignals();
+    connectKillParameterSignals();
+    connectForceParameterSignals();
 }
 
 //--------------------------------------------------------------------------------------------------------
@@ -346,6 +348,8 @@ void MainWindow::createLists()
     distplot_list[0] = qp;
     qp = (QwtPlot *)qFindChild<QObject *>(this, "qwtPlot_DIVIDE_TIME_2");
     distplot_list[1] = qp;
+    qp = (QwtPlot *)qFindChild<QObject *>(this, "qwtPlot_FORCE");
+    forceplot = qp;
 }
 
 
@@ -512,7 +516,11 @@ void MainWindow:: drawDistPlots()
         qp->setAxisScale(QwtPlot::xBottom, 0.0, xmax, 0.0);
         QwtPlotCurve *curve = new QwtPlotCurve("title");
         curve->attach(qp);
+#ifdef QWT_VER5
         curve->setData(x, prob, n);
+#else
+        curve->setSamples(x, prob, n);
+#endif
         curve_list[j] = curve;
 		qp->replot();
 	}
@@ -520,6 +528,95 @@ void MainWindow:: drawDistPlots()
 	x = NULL;
 	delete [] prob;
 	prob = NULL;
+}
+
+//--------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------
+void MainWindow::drawForcePlot()
+{
+    double *x, *F;
+    double xmin, xmax, ymin, ymax;
+    int n = 100;
+    x = new double[n];
+    F = new double[n];
+    QwtPlot *qp;
+
+    LOG_MSG("drawForcePlot");
+    qp = forceplot;
+    qp->detachItems(QwtPlotItem::Rtti_PlotCurve);
+//    QString name = qp->objectName();
+    qp->setTitle("Cell-cell force");
+    create_force_function(n, x, F, &xmax, &ymin, &ymax);
+    xmin = line_X0_FORCE->text().toDouble();
+//    for (int i=0;i<n;i++) {
+//        sprintf(msg,"%d %f %f",i,x[i],F[i]);
+//        LOG_MSG(msg);
+//    }
+    qp->setAxisTitle(QwtPlot::xBottom,"x");
+    qp->enableAxis(QwtPlot::xBottom);
+    qp->enableAxis(QwtPlot::yLeft);
+    qp->setAxisScale(QwtPlot::xBottom, xmin, xmax, 0.0);
+//    qp->setAxisScale(QwtPlot::yLeft, ymin, ymax, 0.0);
+//    qp->setAxisAutoScale(QwtPlot::xBottom);
+    qp->setAxisAutoScale(QwtPlot::yLeft);
+    QwtPlotCurve *curve = new QwtPlotCurve("title");
+    curve->attach(qp);
+#ifdef QWT_VER5
+    curve->setData(x, F, n);
+#else
+    curve->setSamples(x, F, n);
+#endif
+    qp->replot();
+    delete [] x;
+    x = NULL;
+    delete [] F;
+    F = NULL;
+}
+
+//--------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------
+void MainWindow::connectForceParameterSignals()
+{
+    connect(line_A_FORCE,SIGNAL(textEdited(QString)),this,SLOT(drawForcePlot()));
+    connect(line_C_FORCE,SIGNAL(textEdited(QString)),this,SLOT(drawForcePlot()));
+    connect(line_X0_FORCE,SIGNAL(textEdited(QString)),this,SLOT(drawForcePlot()));
+    connect(line_X1_FORCE,SIGNAL(textEdited(QString)),this,SLOT(drawForcePlot()));
+}
+
+//--------------------------------------------------------------------------------------------------------
+// if (x > xcross2) F = 0
+// F = a/((x-x0)*(x1-x)) + b
+//
+// If max F = ymax is specified, then the first point should be approx at x0 + a/((x1-x0)(ymax-b))
+//--------------------------------------------------------------------------------------------------------
+void MainWindow::create_force_function(int n, double *x, double *F, double *xmax, double *ymin, double *ymax)
+{
+    double dx, x1, x0, a, b, c, delta, xcross1, xcross2;
+    // First set up the force parameters
+    a = line_A_FORCE->text().toDouble();
+    c = line_C_FORCE->text().toDouble();
+    x0 = line_X0_FORCE->text().toDouble();
+    x1 = line_X1_FORCE->text().toDouble();
+    dx = x1 - x0;
+    b = -c - 4*a/(dx*dx);
+    delta = dx*dx + 4*a/b;
+    xcross1 = (x0+x1)/2 - 0.5*sqrt(delta);
+    xcross2 = (x0+x1)/2 + 0.5*sqrt(delta);
+    *xmax = MIN(2*xcross2 - 1,x1-0.01);
+    *ymax = 8;
+    double xmin = x0 + a/((x1-x0)*(*ymax-b));
+    *ymax = a/((xmin-x0)*(x1-xmin)) + b;
+    dx = (*xmax - xmin)/(n-1);
+    *ymin = 0;
+    double Fprev = 10;
+    for (int i=0; i<n; i++) {
+        x[i] = xmin + i*dx;
+        F[i] = a/((x[i]-x0)*(x1-x[i])) + b;
+        if (Fprev <= 0 && F[i] > 0) F[i] = 0;
+        *ymin = MIN(*ymin,F[i]);
+        Fprev = F[i];
+    }
+    *ymin = MIN(*ymin,-1);
 }
 
 //-------------------------------------------------------------
@@ -2144,8 +2241,6 @@ void MainWindow::postConnection()
     action_show_gradient3D->setEnabled(true);
     action_show_gradient2D->setEnabled(true);
     action_field->setEnabled(true);
-//    tab_B->setEnabled(true);
-//    tab_DC->setEnabled(true);
     tab_tumour->setEnabled(true);
     tab_chemo->setEnabled(true);
     tab_run->setEnabled(true);
@@ -2527,11 +2622,11 @@ void MainWindow::changeParam()
                 bool ch = checkBox->isChecked();
                 groupBox_cellcycle->setEnabled(ch);
                 groupBox_radiation_RMR->setEnabled(ch);
-                groupBox_radiation_LQ->setEnabled(!ch);
                 qwtPlot_DIVIDE_TIME_1->setEnabled(!ch);
                 qwtPlot_DIVIDE_TIME_2->setEnabled(!ch);
                 groupBox_volumemethod->setEnabled(!ch);
                 groupBox_divisiondistributions->setEnabled(!ch);
+//               groupBox_radiation_LQ->setEnabled(!ch);
             }
 
             if (checkBox->isChecked()) {
@@ -2780,7 +2875,11 @@ void MainWindow::redrawDistPlot()
             create_lognorm_dist(median,shape,nDistPts,x,prob);
             int n = dist_limit(prob,nDistPts);
             double xmax = x[n];
+#ifdef QWT_VER5
             curve_list[k]->setData(x, prob, n);
+#else
+            curve_list[k]->setSamples(x, prob, n);
+#endif
             qp->setAxisScale(QwtPlot::xBottom, 0.0, xmax, 0.0);
             qp->replot();
 			delete [] x;
@@ -3177,52 +3276,6 @@ void MainWindow::setupGraphSelector()
     groupBox_graphselect->setGeometry(rect);
 }
 
-//--------------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------------
-void MainWindow::processGroupBoxClick(QString text)
-{
-    LOG_QMSG("processGroupBoxClick: " + text);
-    QwtPlot *plot;
-
-    if (text.compare("Histo") == 0) {
-        LOG_MSG("save Histo plot");
-//        bool use_HistoBar = radioButton_histotype_1->isChecked();
-        bool use_HistoBar = (buttonGroup_histotype->checkedId() == 1);
-        if (use_HistoBar) {
-            plot = qpHistoBar;
-            qpHistoLine->hide();
-        } else {
-            plot = qpHistoLine;
-            qpHistoBar->hide();
-        }
-    } else if (text.compare("FACS") == 0) {
-        LOG_MSG("save FACS plot");
-        plot = qpFACS;
-    } else {
-        return;
-    }
-
-    int w = plot->width();
-    int h = plot->height();
-    QPixmap pixmap(w, h);
-    pixmap.fill(Qt::white); // Qt::transparent ?
-
-    QwtPlotPrintFilter filter;
-    int options = QwtPlotPrintFilter::PrintAll;
-    options &= ~QwtPlotPrintFilter::PrintBackground;
-    options |= QwtPlotPrintFilter::PrintFrameWithScales;
-    filter.setOptions(options);
-
-    plot->print(pixmap, filter);
-
-//		QString fileName = getImageFile();
-    QString fileName = QFileDialog::getSaveFileName(0,"Select image file", ".",
-        "Image files (*.png *.jpg *.tif *.bmp)");
-    if (fileName.isEmpty()) {
-        return;
-    }
-    pixmap.save(fileName,0,-1);
-}
 
 //--------------------------------------------------------------------------------------------------------
 // Note that the initial selection of active graphs is now set in params.cpp

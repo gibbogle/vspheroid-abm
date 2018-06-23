@@ -135,7 +135,7 @@ subroutine makeF_b(ichemo,F_b,F,dt,zero)
 integer, parameter :: dN = NRF/2
 real(REAL_KIND) :: F_b(:,:,:), F(:,:,:), dt
 logical :: zero
-real(REAL_KIND) :: Fsum_b, Fsum, Fmin, dF
+real(REAL_KIND) :: Fsum_b, Fsum, Fmin, dF, wtsum
 real(REAL_KIND) :: wt(-dN:dN,-dN:dN,-dN:dN)
 real(REAL_KIND) :: xfac, yfac, zfac
 integer :: idx, idy, idz, xb0, yb0, idxb, idyb, zb1
@@ -148,6 +148,7 @@ yb0 = (NYB+1)/2
 idyb = (NY-1)/(2*NRF)
 zb1 = (NZ-1)/NRF + 1
 
+wtsum = 0
 do idx = -dN,dN
 do idy = -dN,dN
 do idz = -dN,dN
@@ -167,6 +168,7 @@ do idz = -dN,dN
 		zfac = 0.5
 	endif
 	wt(idx,idy,idz) = xfac*yfac*zfac
+	wtsum = wtsum + wt(idx,idy,idz)
 enddo
 enddo
 enddo
@@ -387,7 +389,8 @@ endif
 end subroutine
 
 !-------------------------------------------------------------------------------------------
-! Update Cextra(:,:,:) and thereby cp%Cex(ichemo) and cp%Cin(ichemo) from Caverage(:,:,:,ichemo), 
+! Update Cextra(:,:,:) and thereby cp%Cex(ichemo) and cp%Cin(ichemo) from Caverage(:,:,:,ichemo)
+! NOT USED WITH METABOLISM (except for initialisation)
 !-------------------------------------------------------------------------------------------
 subroutine update_Cex_Cin_const(ichemo)
 integer :: ichemo
@@ -412,6 +415,7 @@ end subroutine
 
 !-------------------------------------------------------------------------------------------
 ! Update Cextra(:,:,:) and thereby cp%Cex(ichemo) and cp%Cin(ichemo) from Caverage(:,:,:,ichemo), 
+! NOT USED WITH METABOLISM
 !-------------------------------------------------------------------------------------------
 subroutine update_Cex_Cin_dCdt_const(ichemo, dt)
 integer :: ichemo
@@ -459,6 +463,7 @@ enddo
 end subroutine
 
 !-------------------------------------------------------------------------------------------
+! NOT USED WITH METABOLISM
 !-------------------------------------------------------------------------------------------
 subroutine update_Cin_const_SS(ichemo)
 integer :: ichemo
@@ -508,6 +513,7 @@ end subroutine
 
 !-------------------------------------------------------------------------------------------
 ! Updates Cex for all constituents, Cin for all except drugs.
+! NOT USED WITH METABOLISM
 !-------------------------------------------------------------------------------------------
 subroutine update_Cex(ichemo)
 integer :: ichemo
@@ -879,6 +885,7 @@ end subroutine
 ! This valid for steady-state with any constituent, with decay, when Cex is known
 ! In fact it is currently valid for oxygen and glucose.
 ! This is effectively the same as getCin() with dCexdt = 0
+! NOT USED WITH METABOLISM
 !-------------------------------------------------------------------------------------------
 function getCin_SS(kcell,ichemo, Vin, Cex) result(Cin)
 integer :: kcell, ichemo
@@ -973,6 +980,7 @@ end function
 
 !-------------------------------------------------------------------------------------------
 ! Use an approximation to dCin/dt derived from dCex/dt to arrive at a better estimate of Cin and flux
+! NOT USED WITH METABOLISM
 !-------------------------------------------------------------------------------------------
 function getCin(kcell, ichemo, Vin, Cex, dCexdt) result(Cin)
 integer :: kcell, ichemo
@@ -1893,7 +1901,6 @@ tmetab = mytimer() - t1
 !write(logmsg,'(a,3f8.4)') 'tdiff,tmetab,tmetab/(tdiff+tmetab): ',tdiff,tmetab,tmetab/(tdiff+tmetab)
 !call logger(logmsg)
 
-!if (use_integration) then	! always
 if (chemo(DRUG_A)%present .or. chemo(DRUG_B)%present) then
 	! solve for Cin and dMdt for drug + metabolites by integrating them together
 	call integrate_Cin(dt)
@@ -1909,13 +1916,7 @@ do ic = 1,nchemo
 		! use the cell fluxes dMdt previously computed in integrate_Cin
 		call make_grid_flux(ichemo,Fcurr)
 	endif
-!	if (ichemo == OXYGEN) then
-!		iy0 = (NY+1)/2
-!		iz0 = (NZ+1)/2
-!		write(*,'(7e11.3)') Fcurr(:,iy0,iz0)
-!	endif
 enddo
-!endif
 
 end subroutine
 

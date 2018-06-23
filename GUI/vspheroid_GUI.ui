@@ -79,7 +79,7 @@ padding: 8px
            <enum>QTabWidget::West</enum>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>3</number>
           </property>
           <property name="elideMode">
            <enum>Qt::ElideNone</enum>
@@ -969,20 +969,6 @@ padding: 8px
                 </property>
                </widget>
               </item>
-              <item row="3" column="2">
-               <widget class="QLabel" name="alabel_x0">
-                <property name="text">
-                 <string>um</string>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="2">
-               <widget class="QLabel" name="alabel_x1">
-                <property name="text">
-                 <string>um</string>
-                </property>
-               </widget>
-              </item>
               <item row="5" column="0">
                <widget class="QMyLabel" name="label_KDRAG">
                 <property name="text">
@@ -1025,6 +1011,38 @@ padding: 8px
               </item>
              </layout>
             </widget>
+           </widget>
+           <widget class="QwtPlot" name="qwtPlot_FORCE">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
+            <property name="geometry">
+             <rect>
+              <x>360</x>
+              <y>40</y>
+              <width>541</width>
+              <height>431</height>
+             </rect>
+            </property>
+            <property name="frameShape">
+             <enum>QFrame::StyledPanel</enum>
+            </property>
+            <property name="frameShadow">
+             <enum>QFrame::Raised</enum>
+            </property>
+           </widget>
+           <widget class="QLabel" name="alabel_xd">
+            <property name="geometry">
+             <rect>
+              <x>580</x>
+              <y>480</y>
+              <width>101</width>
+              <height>21</height>
+             </rect>
+            </property>
+            <property name="text">
+             <string>(x = d/(R1+R2))</string>
+            </property>
            </widget>
           </widget>
           <widget class="QWidget" name="tab_chemo">
@@ -2009,19 +2027,6 @@ padding: 8px
               </rect>
              </property>
              <layout class="QGridLayout" name="gridLayout_4">
-              <item row="1" column="2">
-               <widget class="QLineEdit" name="line_N_GA_2">
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
               <item row="1" column="1">
                <widget class="QLineEdit" name="line_N_GA_1">
                 <property name="maximumSize">
@@ -2052,20 +2057,6 @@ padding: 8px
                 </property>
                 <property name="text">
                  <string>Metabolism parameters</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <widget class="QLabel" name="alabel_12">
-                <property name="text">
-                 <string>Type 1</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="2">
-               <widget class="QLabel" name="alabel_14">
-                <property name="text">
-                 <string>Type 2</string>
                 </property>
                </widget>
               </item>
@@ -2269,136 +2260,6 @@ padding: 8px
                 </property>
                </widget>
               </item>
-              <item row="2" column="2">
-               <widget class="QLineEdit" name="line_N_PA_2">
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="2">
-               <widget class="QLineEdit" name="line_N_GI_2">
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item row="4" column="2">
-               <widget class="QLineEdit" name="line_N_PI_2">
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item row="5" column="2">
-               <widget class="QLineEdit" name="line_N_PO_2">
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item row="6" column="2">
-               <widget class="QLineEdit" name="line_K_H1_2">
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item row="7" column="2">
-               <widget class="QLineEdit" name="line_K_H2_2">
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item row="8" column="2">
-               <widget class="QLineEdit" name="line_K_HB_2">
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item row="14" column="2">
-               <widget class="QLineEdit" name="line_ATP_S_2">
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item row="17" column="2">
-               <widget class="QLineEdit" name="line_K_PL_2">
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item row="18" column="2">
-               <widget class="QLineEdit" name="line_K_LP_2">
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
               <item row="9" column="0">
                <widget class="QMyLabel" name="label_K_PDK_1">
                 <property name="text">
@@ -2408,19 +2269,6 @@ padding: 8px
               </item>
               <item row="9" column="1">
                <widget class="QLineEdit" name="line_K_PDK_1">
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item row="9" column="2">
-               <widget class="QLineEdit" name="line_K_PDK_2">
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
@@ -2458,19 +2306,6 @@ padding: 8px
                 </property>
                </widget>
               </item>
-              <item row="19" column="2">
-               <widget class="QLineEdit" name="line_PYRUVATE_MM_KM_2">
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
               <item row="10" column="0">
                <widget class="QMyLabel" name="label_PDKMIN_1">
                 <property name="text">
@@ -2491,37 +2326,8 @@ padding: 8px
                 </property>
                </widget>
               </item>
-              <item row="10" column="2">
-               <widget class="QLineEdit" name="line_PDKMIN_2">
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
               <item row="11" column="1">
                <widget class="QLineEdit" name="line_C_O2_NORM_1">
-                <property name="enabled">
-                 <bool>true</bool>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item row="11" column="2">
-               <widget class="QLineEdit" name="line_C_O2_NORM_2">
                 <property name="enabled">
                  <bool>true</bool>
                 </property>
@@ -2562,22 +2368,6 @@ padding: 8px
                 </property>
                </widget>
               </item>
-              <item row="12" column="2">
-               <widget class="QLineEdit" name="line_C_G_NORM_2">
-                <property name="enabled">
-                 <bool>true</bool>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
               <item row="12" column="0">
                <widget class="QMyLabel" name="label_C_G_NORM_1">
                 <property name="enabled">
@@ -2590,22 +2380,6 @@ padding: 8px
               </item>
               <item row="13" column="1">
                <widget class="QLineEdit" name="line_C_L_NORM_1">
-                <property name="enabled">
-                 <bool>true</bool>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item row="13" column="2">
-               <widget class="QLineEdit" name="line_C_L_NORM_2">
                 <property name="enabled">
                  <bool>true</bool>
                 </property>
@@ -2643,19 +2417,6 @@ padding: 8px
                 </property>
                </widget>
               </item>
-              <item row="15" column="2">
-               <widget class="QLineEdit" name="line_ATP_G_2">
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
               <item row="15" column="0">
                <widget class="QMyLabel" name="label_ATP_G_1">
                 <property name="text">
@@ -2665,19 +2426,6 @@ padding: 8px
               </item>
               <item row="16" column="1">
                <widget class="QLineEdit" name="line_ATP_RAMP_1">
-                <property name="maximumSize">
-                 <size>
-                  <width>60</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="alignment">
-                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                </property>
-               </widget>
-              </item>
-              <item row="16" column="2">
-               <widget class="QLineEdit" name="line_ATP_RAMP_2">
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
@@ -2706,7 +2454,7 @@ padding: 8px
            </attribute>
            <widget class="QGroupBox" name="groupBox_radiation_LQ">
             <property name="enabled">
-             <bool>false</bool>
+             <bool>true</bool>
             </property>
             <property name="geometry">
              <rect>
@@ -2738,6 +2486,9 @@ padding: 8px
               </item>
               <item row="1" column="1">
                <widget class="QLineEdit" name="line_RADIATION_ALPHA_H_1">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
@@ -2758,6 +2509,9 @@ padding: 8px
               </item>
               <item row="2" column="1">
                <widget class="QLineEdit" name="line_RADIATION_BETA_H_1">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
@@ -2778,6 +2532,9 @@ padding: 8px
               </item>
               <item row="3" column="1">
                <widget class="QLineEdit" name="line_RADIATION_OER_ALPHA_1">
+                <property name="enabled">
+                 <bool>true</bool>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
@@ -2798,6 +2555,9 @@ padding: 8px
               </item>
               <item row="4" column="1">
                <widget class="QLineEdit" name="line_RADIATION_OER_BETA_1">
+                <property name="enabled">
+                 <bool>true</bool>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
@@ -2818,6 +2578,9 @@ padding: 8px
               </item>
               <item row="5" column="1">
                <widget class="QLineEdit" name="line_RADIATION_KM_1">
+                <property name="enabled">
+                 <bool>true</bool>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
@@ -2831,6 +2594,9 @@ padding: 8px
               </item>
               <item row="1" column="2">
                <widget class="QLineEdit" name="line_RADIATION_ALPHA_H_2">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
@@ -2844,6 +2610,9 @@ padding: 8px
               </item>
               <item row="2" column="2">
                <widget class="QLineEdit" name="line_RADIATION_BETA_H_2">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
@@ -2857,6 +2626,9 @@ padding: 8px
               </item>
               <item row="3" column="2">
                <widget class="QLineEdit" name="line_RADIATION_OER_ALPHA_2">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
@@ -2870,6 +2642,9 @@ padding: 8px
               </item>
               <item row="4" column="2">
                <widget class="QLineEdit" name="line_RADIATION_OER_BETA_2">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
@@ -2883,6 +2658,9 @@ padding: 8px
               </item>
               <item row="5" column="2">
                <widget class="QLineEdit" name="line_RADIATION_KM_2">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
@@ -2934,6 +2712,9 @@ padding: 8px
               </item>
               <item row="7" column="1">
                <widget class="QLineEdit" name="line_RADIATION_DEATH_PROB_1">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
@@ -2947,6 +2728,9 @@ padding: 8px
               </item>
               <item row="7" column="2">
                <widget class="QLineEdit" name="line_RADIATION_DEATH_PROB_2">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
@@ -2974,6 +2758,9 @@ padding: 8px
               </item>
               <item row="10" column="1">
                <widget class="QPushButton" name="pushButton_radSF_1">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
@@ -2987,6 +2774,9 @@ padding: 8px
               </item>
               <item row="10" column="2">
                <widget class="QPushButton" name="pushButton_radSF_2">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
@@ -3007,6 +2797,9 @@ padding: 8px
               </item>
               <item row="8" column="1">
                <widget class="QLineEdit" name="line_RADIATION_GROWTH_DELAY_FACTOR_1">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
@@ -3023,6 +2816,9 @@ padding: 8px
               </item>
               <item row="8" column="2">
                <widget class="QLineEdit" name="line_RADIATION_GROWTH_DELAY_FACTOR_2">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
@@ -3046,6 +2842,9 @@ padding: 8px
               </item>
               <item row="9" column="1">
                <widget class="QLineEdit" name="line_RADIATION_GROWTH_DELAY_N_1">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
@@ -3059,6 +2858,9 @@ padding: 8px
               </item>
               <item row="9" column="2">
                <widget class="QLineEdit" name="line_RADIATION_GROWTH_DELAY_N_2">
+                <property name="enabled">
+                 <bool>false</bool>
+                </property>
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
@@ -3073,6 +2875,9 @@ padding: 8px
              </layout>
             </widget>
             <widget class="QMyCheckBox" name="cbox_RADIATION_GROWTH_DELAY_ALL">
+             <property name="enabled">
+              <bool>false</bool>
+             </property>
              <property name="geometry">
               <rect>
                <x>10</x>
@@ -8209,6 +8014,9 @@ padding: 8px
             <string>Run</string>
            </attribute>
            <widget class="QGroupBox" name="groupBox_run2">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="geometry">
              <rect>
               <x>330</x>
@@ -9228,7 +9036,7 @@ padding: 8px
             <property name="geometry">
              <rect>
               <x>750</x>
-              <y>350</y>
+              <y>380</y>
               <width>151</width>
               <height>18</height>
              </rect>
@@ -9241,7 +9049,7 @@ padding: 8px
             <property name="geometry">
              <rect>
               <x>750</x>
-              <y>380</y>
+              <y>410</y>
               <width>151</width>
               <height>18</height>
              </rect>
@@ -9519,7 +9327,7 @@ padding: 8px
             <property name="geometry">
              <rect>
               <x>750</x>
-              <y>430</y>
+              <y>460</y>
               <width>31</width>
               <height>20</height>
              </rect>
@@ -9535,7 +9343,7 @@ padding: 8px
             <property name="geometry">
              <rect>
               <x>790</x>
-              <y>430</y>
+              <y>460</y>
               <width>191</width>
               <height>16</height>
              </rect>
@@ -9551,7 +9359,7 @@ padding: 8px
             <property name="geometry">
              <rect>
               <x>750</x>
-              <y>410</y>
+              <y>440</y>
               <width>151</width>
               <height>18</height>
              </rect>
@@ -9669,6 +9477,9 @@ padding: 8px
             </property>
            </widget>
            <widget class="QGroupBox" name="groupBox_O2solver">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="geometry">
              <rect>
               <x>330</x>
@@ -9733,6 +9544,9 @@ padding: 8px
             </widget>
            </widget>
            <widget class="QGroupBox" name="groupBox_farfield">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="geometry">
              <rect>
               <x>330</x>
@@ -9797,6 +9611,9 @@ padding: 8px
             </widget>
            </widget>
            <widget class="QGroupBox" name="groupBox_run3">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="geometry">
              <rect>
               <x>330</x>
@@ -9950,6 +9767,9 @@ padding: 8px
             </property>
            </widget>
            <widget class="QMyCheckBox" name="cbox_USE_CLOSE_PACKING">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="geometry">
              <rect>
               <x>380</x>
@@ -10008,6 +9828,9 @@ padding: 8px
             </property>
            </widget>
            <widget class="QGroupBox" name="groupBox_drop">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="geometry">
              <rect>
               <x>330</x>
@@ -10081,6 +9904,51 @@ padding: 8px
               <string>label_FWALL_DIST_FACTOR</string>
              </property>
             </widget>
+           </widget>
+           <widget class="QLineEdit" name="line_DRUG_LABEL_THRESHOLD">
+            <property name="geometry">
+             <rect>
+              <x>830</x>
+              <y>340</y>
+              <width>50</width>
+              <height>20</height>
+             </rect>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>50</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+            </property>
+           </widget>
+           <widget class="QLabel" name="alabel_mM_2">
+            <property name="geometry">
+             <rect>
+              <x>890</x>
+              <y>340</y>
+              <width>21</width>
+              <height>21</height>
+             </rect>
+            </property>
+            <property name="text">
+             <string>mM</string>
+            </property>
+           </widget>
+           <widget class="QMyLabel" name="label_DRUG_LABEL_THRESHOLD">
+            <property name="geometry">
+             <rect>
+              <x>750</x>
+              <y>340</y>
+              <width>81</width>
+              <height>21</height>
+             </rect>
+            </property>
+            <property name="text">
+             <string>Label Threshold</string>
+            </property>
            </widget>
           </widget>
          </widget>
