@@ -187,8 +187,7 @@ end subroutine
 
 !--------------------------------------------------------------------------
 !--------------------------------------------------------------------------
-function get_HIF1steadystate(C_O) result(H)
-integer :: ityp
+function get_HIF1steadystate1(C_O) result(H)
 real(REAL_KIND) :: C_O, H
 real(REAL_KIND) :: b
 
@@ -201,12 +200,23 @@ endif
 end function
 
 !--------------------------------------------------------------------------
+! Use K_H1 for the exponent, K_H2 for the rate coefficient
+!--------------------------------------------------------------------------
+function get_HIF1steadystate(C_O) result(H)
+real(REAL_KIND) :: C_O, H
+real(REAL_KIND) :: x
+real(REAL_KIND) :: C_O_max = 0.18
+
+x = min(C_O/C_O_max,1.0)
+H = (1-x)**K_H1
+end function
+
+!--------------------------------------------------------------------------
 !With the Kelly2008 model:
 !  a = rH
 !  b = 1 + dH*C_O/(rH*(Km + C_O))
 !--------------------------------------------------------------------------
-subroutine analyticSetHIF1(C_O, H, dt)
-integer :: ityp
+subroutine analyticSetHIF1z(C_O, H, dt)
 real(REAL_KIND) :: C_O, H, dt
 real(REAL_KIND) :: a, b, c, ee, H0
 
@@ -225,6 +235,20 @@ endif
 H0 = H
 c = 1 - b*H0
 H = (1 - c*exp(-a*b*dt))/b
+end subroutine
+
+!--------------------------------------------------------------------------
+!--------------------------------------------------------------------------
+subroutine analyticSetHIF1(C_O, H, dt)
+integer :: ityp
+real(REAL_KIND) :: C_O, H, dt
+real(REAL_KIND) :: x, H0, Heq
+real(REAL_KIND) :: C_O_max = 0.18
+
+x = min(C_O/C_O_max,1.0)
+Heq = (1-x)**K_H1
+H0 = H
+H = Heq + (H0 - Heq)*exp(-K_H2*dt)
 end subroutine
 
 !--------------------------------------------------------------------------

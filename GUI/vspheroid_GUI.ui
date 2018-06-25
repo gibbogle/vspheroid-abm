@@ -79,7 +79,7 @@ padding: 8px
            <enum>QTabWidget::West</enum>
           </property>
           <property name="currentIndex">
-           <number>3</number>
+           <number>2</number>
           </property>
           <property name="elideMode">
            <enum>Qt::ElideNone</enum>
@@ -2182,14 +2182,14 @@ padding: 8px
               <item row="6" column="0">
                <widget class="QMyLabel" name="label_K_H1_1">
                 <property name="text">
-                 <string>K_H1</string>
+                 <string>N_H</string>
                 </property>
                </widget>
               </item>
               <item row="7" column="0">
                <widget class="QMyLabel" name="label_K_H2_1">
                 <property name="text">
-                 <string>K_H2</string>
+                 <string>K_H</string>
                 </property>
                </widget>
               </item>

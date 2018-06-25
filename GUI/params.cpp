@@ -636,13 +636,13 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "Oxygen moles consumed per pyruvate mole",
      "Number of moles of oxygen consumed the oxidation of one pyruvate mole"},
 
-     {"K_H1_1", 140, 0, 0,
-     "K_H1",
-     "The rate of change of HIF-1 level H is given by: dH/dt = K_H2*(1 - H*exp(K_H1*C_O)), where C_O = oxygen concentration"},
+     {"K_H1_1", 3, 0, 0,
+     "Exponent N_H in Hss equation",
+     "With x = C_O/C_O_max, steady-state HIF-1 level is Hss = (1-x)^N_H, where C_O = oxygen concentration"},
 
-     {"K_H2_1", 0.001, 0, 0,
-     "K_H2",
-     "The rate of change of HIF-1 level H is given by: dH/dt = K_H2*(1 - H*exp(K_H1*C_O)), where C_O = oxygen concentration"},
+     {"K_H2_1", 0.00005, 0, 0,
+     "HIF-1 rate constant K_H",
+     "The rate of change of HIF-1 level H is given by: dH/dt = K_H*(Hss - H), where C_O = oxygen concentration, Hss is steady-state level for C_O"},
 
      {"K_HB_1", 0.2, 0, 0,
      "K_HB",
