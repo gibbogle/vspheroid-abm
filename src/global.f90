@@ -227,14 +227,16 @@ end type
 type event_type
 	integer :: etype
 	real(REAL_KIND) :: time
-	integer :: idrug			! DRUG
-	integer :: ichemo			! DRUG CHEMO INDEX
-	real(REAL_KIND) :: volume	! DRUG MEDIUM
-	real(REAL_KIND) :: conc		! DRUG
+	integer :: idrug				! DRUG
+	integer :: ichemo				! DRUG CHEMO INDEX
+	real(REAL_KIND) :: volume		! DRUG MEDIUM
+	real(REAL_KIND) :: conc			! DRUG
 	real(REAL_KIND) :: O2conc		! DRUG
 	real(REAL_KIND) :: O2flush		! DRUG
-	real(REAL_KIND) :: dose		! RADIATION
-	real(REAL_KIND) :: O2medium	! MEDIUM
+	real(REAL_KIND) :: dose			! RADIATION
+	real(REAL_KIND) :: O2medium		! MEDIUM
+	real(REAL_KIND) :: glumedium	! MEDIUM
+	real(REAL_KIND) :: lacmedium	! MEDIUM
 	logical :: done
 end type	
 

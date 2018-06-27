@@ -135,7 +135,7 @@ subroutine makeF_b(ichemo,F_b,F,dt,zero)
 integer, parameter :: dN = NRF/2
 real(REAL_KIND) :: F_b(:,:,:), F(:,:,:), dt
 logical :: zero
-real(REAL_KIND) :: Fsum_b, Fsum, Fmin, dF, wtsum
+real(REAL_KIND) :: Fsum_b, Fsum, Fmin, Fmax, dF, wtsum
 real(REAL_KIND) :: wt(-dN:dN,-dN:dN,-dN:dN)
 real(REAL_KIND) :: xfac, yfac, zfac
 integer :: idx, idy, idz, xb0, yb0, idxb, idyb, zb1
@@ -173,6 +173,8 @@ enddo
 enddo
 enddo
 
+Fmin = 1.0e20
+Fmax = -Fmin
 Fsum_b = 0
 F_b = 0
 do ixb = xb0-idxb,xb0+idxb
@@ -193,6 +195,8 @@ do ixb = xb0-idxb,xb0+idxb
 						dF = wt(idx,idy,idz)*F(ix,iy,iz)
 						F_b(ixb,iyb,izb) = F_b(ixb,iyb,izb) + dF
 						Fsum_b = Fsum_b + dF
+!						Fmin = min(Fmin,F(ix,iy,iz))
+!						Fmax = max(Fmax,F(ix,iy,iz))
 					enddo
 				enddo
 			enddo
@@ -201,6 +205,9 @@ do ixb = xb0-idxb,xb0+idxb
 enddo
 zero = (Fsum_b == 0)
 if (dbug .and. ichemo >= DRUG_A) write(*,'(a,i2,e12.3)') 'flux makeF_b: DRUG_A sum: ',ichemo,Fsum_b
+!if (ichemo == GLUCOSE) then
+!	write(nflog,*) 'MakeF_b: Fmin, Fmax: ',Fmin,Fmax
+!endif
 end subroutine
 
 !-------------------------------------------------------------------------------------------
@@ -519,7 +526,7 @@ subroutine update_Cex(ichemo)
 integer :: ichemo
 real(REAL_KIND) :: dt
 integer :: kcell, ix, iy, iz
-real(REAL_KIND) :: alfa(3)
+real(REAL_KIND) :: alfa(3), cmin,cmax
 type(cell_type), pointer :: cp
 type(metabolism_type), pointer :: mp
 real(REAL_KIND), pointer :: Cextra(:,:,:)
@@ -538,6 +545,8 @@ Cextra => Caverage(:,:,:,ichemo)		! currently using the average concentration!
 !	enddo
 !endif
 !!$omp parallel do private(cp, ix, iy, iz, alfa)
+cmin = 1.0e9
+cmax = -cmin
 do kcell = 1,nlist
 	cp => cell_list(kcell)
 	if (cp%state == DEAD .or. cp%state == DYING) cycle
@@ -556,9 +565,16 @@ do kcell = 1,nlist
     if (ichemo < DRUG_A) then
 		cp%Cin(ichemo) = getCin_SS(kcell,ichemo,cp%V,cp%Cex(ichemo))
 	endif
+!	if (ichemo == GLUCOSE) then
+!		cmin = min(cmin,cp%Cin(ichemo))
+!		cmax = max(cmax,cp%Cin(ichemo))
+!	endif
 !	if (ichemo == DRUG_A+1) write(*,'(i6,e12.3)') kcell,cp%Cex(ichemo)
 enddo
 !!$omp end parallel do
+!if (ichemo == GLUCOSE) then
+!	write(nflog,*) 'update_Cex: glucose min, max: ',cmin,cmax
+!endif
 end subroutine
 
 !-------------------------------------------------------------------------------------------
@@ -1586,7 +1602,7 @@ t0 = mytimer()
 do ic = 1,nchemo
 	ichemo = chemomap(ic)
 	if (chemo(ichemo)%constant) cycle
-	!write(*,'(a,i2)') 'coarse grid: ichemo: ',ichemo
+!	write(*,'(a,i2)') 'coarse grid: ichemo: ',ichemo
 	ichemo_curr = ichemo
 	icc = ichemo - 1
 	allocate(rhs(nrow_b))
@@ -1689,6 +1705,11 @@ do ic = 1,nchemo
 	enddo
 	if (.not.zeroC(ichemo)) then
 	!	write(nflog,*) 'call itsol_solve_fgmr_ILU'
+!		if (istep == 25 .and. ichemo == 2) then
+!			write(nflog,*) 'glucose: rhs:'
+!			write(nflog,'(10e12.3)') rhs
+!		endif
+!		write(*,*) 'call itsol_solve_fgmr_ILU'
 		call itsol_solve_fgmr_ILU(icc, rhs, x, im_krylov, maxits, tol_b, iters, ierr)
 	!	write(nflog,*) 'itsol_solve_fgmr_ILU: Cave_b: ierr, iters: ',ierr,iters
 		if (ierr /= 0) then
@@ -1813,7 +1834,7 @@ do ic = 1,nfinemap
 		enddo
 		
 		if (.not.zeroC(ichemo)) then
-!			write(*,*) 'call itsol_solve_fgmr_ILU'
+!			write(*,*) 'call itsol_solve_fgmr_ILU: ichemo: ',ichemo
 !			write(nflog,*) 'before fgmr: istep,ichemo: ',istep,ichemo
 !			write(nflog,*) 'x:'
 !			write(nflog,'(10e12.3)') x(1:100)

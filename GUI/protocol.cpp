@@ -8,8 +8,8 @@ void MainWindow::SetupProtocol()
     QStringList tableHeader;
 
     tableWidget->setRowCount(64);
-    tableWidget->setColumnCount(10);
-    tableHeader<<"Hour"<<"Drug"<<"Duration"<<"Volume"<<"O2 conc"<<"O2 flush"<<"Conc"<<"Radiation"<<"Medium vol"<<"Medium O2";
+    tableWidget->setColumnCount(11);
+    tableHeader<<"Hour"<<"Drug"<<"Duration"<<"Volume"<<"O2 conc"<<"O2 flush"<<"Conc"<<"Radiation"<<"Medium vol"<<"Medium O2"<<"Medium glu";
     tableWidget->setHorizontalHeaderLabels(tableHeader);
 
     connect(tableWidget, SIGNAL(cellChanged(int, int)  ),this, SLOT(ProtocolChanged(int, int)) );
@@ -87,8 +87,11 @@ void MainWindow::LoadProtocol(QString fileName)
 //            qDebug() << volume;
             setField(table, row, 8, volume);
             QString O2level = in.readLine();
-//            qDebug() << volume;
+//            qDebug() << O2level;
             setField(table, row, 9, O2level);
+            QString glulevel = in.readLine();
+//            qDebug() << glulevel;
+            setField(table, row, 10, glulevel);
         }
     }
     paramSaved = false;
@@ -257,6 +260,15 @@ void MainWindow::SaveProtocol(QTextStream *out, int ndrugs)
                         msgBox.setText("Missing entry in Medium O2conc column");
                         msgBox.exec();
                         qDebug() << "Missing entry in Medium O2conc column";
+                        return;
+                    }
+                    err = getField(table,row,10,&entry);
+                    if (entry.compare("")) {   // Entry in Medium gluconc column
+                        *out << entry << "\n";
+                    } else {
+                        msgBox.setText("Missing entry in Medium gluconc column");
+                        msgBox.exec();
+                        qDebug() << "Missing entry in Medium gluconc column";
                         return;
                     }
                     continue;

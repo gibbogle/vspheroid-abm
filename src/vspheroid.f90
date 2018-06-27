@@ -178,6 +178,7 @@ read(nfcell,*) chemo(GLUCOSE)%membrane_diff_out
 chemo(GLUCOSE)%membrane_diff_in = chemo(GLUCOSE)%membrane_diff_in*Vsite_cm3/60		! /min -> /sec
 chemo(GLUCOSE)%membrane_diff_out = chemo(GLUCOSE)%membrane_diff_out*Vsite_cm3/60	! /min -> /sec
 read(nfcell,*) chemo(GLUCOSE)%bdry_conc
+chemo(GLUCOSE)%dose_conc = chemo(GLUCOSE)%bdry_conc
 read(nfcell,*) iconstant
 chemo(GLUCOSE)%constant = (iconstant == 1)
 read(nfcell,*) chemo(GLUCOSE)%max_cell_rate
@@ -193,6 +194,7 @@ read(nfcell,*) chemo(LACTATE)%membrane_diff_out
 chemo(LACTATE)%membrane_diff_out = chemo(LACTATE)%membrane_diff_out*Vsite_cm3/60	! /min -> /sec
 read(nfcell,*) chemo(LACTATE)%bdry_conc
 chemo(LACTATE)%bdry_conc = max(0.001,chemo(LACTATE)%bdry_conc)
+chemo(LACTATE)%dose_conc = chemo(LACTATE)%bdry_conc
 read(nfcell,*) chemo(LACTATE)%max_cell_rate
 chemo(LACTATE)%max_cell_rate = chemo(LACTATE)%max_cell_rate*1.0e6					! mol/cell/s -> mumol/cell/s
 read(nfcell,*) chemo(LACTATE)%MM_C0
@@ -586,7 +588,7 @@ integer :: itime, ntimes, kevent, ichemo, idrug, im
 character*(64) :: line
 character*(16) :: drugname
 character*(1)  :: numstr
-real(REAL_KIND) :: t, dt, vol, conc, O2conc, O2flush, dose, O2medium
+real(REAL_KIND) :: t, dt, vol, conc, O2conc, O2flush, dose, O2medium, glumedium
 type(event_type) :: E
 
 write(logmsg,*) 'ReadProtocol'
@@ -647,6 +649,8 @@ do itime = 1,ntimes
 		event(kevent)%volume = medium_volume0
 		event(kevent)%conc = 0
 		event(kevent)%O2medium = O2flush
+		event(kevent)%glumedium = chemo(GLUCOSE)%dose_conc
+		event(kevent)%lacmedium = chemo(LACTATE)%dose_conc
 		event(kevent)%dose = 0
 		write(nflog,'(a,i3,2f8.3)') 'define MEDIUM_EVENT: volume: ',kevent,event(kevent)%volume,event(kevent)%O2medium
 	elseif (trim(line) == 'MEDIUM') then
@@ -655,10 +659,13 @@ do itime = 1,ntimes
 		read(nf,*) t
 		read(nf,*) vol
 		read(nf,*) O2medium
+		read(nf,*) glumedium
 		event(kevent)%time = t
 		event(kevent)%volume = vol	
 		event(kevent)%ichemo = 0
 		event(kevent)%O2medium = O2medium
+		event(kevent)%glumedium = glumedium
+		event(kevent)%lacmedium = chemo(LACTATE)%dose_conc
 		event(kevent)%dose = 0
 		write(nflog,'(a,i3,2f8.3)') 'define MEDIUM_EVENT: volume: ',kevent,event(kevent)%volume,event(kevent)%O2medium
 	elseif (trim(line) == 'RADIATION') then
@@ -890,6 +897,7 @@ call logger('did setup_react_diff')
 call SetInitialGrowthRate
 limit_stop = .false.
 medium_change_step = .false.		! for startup 
+total_volume = medium_volume0
 call logger('completed Setup')
 
 nspeedtest = 100000
@@ -1926,19 +1934,21 @@ do kevent = 1,Nevents
 			write(logmsg,'(a,f8.0,f8.3)') 'RADIATION_EVENT: time, dose: ',t_simulation,E%dose
 			call logger(logmsg)
 		elseif (E%etype == MEDIUM_EVENT) then
-			write(logmsg,'(a,f8.0,f8.3,2f8.4)') 'MEDIUM_EVENT: time, volume, O2medium: ',t_simulation,E%volume,E%O2medium
+			write(logmsg,'(a,f8.0,f8.3,2f8.4)') 'MEDIUM_EVENT: time, volume, O2, glucose: ',t_simulation,E%volume,E%O2medium,E%glumedium
 			call logger(logmsg)
 			C = 0
 			C(OXYGEN) = E%O2medium
 			chemo(OXYGEN)%bdry_conc = E%O2medium
-			C(GLUCOSE) = chemo(GLUCOSE)%bdry_conc
+			C(GLUCOSE) = E%glumedium
+			C(LACTATE) = E%lacmedium
 			V = E%volume
 			call MediumChange(V,C)
 		elseif (E%etype == DRUG_EVENT) then
 			C = 0
 			C(OXYGEN) = E%O2conc
 			chemo(OXYGEN)%bdry_conc = E%O2conc
-			C(GLUCOSE) = chemo(GLUCOSE)%bdry_conc
+			C(GLUCOSE) = chemo(GLUCOSE)%dose_conc
+			C(LACTATE) = chemo(LACTATE)%dose_conc
 			ichemo = E%ichemo
 			idrug = E%idrug
 			C(ichemo) = E%conc
@@ -1971,7 +1981,7 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine MediumChange(Ve,Ce)
 real(REAL_KIND) :: Ve, Ce(:)
-real(REAL_KIND) :: R, Vm_old, Vm_new, Vr, Vkeep, Vblob, fkeep
+real(REAL_KIND) :: R, Vm_old, Vm_new, Vr, Vkeep, Vblob, fkeep, xfac, yfac, zfac, dV, Vtot
 integer :: kcell, site(3), siteb(3), ixb, iyb, izb, izb_1, izb_2, ichemo, ic
 !integer, allocatable :: zinrng(:,:,:)
 real(REAL_KIND), allocatable :: exmass(:), exconc(:)
@@ -1992,8 +2002,13 @@ do kcell = 1,nlist
 	call getSiteb(site,siteb)
 	ngcells(siteb(1),siteb(2),siteb(3)) = ngcells(siteb(1),siteb(2),siteb(3)) + 1
 enddo
+Vtot = 0
 do ixb = 1,NXB
+	xfac = 1
+	if (ixb == 1 .or. ixb == NXB) xfac = 0.5
 	do iyb = 1,NYB
+		yfac = 1
+		if (iyb == 1 .or. iyb == NYB) yfac = 0.5
 		! Need to include all internal empty gridcells (necrotic)
 		! First find first and last non-empty gridcells
 		izb_1 = 0
@@ -2008,10 +2023,14 @@ do ixb = 1,NXB
 			Vblob = Vblob + izb_2 - izb_1 + 1
 		endif
 		do izb = 1,NZB
+			zfac = 1
+			if (izb == 1 .or. izb == NZB) zfac = 0.5
 			if (izb_1 /= 0 .and. (izb >= izb_1 .and. izb <= izb_2)) cycle	! blob gridcells
+			dV = xfac*yfac*zfac*dxb3
+			Vtot = Vtot + dV
 			do ichemo = 1,MAX_CHEMO
 				if (.not.chemo(ichemo)%used) cycle
-				exmass(ichemo) = exmass(ichemo) + dxb3*chemo(ichemo)%Cave_b(ixb,iyb,izb)
+				exmass(ichemo) = exmass(ichemo) + dV*chemo(ichemo)%Cave_b(ixb,iyb,izb)
 			enddo
 		enddo
 !		zinrng(:,ixb,iyb) = [izb_1,izb_2]
@@ -2027,7 +2046,7 @@ Vkeep = Vm_old - Vr
 fkeep = Vkeep/Vm_old			! fraction of initial medium volume that is kept. i.e. fraction of exmass(:)
 Vm_new = Ve + Vkeep				! new medium volume
 total_volume = Vm_new + Vblob	! new total volume
-!write(*,'(6f8.4)') total_volume,Vblob,Vm_old,Vkeep,fkeep,Vm_new
+write(nflog,'(a,7e12.3)') 'total_volume,Vblob,Vm_old,Vkeep,fkeep,Vm_new,Vtot: ',total_volume,Vblob,Vm_old,Vkeep,fkeep,Vm_new,Vtot
 ! Concentrations in the gridcells external to the blob (those with no cells) are set
 ! to the values of the mixture of old values and added medium. 
 do ichemo = 1,MAX_CHEMO
@@ -2047,8 +2066,10 @@ do ichemo = 1,MAX_CHEMO
 	chemo(ichemo)%medium_Cbnd = exconc(ichemo)
 	Caverage(:,:,:,ichemo) = exconc(ichemo)		! This is approximately OK, because the medium volume is so much greater than the blob volume
 	! Try this
-	Cflux(:,:,:,ichemo) = 0
-	chemo(ichemo)%Fcurr_b = 0
+	if (ichemo == OXYGEN) then
+		Cflux(:,:,:,ichemo) = 0
+		chemo(ichemo)%Fcurr_b = 0
+	endif
 	call update_Cex(ichemo)
 enddo
 medium_change_step = .true.
