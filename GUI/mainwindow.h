@@ -14,7 +14,7 @@
 
 using namespace std;
 
-#include "ui_vspheroid_GUI.h"
+#include "ui_vspheroid.h"
 #include <qwt_plot_curve.h>
 #include <qwt_plot_marker.h>
 #include <qwt_symbol.h>

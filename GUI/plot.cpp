@@ -58,25 +58,10 @@ void Plot::mousePressEvent (QMouseEvent *event) {
 		if (fileName.isEmpty()) {
 			return;
 		}
-#ifdef QWT_VER5
-		int w = this->width();
-		int h = this->height();
-		QPixmap pixmap(w, h);
-		pixmap.fill(Qt::white); // Qt::transparent ?
-
-		QwtPlotPrintFilter filter;
-		int options = QwtPlotPrintFilter::PrintAll;
-		options &= ~QwtPlotPrintFilter::PrintBackground;
-		options |= QwtPlotPrintFilter::PrintFrameWithScales;
-		filter.setOptions(options);
-		this->print(pixmap, filter);
-		pixmap.save(fileName,0,-1);
-#else
         QSizeF size(120,120);
         QwtPlotRenderer renderer;
         renderer.renderDocument(this,fileName,size,85);
-#endif
-	}
+    }
 }
 
 //-----------------------------------------------------------------------------------------
@@ -153,14 +138,6 @@ double Plot::calc_yscale(double yval)
 //-----------------------------------------------------------------------------------------
 void Plot::redraw(double *x, double *y, int n, QString name, QString tag, double fixed_yscale, bool profile)
 {
-    QwtLegend *legend;
-        if (USE_LEGEND){
-            legend = this->legend();
-            if (legend == NULL) {
-                legend = new QwtLegend();
-                this->insertLegend(legend, QwtPlot::RightLegend);
-            }
-        }
     // Note: Number of pen colors should match ncmax
     QColor pencolor[] = {Qt::black, Qt::red, Qt::blue, Qt::darkGreen, Qt::magenta, Qt::darkCyan };
     QPen *pen = new QPen();
@@ -176,7 +153,7 @@ void Plot::redraw(double *x, double *y, int n, QString name, QString tag, double
                 pen->setColor(pencolor[0]);
             }
             curve[k]->setPen(*pen);
-            curve[k]->setData(x, y, n);
+            curve[k]->setSamples(x, y, n);
             if (fixed_yscale == 0) {
                 double ylast = y[n-1];
                 if (ylast > yscale) {

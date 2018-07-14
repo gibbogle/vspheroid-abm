@@ -514,11 +514,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "Cell cycle parameters determine the time spent in each phase.\n\
      In the case of G1 and G2, an exponentially distributed random delay is added"},
 
-     {"T_G1_1", 10, 0, 0,
-     "G1 phase base time (h)",
-     "Deterministic component of time spent in phase G1"},
-
-     {"T_G1_2", 10, 0, 0,
+     {"T_G1_1", 6, 0, 0,
      "G1 phase base time (h)",
      "Deterministic component of time spent in phase G1"},
 
@@ -526,15 +522,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "S phase base time (h)",
      "Time spent in phase S"},
 
-     {"T_S_2", 8, 0, 0,
-     "S phase base time (h)",
-     "Time spent in phase S"},
-
      {"T_G2_1", 1, 0, 0,
-     "G2 phase base time (h)",
-     "Deterministic component of time spent in phase G2"},
-
-     {"T_G2_2", 1, 0, 0,
      "G2 phase base time (h)",
      "Deterministic component of time spent in phase G2"},
 
@@ -542,23 +530,11 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "M phase base time (h)",
      "Time spent in phase M"},
 
-     {"T_M_2", 0.5, 0, 0,
-     "M phase base time (h)",
-     "Time spent in phase M"},
-
-     {"G1_MEAN_DELAY_1", 2.5, 0, 0,
+     {"G1_MEAN_DELAY_1", 1.5, 0, 0,
      "G1 mean delay (h)",
      "Mean of the random component of time spent in phase G1 (exponentially distributed)"},
 
-     {"G1_MEAN_DELAY_2", 2.5, 0, 0,
-     "G1 mean delay (h)",
-     "Mean of the random component of time spent in phase G1 (exponentially distributed)"},
-
-     {"G2_MEAN_DELAY_1", 2, 0, 0,
-     "G2 mean delay (h)",
-     "Mean of the random component of time spent in phase G2 (exponentially distributed)"},
-
-     {"G2_MEAN_DELAY_2", 2, 0, 0,
+     {"G2_MEAN_DELAY_1", 1, 0, 0,
      "G2 mean delay (h)",
      "Mean of the random component of time spent in phase G2 (exponentially distributed)"},
 
@@ -566,49 +542,135 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "Apoptosis rate/hr",
      "The rate of passage from state = DYING to state = DEAD, probability/hour"},
 
-     {"APOPTOSIS_RATE_2", 0.1, 0, 0,
-     "Apoptosis rate/hr",
-     "The rate of passage from state = DYING to state = DEAD, probability/hour"},
 
-     {"RMR_ETA_PL_1", 0.6, 0, 0,
-     "PL lesion L1 creation rate",
-     "Coefficient of rate of creation of L1 potentially lethal lesions: eta_PL"},
+     {"RMR_ETA_PL_1", 35, 0, 0,
+     "PL lesion creation rate",
+     "Coefficient of rate of creation of potentially lethal lesions: eta_PL"},
 
-     {"RMR_ETA_L_1_1", 0.0, 0, 0,
-     "Lesion L2b creation rate",
-     "Coefficient of rate of creation of L2b lesions: eta_L(1)"},
-
-     {"RMR_ETA_L_2_1", 0.01, 0, 0,
-     "Lesion L2c creation rate",
-     "Coefficient of rate of creation of L2c lesions: eta_L(2)"},
-
-//     {"RMR_ETA_L_3_1", 0.0, 0, 0,
-//     "Lesion L2c creation rate",
-//     "Coefficient of rate of creation of L2c lesions: eta_L(3)"},
+     {"RMR_ETA_IRL_1", 0.01, 0, 0,
+     "IRL creation rate",
+     "Coefficient of rate of creation of irrepairable lesions: eta_IRL"},
 
      {"RMR_KREP_BASE_1", 0.1, 0, 0,
      "Base lesion L1 repair rate",
-     "Coefficient of rate of repair of L1 potentially lethal lesions: Krepair (Curtis's epsilon_PL)"},
+     "Base coefficient of rate of repair of potentially lethal lesions: Krepair_base (Curtis's epsilon_PL)\n\
+     The true repair rate varies linearly from Krepair_base to Krepair_max over the S phase"},
 
      {"RMR_KREP_MAX_1", 0.8, 0, 0,
-     "Maximum lesion L1 repair rate",
-     "Coefficient of rate of repair of L1 potentially lethal lesions: Krepair (Curtis's epsilon_PL)"},
+     "Max lesion L1 repair rate",
+     "Maximum coefficient of rate of repair of potentially lethal lesions: Krepair_max (Curtis's epsilon_PL)\n\
+     The true repair rate varies linearly from Krepair_base to Krepair_max over the S phase"},
 
-     {"RMR_KMIS_1_1", 0.02, 0, 0,
-     "Lesion misrepair rate to L2b",
-     "Coefficient of rate of misrepair of L1 potentially lethal lesions to L2b: (Curtis's epsilon_2PL)"},
+     {"RMR_KMIS_1", 0.0001, 0, 0,
+     "Lesion misrepair rate",
+     "Coefficient of rate of misrepair of PL lesions to Ch1 and Ch2 lesions: Kmisrepair"},
 
-     {"RMR_KMIS_2_1", 0.02, 0, 0,
-     "Lesion misrepair rate to L2c",
-     "Coefficient of rate of misrepair of L1 potentially lethal lesions to L2c: (Curtis's epsilon_2PL)"},
+     {"RMR_F_MITOSIS_1", 4, 0, 0,
+     "Mitosis factor",
+     "Multiplying factor of misrepair during mitosis: mitosis_factor"},
 
-//     {"RMR_KMIS_3_1", 0.0185, 0, 0,
-//     "Lesion misrepair rate to L2c",
-//     "Coefficient of rate of misrepair of L1 potentially lethal lesions to L2c: (Curtis's epsilon_2PL)"},
+     {"RMR_F_CH1_1", 0.5, 0, 0,
+     "Ch1 fraction of misrepair",
+     "Fraction of misrepaired lesions that are Ch1: fraction_Ch1"},
 
-     {"RMR_KCP_1", 0.13, 0, 0,
-     "Checkpoint time limit factor",
-     "Factor for computing maximum time spent in the checkpoint, as a function of # of L1 lesions"},
+     {"RMR_PSURVIVE1_1", 0.95, 0, 0,
+     "Ch1 prob of mitosis survival",
+     "Probability that a cell with one Ch1 lesion survives mitosis: psurvive_Ch1"},
+
+     {"RMR_PSURVIVE2_1", 0.05, 0, 0,
+     "Ch2 prob of mitosis survival",
+     "Probability that a cell with one Ch2 lesion survives mitosis: psurvive_Ch2"},
+
+     {"RMR_ATCP_1", 50, 0, 0,
+     "TCP Hill a",
+     "TCP, the maximum time spent in the checkpoint, is a Hill function of # of L1 lesions, n. TCP(n) = b.n/(a + n)"},
+
+      {"RMR_BTCP_1", 50, 0, 0,
+      "TCP Hill b",
+      "TCP, the maximum time spent in the checkpoint, is a Hill function of # of L1 lesions, n. TCP(n) = b.n/(a + n)"},
+
+//     {"RMR_KCP_1", 0.13, 0, 0,
+//     "Checkpoint time limit factor",
+//     "Factor for computing maximum time spent in the checkpoint, as a function of # of L1 lesions: Kcp"},
+
+      {"T_G1_2", 6, 0, 0,
+      "G1 phase base time (h)",
+      "Deterministic component of time spent in phase G1"},
+
+      {"T_S_2", 8, 0, 0,
+      "S phase base time (h)",
+      "Time spent in phase S"},
+
+      {"T_G2_2", 1, 0, 0,
+      "G2 phase base time (h)",
+      "Deterministic component of time spent in phase G2"},
+
+      {"T_M_2", 0.5, 0, 0,
+      "M phase base time (h)",
+      "Time spent in phase M"},
+
+      {"G1_MEAN_DELAY_2", 1.5, 0, 0,
+      "G1 mean delay (h)",
+      "Mean of the random component of time spent in phase G1 (exponentially distributed)"},
+
+      {"G2_MEAN_DELAY_2", 1, 0, 0,
+      "G2 mean delay (h)",
+      "Mean of the random component of time spent in phase G2 (exponentially distributed)"},
+
+      {"APOPTOSIS_RATE_2", 0.1, 0, 0,
+      "Apoptosis rate/hr",
+      "The rate of passage from state = DYING to state = DEAD, probability/hour"},
+
+
+      {"RMR_ETA_PL_2", 35, 0, 0,
+      "PL lesion creation rate",
+      "Coefficient of rate of creation of potentially lethal lesions: eta_PL"},
+
+      {"RMR_ETA_IRL_2", 0.01, 0, 0,
+      "IRL creation rate",
+      "Coefficient of rate of creation of irrepairable lesions: eta_IRL"},
+
+      {"RMR_KREP_BASE_2", 0.1, 0, 0,
+      "Base lesion L1 repair rate",
+      "Base coefficient of rate of repair of potentially lethal lesions: Krepair_base (Curtis's epsilon_PL)\n\
+      The true repair rate varies linearly from Krepair_base to Krepair_max over the S phase"},
+
+      {"RMR_KREP_MAX_2", 0.8, 0, 0,
+      "Max lesion L1 repair rate",
+      "Maximum coefficient of rate of repair of potentially lethal lesions: Krepair_max (Curtis's epsilon_PL)\n\
+      The true repair rate varies linearly from Krepair_base to Krepair_max over the S phase"},
+
+      {"RMR_KMIS_2", 0.0001, 0, 0,
+      "Lesion misrepair rate",
+      "Coefficient of rate of misrepair of PL lesions to Ch1 and Ch2 lesions: Kmisrepair"},
+
+      {"RMR_F_MITOSIS_2", 4, 0, 0,
+      "Mitosis factor",
+      "Multiplying factor of misrepair during mitosis: mitosis_factor"},
+
+      {"RMR_F_CH1_2", 0.5, 0, 0,
+      "Ch1 fraction of misrepair",
+      "Fraction of misrepaired lesions that are Ch1: fraction_Ch1"},
+
+      {"RMR_PSURVIVE1_2", 0.95, 0, 0,
+      "Ch1 prob of mitosis survival",
+      "Probability that a cell with one Ch1 lesion survives mitosis: psurvive_Ch1"},
+
+      {"RMR_PSURVIVE2_2", 0.05, 0, 0,
+      "Ch2 prob of mitosis survival",
+      "Probability that a cell with one Ch2 lesion survives mitosis: psurvive_Ch2"},
+
+      {"RMR_ATCP_2", 50, 0, 0,
+      "TCP Hill a",
+      "TCP, the maximum time spent in the checkpoint, is a Hill function of # of L1 lesions, n. TCP(n) = b.n/(a + n)"},
+
+      {"RMR_BTCP_2", 50, 0, 0,
+      "TCP Hill b",
+      "TCP, the maximum time spent in the checkpoint, is a Hill function of # of L1 lesions, n. TCP(n) = b.n/(a + n)"},
+
+//      {"RMR_KCP_2", 0.13, 0, 0,
+//      "Checkpoint time limit factor",
+//      "Factor for computing maximum time spent in the checkpoint, as a function of # of L1 lesions: Kcp"},
 
      // Metabolism parameters
 

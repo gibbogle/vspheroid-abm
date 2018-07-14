@@ -11,6 +11,7 @@
 module Tcp_mod
 
 use real_kind_mod
+use global 
 
 implicit none
 
@@ -22,43 +23,57 @@ contains
 ! Time unit = hour, convert Tcp to seconds
 ! Note: Krepair, Kmisrepair are Curtis's epsilon_PL, epsilon_2PL
 !--------------------------------------------------------------------------
-subroutine makeTCPradiation(Tcp, np, epsilon_PL, epsilon_2PL, Kcp_set)
-real(REAL_KIND) :: Tcp(0:np)
-integer :: np
-real(REAL_KIND) :: epsilon_PL, epsilon_2PL(2), Kcp_set
+!subroutine makeTCPradiation(Tcp, np, epsilon_PL, epsilon_2PL, Kcp_set)
+!real(REAL_KIND) :: Tcp(0:np)
+!integer :: np
+!real(REAL_KIND) :: epsilon_PL, epsilon_2PL, Kcp_set
+subroutine makeTCPradiation(ityp, np)
+integer :: ityp, np
+real(REAL_KIND) :: epsilon_PL, epsilon_2PL
 real(REAL_KIND) :: n0, T1, auc, epsilon_ratio
 integer :: k, i, nb
+type(cycle_parameters_type), pointer :: ccp
 logical :: linear = .false.
 real(REAL_KIND) :: Tb, alpha
 
-ePL = epsilon_PL    ! /h
-e = epsilon_PL/sum(epsilon_2PL)
-Kcp = Kcp_set
-Tcp(0) = 0
+ccp => cc_parameters(ityp)
+ePL = (ccp%Krepair_base+ccp%Krepair_max)/2
+e = ePL/ccp%Kmisrepair
+Kcp = ccp%Kcp
+write(logmsg,'(a,i6,3e12.3)') 'makeTCPradiation: ',np,ePL,ccp%Kmisrepair,Kcp
+call logger(logmsg)
+!ePL = epsilon_PL    ! /h
+!e = epsilon_PL/epsilon_2PL
+!Kcp = Kcp_set
+ccp%Tcp(0) = 0
 do i = 1,np
     n0 = i
-    !write(*,'(a,f6.0)') 'n0: ',n0
+!    write(*,'(a,f6.0)') 'n0: ',n0
     do k = 1,10000
         T1 = k*0.01
         auc = getAUC(n0,T1)
 !        write(*,'(a,3f8.3)') 'T1, auc: ',T1,auc,Kcp*auc
         if (T1 > Kcp*auc) exit
     enddo
-    Tcp(i) = T1
+    ccp%Tcp(i) = T1
+    if (ityp == 1) then
+	    write(logmsg,'(a,i6,f8.1)') 'nPL, TCP: ',i,ccp%Tcp(i)
+	    call logger(logmsg)
+	endif
 enddo
 if (linear) then
 	! Blend with linear variation
 	nb = 2/Kcp + 2
-	Tb = Tcp(nb)
+	Tb = ccp%Tcp(nb)
 	do i = 1,nb
 		alpha = real(i)/nb
-		Tcp(i) = alpha*Tb
+		ccp%Tcp(i) = alpha*Tb
 	enddo
 endif
 !do i = 1,np
 !    write(*,'(a,i4,f6.2)') 'n0, Tcp: ',i,Tcp(i)
 !enddo
-Tcp = 3600*Tcp  ! hours -> seconds
+ccp%Tcp = 3600*ccp%Tcp  ! hours -> seconds
 
 end subroutine
 

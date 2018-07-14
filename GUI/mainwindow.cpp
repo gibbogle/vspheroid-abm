@@ -516,11 +516,7 @@ void MainWindow:: drawDistPlots()
         qp->setAxisScale(QwtPlot::xBottom, 0.0, xmax, 0.0);
         QwtPlotCurve *curve = new QwtPlotCurve("title");
         curve->attach(qp);
-#ifdef QWT_VER5
-        curve->setData(x, prob, n);
-#else
         curve->setSamples(x, prob, n);
-#endif
         curve_list[j] = curve;
 		qp->replot();
 	}
@@ -561,11 +557,8 @@ void MainWindow::drawForcePlot()
     qp->setAxisAutoScale(QwtPlot::yLeft);
     QwtPlotCurve *curve = new QwtPlotCurve("title");
     curve->attach(qp);
-#ifdef QWT_VER5
-    curve->setData(x, F, n);
-#else
+//    curve->setData(x, F, n);
     curve->setSamples(x, F, n);
-#endif
     qp->replot();
     delete [] x;
     x = NULL;
@@ -1410,11 +1403,6 @@ void MainWindow::goToVTK()
 //-------------------------------------------------------------
 void MainWindow::goToFACS()
 {
-    if (!paused && !exthread->stopped) {
-        goToOutputs();
-        QMessageBox::information(this,"Notice!","To display a FACS plot the execution must be paused or stopped");
-        return;
-    }
     stackedWidget->setCurrentIndex(4);
     action_outputs->setEnabled(true);
     action_inputs->setEnabled(true);
@@ -1636,8 +1624,7 @@ void MainWindow::showGradient3D()
 //--------------------------------------------------------------------------------------------------------
 void MainWindow::runServer()
 {
-    goToOutputs();
-    if (paused) {
+	if (paused) {
 		if (vtk->playing) {
 			vtk->playon();
 		} else {
@@ -1674,6 +1661,17 @@ void MainWindow::runServer()
         else if (radioButton_growthfraction_3->isChecked())
             Global::i_growth_cutoff = 3;
     }
+
+	if (!paramSaved) {
+		int response = QMessageBox::critical(this, tr("ABM Model GUI"), \
+					tr("The document has been modified.\nPlease save changes before continuing."), \
+					QMessageBox::Save | QMessageBox::Cancel); // | Qt.QMessageBox.Discard
+		if (response == QMessageBox::Save) {
+            save();
+		} else if (response == QMessageBox::Cancel) {
+            return;
+		}
+	}
 	
 	if (!first) {
 		int response = QMessageBox::question(this, tr("ABM Model GUI"),
@@ -1718,17 +1716,6 @@ void MainWindow::runServer()
 	    box_outputData = new QTextBrowser();
 	else
 		box_outputData = 0;
-
-    if (!paramSaved) {
-        int response = QMessageBox::critical(this, tr("ABM Model GUI"), \
-                    tr("The document has been modified.\nPlease save changes before continuing."), \
-                    QMessageBox::Save | QMessageBox::Cancel); // | Qt.QMessageBox.Discard
-        if (response == QMessageBox::Save) {
-            save();
-        } else if (response == QMessageBox::Cancel) {
-            return;
-        }
-    }
 
 	if (use_CPORT1) {
 
@@ -2881,11 +2868,7 @@ void MainWindow::redrawDistPlot()
             create_lognorm_dist(median,shape,nDistPts,x,prob);
             int n = dist_limit(prob,nDistPts);
             double xmax = x[n];
-#ifdef QWT_VER5
-            curve_list[k]->setData(x, prob, n);
-#else
             curve_list[k]->setSamples(x, prob, n);
-#endif
             qp->setAxisScale(QwtPlot::xBottom, 0.0, xmax, 0.0);
             qp->replot();
 			delete [] x;

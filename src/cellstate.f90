@@ -150,7 +150,6 @@ if (use_volume_method) then
 	    endif
     enddo
 else
-    ccp => cc_parameters
     tmin = 1.0      ! for now...
     do kcell = 1,nlist
         if (colony_simulation) then
@@ -160,6 +159,7 @@ else
         endif
 	    if (cp%state == DEAD) cycle
 	    ityp = cp%celltype
+	    ccp => cc_parameters(ityp)
 	    call getO2conc(cp,C_O2)
 	    ! Compute sensitisation SER 
 	    if (Ndrugs_used > 0) then
@@ -169,11 +169,20 @@ else
     	endif
         SER_OER(1) = SER*(LQ(ityp)%OER_am*C_O2 + LQ(ityp)%K_ms)/(C_O2 + LQ(ityp)%K_ms)      ! OER_alpha
         SER_OER(2) = SER*(LQ(ityp)%OER_bm*C_O2 + LQ(ityp)%K_ms)/(C_O2 + LQ(ityp)%K_ms)      ! OER_beta
-        call radiation_damage(cp, ccp, dose, SER_OER, tmin)
-!        write(*,*) 'damage: ',kcell,cp%NL1,cp%NL2(:)
-!        if (cp%NL2(1) == 0 .and. cp%NL2(2) == 0) then
-!			write(*,*) 'no lethal radiation damage NL2 = 0'
-!		endif
+        SER_OER = 1
+        call radiation_damage(cp, ccp, dose, SER_OER(1), tmin)
+	    if (cp%irrepairable) then	! irrepairable damage 
+			if (.not.cp%radiation_tag) then
+				cp%radiation_tag = .true.
+			    Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
+!				write(nflog,*) 'Tagged with IRL: ',istep,cp%N_IRL,Nradiation_tag(ityp),kcell,cp%phase
+			endif	
+			if (cp%phase == S_phase) then	! kill immediately, otherwise dies at mitosis
+				call CellDies(kcell,cp)
+				Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
+!				write(nflog,*) 'S-phase - killed'
+			endif
+		endif
     enddo
 endif
 end subroutine
@@ -279,11 +288,12 @@ logical :: changed, ok
 integer :: kcell, nlist0, site(3), i, ichemo, idrug, im, ityp, killmodel, kpar=0 
 real(REAL_KIND) :: C_O2, C_glucose, kmet, Kd, dMdt, Cdrug, n_O2, kill_prob, dkill_prob, death_prob, survival_prob, u
 logical :: anoxia_death, aglucosia_death
-real(REAL_KIND) :: delayed_death_prob(MAX_CELLTYPES)
+real(REAL_KIND) :: delayed_death_prob
 logical :: flag
 type(cell_type), pointer :: cp
 type(drug_type), pointer :: dp
 real(REAL_KIND) :: p_tag = 0.3
+type(cycle_parameters_type), pointer :: ccp
 logical :: allow_anoxia = .true.
 
 !write(nflog,*) 'CellDeath'
@@ -295,16 +305,16 @@ endif
 !tnow = istep*DELTA_T	! seconds
 anoxia_death = chemo(OXYGEN)%controls_death
 aglucosia_death = chemo(GLUCOSE)%controls_death
-delayed_death_prob = apoptosis_rate*dt/3600
 nlist0 = nlist
 flag = .false.
 do kcell = 1,nlist
     cp => cell_list(kcell)
 	if (cp%state == DEAD) cycle
 	ityp = cp%celltype
-!	if (cp%state == DYING) then
+	ccp => cc_parameters(ityp)
 	if (cp%ATP_tag) then
-	    if (par_uni(kpar) < delayed_death_prob(ityp)) then	
+		delayed_death_prob = ccp%apoptosis_rate*DELTA_T/3600
+	    if (par_uni(kpar) < delayed_death_prob) then	
 			call CellDies(kcell,cp)
 			changed = .true.
 			NATP_dead(ityp) = NATP_dead(ityp) + 1		! note that death from anoxia here means metabolic death 
@@ -607,7 +617,7 @@ logical :: divide, drug_killed(2), radiation_killed
 integer :: k, ityp, idrug, prev_phase, kpar=0
 type(cell_type), pointer :: cp
 type(cycle_parameters_type), pointer :: ccp
-real(REAL_KIND) :: rr(3), c(3), rad, d_desired, R
+real(REAL_KIND) :: rr(3), c(3), rad, d_desired, R, pdeath, mitosis_duration
 logical :: mitosis_entry, in_mitosis, tagged
 logical :: dbug
 
@@ -615,7 +625,6 @@ dbug = (kcell == -977)
 divide = .false.
 drug_killed = .false.
 radiation_killed = .false.
-ccp => cc_parameters
 
 	if (colony_simulation) then
 	    cp => ccell_list(kcell)
@@ -623,8 +632,9 @@ ccp => cc_parameters
     	cp => cell_list(kcell)
     endif
 	ityp = cp%celltype
-!	divide = .false.
+	ccp => cc_parameters(ityp)
 	mitosis_entry = .false.
+	mitosis_duration = ccp%T_M
 	in_mitosis = .false.
 	tagged = cp%anoxia_tag .or. cp%aglucosia_tag .or. (cp%state == DYING)
 	if (tagged) then
@@ -666,21 +676,18 @@ ccp => cc_parameters
 !		endif
 	    if (cp%dVdt > 0) then
 			call timestep(cp, ccp, dt)
-			if (dbug) write(*,*) 'after timestep, phase: ',cp%phase
 		endif
-        if (.not.cp%radiation_tag .and.(cp%NL2(1) > 0 .or. cp%NL2(2) > 0)) then	! irrepairable damage
-			! For now, tag for death at mitosis
-			cp%radiation_tag = .true.	! new_grower
-		    Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
-!			write(*,*) 'Tagged with NL2: ',istep,cp%NL2,Nradiation_tag(ityp)
-		endif
+!        if (.not.cp%radiation_tag .and.(cp%NL2(1) > 0 .or. cp%NL2(2) > 0)) then	! irrepairable damage
+!			! For now, tag for death at mitosis
+!			cp%radiation_tag = .true.	! new_grower
+!		    Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
+!		endif
         if (cp%phase >= M_phase) then
             if (prev_phase == Checkpoint2) then		! this is mitosis entry
-!				write(*,*) 'mitosis_entry: kcell,istep: ',kcell,istep
-                if (.not.cp%radiation_tag .and. cp%NL1 > 0) then		! lesions still exist, no time for repair
+                if (.not.cp%radiation_tag .and. cp%N_PL > 0) then		! lesions still exist, no time for repair
 					cp%radiation_tag = .true.
 				    Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
-!				    write(*,*) 'Tagged with NL1: ',istep,cp%NL1,Nradiation_tag(ityp)
+!				    write(nflog,*) 'Tagged with N_PL: ',istep,cp%N_PL,Nradiation_tag(ityp)
 				endif
 				
 				cp%Iphase = .false.
@@ -695,9 +702,28 @@ ccp => cc_parameters
 				cp%centre(:,1) = c + (cp%d/2)*rr
 				cp%centre(:,2) = c - (cp%d/2)*rr
 				cp%d_divide = 2.0**(2./3)*cp%radius(1)
+				
+				! For cells with Ch1 or Ch2, check for death
+				if (cp%N_Ch1 > 0 .and. .not.cp%radiation_tag) then
+					pdeath = (1 - ccp%psurvive_Ch1)**cp%N_Ch1
+					R = par_uni(kpar)
+					if (R < pdeath) then				
+						cp%radiation_tag = .true.
+						Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
+!						write(nflog,*) 'Tagged with N_Ch1: ',cp%N_Ch1,Nradiation_tag(ityp)
+					endif
+				endif
+				if (cp%N_Ch2 > 0 .and. .not.cp%radiation_tag) then
+					pdeath = (1 - ccp%psurvive_Ch2)**cp%N_Ch2
+					R = par_uni(kpar)
+					if (R < pdeath) then				
+						cp%radiation_tag = .true.
+						Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
+!						write(nflog,*) 'Tagged with N_Ch2: ',cp%N_Ch2,Nradiation_tag(ityp)
+					endif
+				endif
             endif
             in_mitosis = .true.
-!            write(*,*) 'in_mitosis: ',kcell
         endif
 		if (cp%phase < Checkpoint2 .and. cp%phase /= Checkpoint1) then
 		    call growcell(cp,dt)
@@ -705,7 +731,6 @@ ccp => cc_parameters
 	endif
 	
 	if (in_mitosis) then
-!		drugkilled = .false.
 		do idrug = 1,ndrugs_used
 			if (cp%drug_tag(idrug)) then
 !				call CellDies(kcell,cp)
@@ -802,13 +827,6 @@ if (glucose_growth) then
 else
 	metab = metab_O2
 endif
-!if (use_V_dependence) then
-!	dVdt = c_rate*metab*cp%V/(Vdivide0/2)
-!else
-!	dVdt = r_mean*metab
-!!	write(*,'(a,2e12.3)') 'Vdivide0,tgrowth: ',Vdivide0,divide_time_mean(1) - mitosis_duration
-!!	write(*,'(a,3e12.3)') 'r_mean, metab, dVdt: ',r_mean, metab, dVdt
-!endif
 dVdt = get_dVdt(cp,metab)
 if (suppress_growth) then	! for checking solvers
 	dVdt = 0
@@ -908,9 +926,12 @@ function get_dVdt(cp, metab) result(dVdt)
 type(cell_type), pointer :: cp
 real(REAL_KIND) :: metab, dVdt
 integer :: ityp
-real(REAL_KIND) :: r_mean, c_rate
+real(REAL_KIND) :: r_mean, c_rate, mitosis_duration
+type(cycle_parameters_type), pointer :: ccp
 
 ityp = cp%celltype
+ccp => cc_parameters(ityp)
+mitosis_duration = ccp%T_M
 if (use_cell_cycle) then
 !    if (cp%phase == G1_phase .or. cp%phase == S_phase .or. cp%phase == G2_phase) then
         if (use_constant_growthrate) then
@@ -1132,7 +1153,6 @@ type(cycle_parameters_type), pointer :: ccp
 !write(logmsg,*) 'divider: ',kcell1 
 !call logger(logmsg)
 ok = .true.
-ccp => cc_parameters
 if (colony_simulation) then
     cp1 => ccell_list(kcell1)
 else
@@ -1154,6 +1174,7 @@ else
 endif
 ncells = ncells + 1
 ityp = cp1%celltype
+ccp => cc_parameters(ityp)
 ncells_type(ityp) = ncells_type(ityp) + 1
 ncells_mphase = ncells_mphase - 1
 if (colony_simulation) then
@@ -1196,7 +1217,7 @@ endif
 !if (use_metabolism .and. cp1%dVdt == 0) then
 !	cp1%dVdt = (cp1%metab%I_rate/cp1%metab%I_rate_max)*max_growthrate(ityp)
 !endif
-cp1%G1_time = tnow + (max_growthrate(ityp)/cp1%dVdt)*cp1%fg*ccp%T_G1(ityp)    ! time spend in G1 varies inversely with dV/dt
+cp1%G1_time = tnow + (max_growthrate(ityp)/cp1%dVdt)*cp1%fg*ccp%T_G1    ! time spend in G1 varies inversely with dV/dt
 
 if (.not.colony_simulation) then
     nbrs0 = cp1%nbrs

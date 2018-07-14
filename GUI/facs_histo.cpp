@@ -2,11 +2,9 @@
 
 #include <QtGui>
 
-#ifdef QWT_VER5
 #include "mainwindow.h"
+#ifdef QWT_VER5
 #include <qwt_plot_printfilter.h>
-#else
-#include "Qwt6/mainwindow.h"
 #endif
 #include "log.h"
 #include "params.h"
@@ -30,7 +28,6 @@ void MainWindow::processGroupBoxClick(QString text)
 
     if (text.compare("Histo") == 0) {
         LOG_MSG("save Histo plot");
-//        bool use_HistoBar = radioButton_histotype_1->isChecked();
         bool use_HistoBar = (buttonGroup_histotype->checkedId() == 1);
         if (use_HistoBar) {
             plot = qpHistoBar;
@@ -46,26 +43,14 @@ void MainWindow::processGroupBoxClick(QString text)
         return;
     }
 
-    int w = plot->width();
-    int h = plot->height();
-    QPixmap pixmap(w, h);
-    pixmap.fill(Qt::white); // Qt::transparent ?
-
-    QwtPlotPrintFilter filter;
-    int options = QwtPlotPrintFilter::PrintAll;
-    options &= ~QwtPlotPrintFilter::PrintBackground;
-    options |= QwtPlotPrintFilter::PrintFrameWithScales;
-    filter.setOptions(options);
-
-    plot->print(pixmap, filter);
-
-//		QString fileName = getImageFile();
     QString fileName = QFileDialog::getSaveFileName(0,"Select image file", ".",
         "Image files (*.png *.jpg *.tif *.bmp)");
     if (fileName.isEmpty()) {
         return;
     }
-    pixmap.save(fileName,0,-1);
+    QSizeF size(120,120);
+    QwtPlotRenderer renderer;
+    renderer.renderDocument(plot,fileName,size,85);
 }
 
 void MainWindow::createFACSPage()
@@ -170,7 +155,6 @@ void MainWindow::createFACSPage()
     biglayout->setMargin(25);
     page_FACS->setLayout(biglayout);
 
-    qpFACS->clear();
     qpFACS->setTitle("FACS");
     qpFACS->replot();
     qpHistoBar->setTitle("Histogram");
@@ -180,7 +164,6 @@ void MainWindow::createFACSPage()
     connect(checkBox_histo_logscale,SIGNAL(stateChanged(int)),this,SLOT(checkBox_histo_logscale_stateChanged(int)));
     connect(buttonGroup_celltype,SIGNAL(buttonClicked(QAbstractButton*)),this,SLOT(buttonGroup_celltype_buttonClicked(QAbstractButton*)));
     connect(buttonGroup_histotype,SIGNAL(buttonClicked(QAbstractButton*)),this,SLOT(buttonGroup_histotype_buttonClicked(QAbstractButton*)));
-// Not possible to promote these groupBoxes to QMyGroupBox programmatically
 //    connect((QObject *)groupBox_FACS,SIGNAL(groupBoxClicked(QString)),this,SLOT(processGroupBoxClick(QString)));
 //    connect((QObject *)groupBox_Histo,SIGNAL(groupBoxClicked(QString)),this,SLOT(processGroupBoxClick(QString)));
 }
@@ -202,14 +185,14 @@ void MainWindow::buttonGroup_celltype_buttonClicked(QAbstractButton* button)
 
 //--------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------
-void MainWindow::buttonGroup_histotype_buttonClicked(QAbstractButton* button)
+void MainWindow::checkBox_histo_logscale_stateChanged(int state)
 {
     showHisto();
 }
 
 //--------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------
-void MainWindow::checkBox_histo_logscale_stateChanged(int state)
+void MainWindow::buttonGroup_histotype_buttonClicked(QAbstractButton* button)
 {
     showHisto();
 }
@@ -217,7 +200,6 @@ void MainWindow::checkBox_histo_logscale_stateChanged(int state)
 //--------------------------------------------------------------------------------------------------------
 // Possible variables to plot are Global::vars_used[]
 // Use this to trigger FACS plot.
-// Unless recording video, update occurs only when paused or stopped.
 //--------------------------------------------------------------------------------------------------------
 void MainWindow::showFACS()
 {
@@ -230,8 +212,7 @@ void MainWindow::showFACS()
 
     if (!videoFACS->record)
         if (!paused && !exthread->stopped) return;
-
-    LOG_QMSG("showFACS nvars: " + QString::number(Global::nvars_used));
+    LOG_QMSG("showFACS" + QString::number(Global::nvars_used));
 
     qpFACS->size();
 //    qpFACS->clear();
@@ -424,14 +405,14 @@ void MainWindow::showFACS()
     xQpval = (double *)malloc(Global::nFACS_cells*sizeof(double));
     yQpval = (double *)malloc(Global::nFACS_cells*sizeof(double));
 
-    QwtSymbol *sym = &FACS_sym;
+    QwtSymbol *sym = new QwtSymbol();
     QwtPlotCurve *crv = &FACS_crv;
     sym->setStyle(QwtSymbol::Ellipse);
     sym->setPen(QColor(Qt::blue));
     sym->setBrush(QColor(Qt::blue));
     int dotSize = lineEdit_dotsize->text().toInt();
     sym->setSize(dotSize);
-    crv->setSymbol(*sym);
+    crv->setSymbol(sym);
     crv->setPen(QColor(Qt::red));
     crv->setStyle(QwtPlotCurve::NoCurve);
     crv->attach(qpFACS);
@@ -449,12 +430,12 @@ void MainWindow::showFACS()
             yQpval[i] = y;
         }
     }
-    crv->setRawData(xQpval,yQpval,Global::nFACS_cells);
+    crv->setSamples(xQpval,yQpval,Global::nFACS_cells);
 
     qpFACS->setAxisScale(QwtPlot::yLeft, ymin, max(1.5*ymin,ymax), 0);
     qpFACS->setAxisTitle(QwtPlot::yLeft, ylabel);
     if (y_logscale) {
-        qpFACS->setAxisScaleEngine(QwtPlot::yLeft, new QwtLog10ScaleEngine);
+        qpFACS->setAxisScaleEngine(QwtPlot::yLeft, new QwtLogScaleEngine(10));
     } else {
         qpFACS->setAxisScaleEngine(QwtPlot::yLeft, new QwtLinearScaleEngine);
     }
@@ -464,7 +445,7 @@ void MainWindow::showFACS()
     qpFACS->setAxisScale(QwtPlot::xBottom, xmin, xmax, 0);
     qpFACS->setAxisTitle(QwtPlot::xBottom, xlabel);
     if (x_logscale) {
-        qpFACS->setAxisScaleEngine(QwtPlot::xBottom, new QwtLog10ScaleEngine);
+        qpFACS->setAxisScaleEngine(QwtPlot::xBottom, new QwtLogScaleEngine(10));
     } else {
         qpFACS->setAxisScaleEngine(QwtPlot::xBottom, new QwtLinearScaleEngine);
     }
@@ -488,19 +469,9 @@ void MainWindow::saveFACSImage()
     if (path.isEmpty())
         return;
 
-    QImage img(512, 512, QImage::Format_ARGB32);
-    QwtPlotPrintFilter pf;
-    pf.setOptions(QwtPlotPrintFilter::PrintAll);
-    bool use_painter = false;
-    if (use_painter) {
-        QPainter painter;
-        painter.begin(&img);
-        qpFACS->print(&painter,QRect(0, 0, 512, 512),pf);
-        painter.end();
-    } else {
-        qpFACS->print(img,pf);
-    }
-    img.save(path);
+    QSizeF size(120,120);
+    QwtPlotRenderer renderer;
+    renderer.renderDocument(qpFACS,path,size,85);
 }
 
 /*
@@ -525,7 +496,7 @@ void MainWindow::test_histo()
     QString testlabel = "test";
     int numValues = 20;
     double width = 10, xmin = 0;
-    QwtArray<double> values(numValues);
+    QVector<double> values(numValues);
     for (int i=0; i<numValues; i++) {
         values[i] = rand() %100;
     }
@@ -535,7 +506,7 @@ void MainWindow::test_histo()
 //--------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------
 void MainWindow::makeHistoPlot(int numValues, double xmin, double width,
-                               QwtArray<double> values, QString xlabel)
+                               QVector<double> values, QString xlabel)
 {
     QwtPlot *plot;
     double pos;
@@ -548,35 +519,38 @@ void MainWindow::makeHistoPlot(int numValues, double xmin, double width,
         plot = qpHistoLine;
         qpHistoBar->hide();
     }
-    plot->clear();
     plot->setCanvasBackground(QColor(Qt::white));
     plot->setTitle("Histogram");
 
     QwtPlotGrid *grid = new QwtPlotGrid;
     grid->enableXMin(true);
     grid->enableYMin(true);
-    grid->setMajPen(QPen(Qt::black, 0, Qt::DotLine));
-    grid->setMinPen(QPen(Qt::gray, 0 , Qt::DotLine));
+    grid->setMajorPen(QPen(Qt::black, 0, Qt::DotLine));
+    grid->setMinorPen(QPen(Qt::gray, 0 , Qt::DotLine));
     grid->attach(plot);
 
     if (use_HistoBar) {
         if (histogram) {
             histogram->detach();
         } else {
-            histogram = new HistogramItem();
+            histogram = new QwtPlotHistogram();
         }
-        histogram->setColor(Qt::darkCyan);
 
-        QwtArray<QwtDoubleInterval> intervals(numValues);
+        QColor c = Qt::darkCyan;
+        c.setAlpha( 180 );
+        histogram->setBrush( QBrush( c ) );
+
+        QVector<QwtIntervalSample> samples(numValues);
 
         pos = xmin;
-        for ( int i = 0; i < numValues; i++ )
+        for ( uint i = 0; i < numValues; i++ )
         {
-            intervals[i] = QwtDoubleInterval(pos, pos + width);
+            QwtInterval interval( pos, pos+width );
+            interval.setBorderFlags( QwtInterval::ExcludeMaximum );
+            samples[i] = QwtIntervalSample( values[i], interval );
             pos += width;
         }
-
-        histogram->setData(QwtIntervalData(intervals, values));
+        histogram->setData( new QwtIntervalSeriesData( samples ) );
         histogram->attach(plot);
     } else {
         double x[100], y[100];
@@ -591,7 +565,7 @@ void MainWindow::makeHistoPlot(int numValues, double xmin, double width,
         pen->setWidth(3);
         curve->attach(plot);
         curve->setPen(*pen);
-        curve->setData(x, y, numValues);
+        curve->setSamples(x, y, numValues);
     }
 
     plot->setAxisTitle(QwtPlot::xBottom, xlabel);
@@ -615,7 +589,7 @@ void MainWindow:: showHisto()
     exthread->getHisto();
     log_scale = checkBox_histo_logscale->isChecked();
     numValues = Global::nhisto_bins;
-    QwtArray<double> values(numValues);
+    QVector<double> values(numValues);
 
     // Determine which button is checked:
     for (ivar=0; ivar<Global::nvars_used; ivar++) {
@@ -674,17 +648,7 @@ void MainWindow::saveHistoImage()
     if (path.isEmpty())
         return;
 
-    QImage img(512, 512, QImage::Format_ARGB32);
-    QwtPlotPrintFilter pf;
-    pf.setOptions(QwtPlotPrintFilter::PrintAll);
-    bool use_painter = false;
-    if (use_painter) {
-        QPainter painter;
-        painter.begin(&img);
-        qplot->print(&painter,QRect(0, 0, 512, 512),pf);
-        painter.end();
-    } else {
-        qplot->print(img,pf);
-    }
-    img.save(path);
+    QSizeF size(120,120);
+    QwtPlotRenderer renderer;
+    renderer.renderDocument(qplot,path,size,85);
 }

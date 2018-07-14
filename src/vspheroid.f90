@@ -23,7 +23,7 @@ use transfer
 use cellstate
 use packer
 use colony
-use Tcp_mod
+!use Tcp_mod
 
 #include "../src/version.h"
 
@@ -81,7 +81,6 @@ integer :: iconstant, ioxygengrowth, iglucosegrowth, ioxygendeath, iglucosedeath
 logical :: use_metabolites
 character*(12) :: drug_name
 character*(1) :: numstr
-type(cycle_parameters_type),pointer :: ccp
 
 ok = .true.
 
@@ -233,9 +232,7 @@ read(nfcell,*) iuse_gd_all
 use_radiation_growth_delay_all = (iuse_gd_all == 1)
 read(nfcell,*) iusecellcycle
 use_cell_cycle = (iusecellcycle == 1)
-ccp => cc_parameters
-call ReadCellCycleParameters(nfcell,ccp)
-apoptosis_rate = ccp%apoptosis_rate(1)		! we need only a single rate (I think)
+call ReadCellCycleParameters(nfcell)
 read(nfcell,*) iusemetabolism
 use_metabolism = (iusemetabolism == 1)
 call ReadMetabolismParameters(nfcell)
@@ -274,6 +271,7 @@ read(nfcell,*) saveFACS%nt
 read(nfcell,*) Ndrugs_used
 call ReadDrugData(nfcell)
 
+is_radiation = .false.
 if (use_events) then
 	call ReadProtocol(nfcell)
 	use_treatment = .false.
@@ -321,7 +319,6 @@ if (.not.chemo(GLUCOSE)%used) then
     chemo(GLUCOSE)%controls_death = .false.
 endif
 
-mitosis_duration = ccp%T_M(1)  ! seconds
 LQ(:)%growth_delay_factor = 60*60*LQ(:)%growth_delay_factor	! hours -> seconds
 t_anoxia_limit = 60*60*anoxia_tag_hours				! hours -> seconds
 anoxia_death_delay = 60*60*anoxia_death_hours		! hours -> seconds
@@ -401,43 +398,46 @@ end subroutine
 ! and for the associated checkpoint duration limits Tcp(:).
 ! Time unit = hour
 !-----------------------------------------------------------------------------------------
-subroutine ReadCellCycleParameters(nf, ccp)
+subroutine ReadCellCycleParameters(nf)
 integer :: nf
 type(cycle_parameters_type),pointer :: ccp
+integer :: ityp
+real(REAL_KIND) :: total
 
-read(nf,*) ccp%T_G1(1)
-read(nf,*) ccp%T_G1(2)
-read(nf,*) ccp%T_S(1)
-read(nf,*) ccp%T_S(2)
-read(nf,*) ccp%T_G2(1)
-read(nf,*) ccp%T_G2(2)
-read(nf,*) ccp%T_M(1)
-read(nf,*) ccp%T_M(2)
-read(nf,*) ccp%G1_mean_delay(1)
-read(nf,*) ccp%G1_mean_delay(2)
-read(nf,*) ccp%G2_mean_delay(1)
-read(nf,*) ccp%G2_mean_delay(2)
-read(nf,*) ccp%Apoptosis_rate(1)
-read(nf,*) ccp%Apoptosis_rate(2)
+do ityp = 1,2
+ccp => cc_parameters(ityp)
+
+read(nf,*) ccp%T_G1
+read(nf,*) ccp%T_S
+read(nf,*) ccp%T_G2
+read(nf,*) ccp%T_M
+read(nf,*) ccp%G1_mean_delay
+read(nf,*) ccp%G2_mean_delay
+read(nf,*) ccp%Apoptosis_rate
 read(nf,*) ccp%eta_PL
-read(nf,*) ccp%eta_L(1)
-read(nf,*) ccp%eta_L(2)
+read(nf,*) ccp%eta_IRL
 read(nf,*) ccp%Krepair_base
 read(nf,*) ccp%Krepair_max
-read(nf,*) ccp%Kmisrepair(1)
-read(nf,*) ccp%Kmisrepair(2)
-read(nf,*) ccp%Kcp
+read(nf,*) ccp%Kmisrepair
+read(nf,*) ccp%mitosis_factor
+read(nf,*) ccp%fraction_Ch1
+read(nf,*) ccp%psurvive_Ch1
+read(nf,*) ccp%psurvive_Ch2
+read(nf,*) ccp%aTCP
+read(nf,*) ccp%bTCP
+!read(nf,*) ccp%Kcp
 
+total = ccp%T_G1 + ccp%T_S + ccp%T_G2 + ccp%T_M + ccp%G1_mean_delay + ccp%G2_mean_delay
+write(nflog,'(a,7f8.2)') 'T_G1,T_S,T_G2,T_M,G1_delay,G2_delay, total: ',ccp%T_G1,ccp%T_S,ccp%T_G2,ccp%T_M, &
+						ccp%G1_mean_delay,ccp%G2_mean_delay,total
+						
 ccp%T_G1 = 3600*ccp%T_G1                    ! hours -> seconds
 ccp%T_S = 3600*ccp%T_S
 ccp%T_G2 = 3600*ccp%T_G2
 ccp%T_M = 3600*ccp%T_M
 ccp%G1_mean_delay = 3600*ccp%G1_mean_delay
 ccp%G2_mean_delay = 3600*ccp%G2_mean_delay
-
-call logger('makeTCP')
-call makeTCPradiation(ccp%tcp,NTCP,ccp%Krepair_base,ccp%Kmisrepair,ccp%Kcp) ! set checkpoint repair time limits 
-call logger('did makeTCP')
+enddo
 end subroutine
 
 !-----------------------------------------------------------------------------------------
@@ -447,21 +447,21 @@ integer :: ityp
 real(REAL_KIND) :: tmean, tsum, tfactor
 type(cycle_parameters_type),pointer :: ccp
 
-ccp => cc_parameters
 do ityp = 1,2
+	ccp => cc_parameters(ityp)
 	tmean = divide_time_mean(ityp)
-	tsum = ccp%T_G1(1) + ccp%T_S(1) + ccp%T_G2(1) + ccp%T_M(1) + ccp%G1_mean_delay(1) + ccp%G2_mean_delay(1)
+	tsum = ccp%T_G1 + ccp%T_S + ccp%T_G2 + ccp%T_M + ccp%G1_mean_delay + ccp%G2_mean_delay
 	tfactor = tmean/tsum
-	ccp%T_G1(ityp) = tfactor*ccp%T_G1(ityp)
-	ccp%T_S(ityp) = tfactor*ccp%T_S(ityp)
-	ccp%T_G2(ityp) = tfactor*ccp%T_G2(ityp)
-	ccp%T_M(ityp) = tfactor*ccp%T_M(ityp)
-	ccp%G1_mean_delay(ityp) = tfactor*ccp%G1_mean_delay(ityp)
-	ccp%G2_mean_delay(ityp)= tfactor*ccp%G2_mean_delay(ityp)
+	ccp%T_G1 = tfactor*ccp%T_G1
+	ccp%T_S = tfactor*ccp%T_S
+	ccp%T_G2 = tfactor*ccp%T_G2
+	ccp%T_M = tfactor*ccp%T_M
+	ccp%G1_mean_delay = tfactor*ccp%G1_mean_delay
+	ccp%G2_mean_delay= tfactor*ccp%G2_mean_delay
+	ccp%Pk_G1 = 1./ccp%G1_mean_delay    ! /sec
+	ccp%Pk_G2 = 1./ccp%G2_mean_delay    ! /sec
+	write(nflog,'(a,i4,2e12.3)') 'ityp, Pk_G1, Pk_G2: ',ityp,ccp%Pk_G1,ccp%Pk_G2
 enddo
-ccp%Pk_G1 = 1./ccp%G1_mean_delay    ! /sec
-ccp%Pk_G2 = 1./ccp%G2_mean_delay    ! /sec
-write(nflog,'(a,4e12.3)') 'Pk_G1, Pk_G2: ',ccp%Pk_G1,ccp%Pk_G2
 end subroutine
 
 
@@ -669,6 +669,7 @@ do itime = 1,ntimes
 		event(kevent)%dose = 0
 		write(nflog,'(a,i3,2f8.3)') 'define MEDIUM_EVENT: volume: ',kevent,event(kevent)%volume,event(kevent)%O2medium
 	elseif (trim(line) == 'RADIATION') then
+        is_radiation = .true.
 		kevent = kevent + 1
 		event(kevent)%etype = RADIATION_EVENT
 		read(nf,*) t
@@ -745,7 +746,7 @@ subroutine setup(ncpu, infile, outfile, ok)
 integer :: ncpu
 character*(128) :: infile, outfile
 logical :: ok
-integer :: kcell
+integer :: kcell, ityp
 real(REAL_KIND) :: k_v, tgrowth(MAX_CELLTYPES)
 type(cycle_parameters_type),pointer :: ccp
 ok = .true.
@@ -834,10 +835,12 @@ if (use_cell_cycle .and. .not.use_volume_based_transition) then
     use_constant_growthrate = .true.
 endif
 ! Growth occurs during G1, S and G2, not in checkpoints
-ccp => cc_parameters
-tgrowth = ccp%T_G1 + ccp%T_S + ccp%T_G2
-max_growthrate = Vdivide0/(2*tgrowth)
-write(nflog,*) 'Vdivide0, max_growthrate: ',Vdivide0, max_growthrate
+do ityp = 1,2
+	ccp => cc_parameters(ityp)
+	tgrowth = ccp%T_G1 + ccp%T_S + ccp%T_G2
+	max_growthrate = Vdivide0/(2*tgrowth)
+	write(nflog,*) 'ityp, Vdivide0, max_growthrate: ',ityp,Vdivide0, max_growthrate
+enddo
 
 call setup_force_parameters
 
@@ -905,6 +908,14 @@ rrsum = 0
 total_dose_time = 0
 !call showallcells
 call averages
+!if (is_radiation) then
+!	ccp => cc_parameters(1)
+!	call logger('makeTCPradiation')
+!	call makeTCPradiation(1,NTCP) ! set checkpoint repair time limits 
+!	call logger('did makeTCPradiation')
+!else
+!	ccp%tcp = 0
+!endif
 
 end subroutine
 
@@ -1083,7 +1094,6 @@ type(cell_type), pointer :: cp
 type(cycle_parameters_type),pointer :: ccp
 	
 cp => cell_list(kcell)
-ccp => cc_parameters
 cp%ID = kcell
 cp%state = ALIVE
 cp%generation = 1
@@ -1094,6 +1104,7 @@ if (ityp == 2) then
 	call logger(logmsg)
 	stop
 endif
+ccp => cc_parameters(ityp)
 Ncells_type(ityp) = Ncells_type(ityp) + 1
 cp%Iphase = .true.
 cp%nspheres = 1
@@ -1119,6 +1130,10 @@ if (use_volume_method) then
 else
     cp%NL1 = 0
     cp%NL2 = 0
+    cp%N_PL = 0
+    cp%N_Ch1 = 0
+    cp%N_Ch2 = 0
+    cp%irrepairable = .false.
     ! Need to assign phase, volume to complete phase, current volume
     call SetInitialCellCycleStatus(kcell,cp)
 endif
@@ -1199,8 +1214,8 @@ integer :: ityp, iphase
 integer :: kpar = 0
 real(REAL_KIND) :: Tdiv, Tmean, V0, fg, rVmax, fsum, R, x, y, z, phase_fraction(6), phase_time(6)
 
-ccp => cc_parameters
 ityp = cp%celltype
+ccp => cc_parameters(ityp)
 Tdiv = cp%divide_time
 V0 = Vdivide0/2
 Tmean = divide_time_mean(ityp)
@@ -1210,12 +1225,12 @@ R = par_uni(kpar)
 x = (4 - sqrt(16 - 12*R))/2	
 ! This is the level of progress through the cell cycle,  0 -> 1, for prob. density f(x) = 1 - 2(x-0.5)/3
 ! Cumulative prob. function F(x) = -x^2/3 + 4x/3, then from R U(0,1): (-x^2 + 4x)/3 = R, x^2 - 4x + 3R = 0
-phase_time(1) = fg*ccp%T_G1(ityp)
-phase_time(2) = ccp%G1_mean_delay(ityp)
-phase_time(3) = fg*ccp%T_S(ityp)
-phase_time(4) = fg*ccp%T_G2(ityp)
-phase_time(5) = ccp%G2_mean_delay(ityp) + ccp%T_M(ityp)
-phase_time(6) = ccp%T_M(ityp)
+phase_time(1) = fg*ccp%T_G1
+phase_time(2) = ccp%G1_mean_delay
+phase_time(3) = fg*ccp%T_S
+phase_time(4) = fg*ccp%T_G2
+phase_time(5) = ccp%G2_mean_delay + ccp%T_M
+phase_time(6) = ccp%T_M
 phase_fraction = phase_time/Tdiv
 ! These fractions must sum to 1 because of get_divide_volume (check)
 fsum = 0
@@ -1287,19 +1302,19 @@ real(REAL_KIND) :: V0, Tdiv, Tgrowth, Tgrowth0, Tfixed, rVmax, phase_time1
 type(cell_type), pointer :: cp
 type(cycle_parameters_type), pointer :: ccp
 
-ccp => cc_parameters
-cp => cell_list(kcell)
 ityp = 1
+ccp => cc_parameters(ityp)
+cp => cell_list(kcell)
 V0 = Vdivide0/2
 Tdiv = divide_time_mean(ityp)
 cp%divide_time = Tdiv
 rVmax = max_growthrate(ityp)
-Tgrowth0 = ccp%T_G1(ityp) + ccp%T_S(ityp) + ccp%T_G2(ityp)
-Tfixed = ccp%T_M(ityp) + ccp%G1_mean_delay(ityp) + ccp%G2_mean_delay(ityp)
+Tgrowth0 = ccp%T_G1 + ccp%T_S + ccp%T_G2
+Tfixed = ccp%T_M + ccp%G1_mean_delay + ccp%G2_mean_delay
 Tgrowth = Tdiv - Tfixed
 cp%fg = Tgrowth/Tgrowth0
 cp%divide_volume = V0 + Tgrowth*rVmax
-phase_time1 = cp%fg*ccp%T_G1(ityp)
+phase_time1 = cp%fg*ccp%T_G1
 cp%phase = G1_phase
 cp%G1_time = phase_time1
 cp%V = V0
@@ -1398,22 +1413,23 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------
 subroutine showallcells
-integer :: kcell, cnt(6)
+integer :: kcell, cnt(6), ityp
 real(REAL_KIND) :: tsum,f(6)
 type(cell_type), pointer :: cp
 type(cycle_parameters_type),pointer :: ccp
 
-ccp => cc_parameters
+ityp = 1
+ccp => cc_parameters(ityp)
 write(nflog,*) 'phase durations:'
-write(nflog,'(6f8.0)') ccp%T_G1(1),ccp%G1_mean_delay(1),ccp%T_S(1),ccp%T_G2(1),ccp%G2_mean_delay(1),ccp%T_M(1)
-tsum = ccp%T_G1(1) + ccp%T_S(1) + ccp%T_G2(1) + ccp%T_M(1) + ccp%G1_mean_delay(1) + ccp%G2_mean_delay(1)
+write(nflog,'(6f8.0)') ccp%T_G1,ccp%G1_mean_delay,ccp%T_S,ccp%T_G2,ccp%G2_mean_delay,ccp%T_M
+tsum = ccp%T_G1 + ccp%T_S + ccp%T_G2 + ccp%T_M + ccp%G1_mean_delay + ccp%G2_mean_delay
 write(nflog,'(a,f8.0,f8.3)') 'average divide time (sec, hr): ',tsum,tsum/3600
-f(1) = ccp%T_G1(1)/tsum
-f(3) = ccp%T_S(1)/tsum
-f(4) = ccp%T_G2(1)/tsum
-f(6) = ccp%T_M(1)/tsum
-f(2) = ccp%G1_mean_delay(1)/tsum
-f(5) = ccp%G2_mean_delay(1)/tsum
+f(1) = ccp%T_G1/tsum
+f(3) = ccp%T_S/tsum
+f(4) = ccp%T_G2/tsum
+f(6) = ccp%T_M/tsum
+f(2) = ccp%G1_mean_delay/tsum
+f(5) = ccp%G2_mean_delay/tsum
 cnt = 0
 do kcell = 1,ncells
 	cp => cell_list(kcell)

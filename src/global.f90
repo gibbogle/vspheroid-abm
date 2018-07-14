@@ -193,19 +193,29 @@ type cell_type
     real(REAL_KIND) :: S_start_time	! for PI labelling
     integer :: NL1, NL2(2)
 
+    integer :: N_PL, N_IRL, N_Ch1, N_Ch2
+    logical :: irrepairable
+    
 	type(metabolism_type) :: metab
 	
 	integer :: ndt
 end type
 
 type cycle_parameters_type
-    real(REAL_KIND) :: T_G1(MAX_CELLTYPES), T_S(MAX_CELLTYPES), T_G2(MAX_CELLTYPES), T_M(MAX_CELLTYPES)
-    real(REAL_KIND) :: G1_mean_delay(MAX_CELLTYPES), G2_mean_delay(MAX_CELLTYPES)
-    real(REAL_KIND) :: Pk_G1(MAX_CELLTYPES), Pk_G2(MAX_CELLTYPES)
-    real(REAL_KIND) :: apoptosis_rate(MAX_CELLTYPES)
-    real(REAL_KIND) :: eta_PL, eta_L(2), Kcp
-    real(REAL_KIND) :: Krepair_base, Krepair_max, Kmisrepair(2)
-    real(REAL_KIND) :: Tcp(0:NTCP)
+    real(REAL_KIND) :: T_G1, T_S, T_G2, T_M
+    real(REAL_KIND) :: G1_mean_delay, G2_mean_delay
+    real(REAL_KIND) :: Pk_G1, Pk_G2
+    real(REAL_KIND) :: apoptosis_rate
+!    real(REAL_KIND) :: eta_PL, eta_L(2), Kcp
+!    real(REAL_KIND) :: Krepair_base, Krepair_max, Kmisrepair(2)
+!    real(REAL_KIND) :: Tcp(0:NTCP)
+    ! Radiation damage/repair
+    real(REAL_KIND) :: eta_PL, Kcp, eta_L(2)
+    real(REAL_KIND) :: Krepair_base, Krepair_max, Kmisrepair	!(2)
+!    real(REAL_KIND) :: Tcp(0:NTCP)
+    real(REAL_KIND) :: eta_IRL, fraction_Ch1, mitosis_factor
+    real(REAL_KIND) :: psurvive_Ch1, psurvive_Ch2		! prob of surviving mitosis
+    real(REAL_KIND) :: aTCP, bTCP
 end type
 
 type XYZ_type
@@ -314,7 +324,7 @@ real(REAL_KIND) :: DELTA_X, DELTA_T, tnow, t_simulation
 real(REAL_KIND) :: blobcentre0(3), blobcentre(3), blobradius	! blob centre
 real(REAL_KIND) :: epsilon, es_e, sqr_es_e, shift, Dfactor
 real(REAL_KIND) :: alpha_v, k_detach
-real(REAL_KIND) :: dr_mitosis, mitosis_hours, mitosis_duration, apoptosis_rate
+real(REAL_KIND) :: dr_mitosis, mitosis_hours
 real(REAL_KIND) :: test_growthrate, rrsum(3)
 real(REAL_KIND) :: Vdivide0, dVdivide, Rdivide0, MM_THRESHOLD, medium_volume0, total_volume, max_growthrate(MAX_CELLTYPES)
 real(REAL_KIND) :: t_anoxia_limit, anoxia_death_delay, anoxia_threshold
@@ -348,7 +358,7 @@ logical :: drug_gt_cthreshold(MAX_DRUGTYPES)
 real(REAL_KIND) :: Cthreshold
 real(REAL_KIND) :: Clabel_threshold		! for labelling drug, e.g. EDU
 
-type(cycle_parameters_type), target :: cc_parameters    ! possibly varies by cell type
+type(cycle_parameters_type), target :: cc_parameters(MAX_CELLTYPES)
 
 type(savedata_type) :: saveprofile, saveslice, saveFACS
 
@@ -434,6 +444,7 @@ logical :: use_metabolism
 logical :: use_constant_growthrate = .false. 
 logical :: colony_simulation
 logical :: medium_change_step
+logical :: is_radiation
 logical :: dbug = .false.
 
 integer :: kcell_now, kcell_test=1
@@ -787,11 +798,11 @@ real(REAL_KIND) :: b, R
 integer :: kpar=0
 type(cycle_parameters_type), pointer :: ccp
 
-ccp => cc_parameters
+ccp => cc_parameters(ityp)
 
 rVmax = max_growthrate(ityp)
-Tgrowth0 = ccp%T_G1(ityp) + ccp%T_S(ityp) + ccp%T_G2(ityp)
-Tfixed = ccp%T_M(ityp) + ccp%G1_mean_delay(ityp) + ccp%G2_mean_delay(ityp)
+Tgrowth0 = ccp%T_G1 + ccp%T_S + ccp%T_G2
+Tfixed = ccp%T_M + ccp%G1_mean_delay + ccp%G2_mean_delay
 if (use_divide_time_distribution) then
 	Tdiv = DivideTime(ityp)
 	Tgrowth = Tdiv - Tfixed
@@ -842,11 +853,10 @@ real(REAL_KIND) :: I2div
 integer :: ityp
 type(cycle_parameters_type), pointer :: ccp
 
-ccp => cc_parameters
-
 ityp = cp%celltype
+ccp => cc_parameters(ityp)
 !I2div = cp%divide_time*metabolic(ityp)%I_rate_max
-I2div = (ccp%T_G1(ityp) + ccp%T_S(ityp) + ccp%T_G2(ityp)) &
+I2div = (ccp%T_G1 + ccp%T_S + ccp%T_G2) &
 		*metabolic%I_rate_max
 end function
 

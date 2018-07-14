@@ -158,14 +158,13 @@ logical :: changed, ok
 integer :: k, kcell, nlist0, ityp, idrug, prev_phase, kpar=0
 type(cell_type), pointer :: cp
 type(cycle_parameters_type), pointer :: ccp
-real(REAL_KIND) :: R
+real(REAL_KIND) :: R, mitosis_duration
 integer :: ndivide, divide_list(1000)
 logical :: drugkilled
 logical :: mitosis_entry, in_mitosis, divide
 
 ok = .true.
 changed = .false.
-ccp => cc_parameters
 nlist0 = nlist
 ndivide = 0
 !tnow = istep*DELTA_T !+ t_fmover
@@ -179,8 +178,10 @@ do kcell = 1,nlist0
     endif
 	if (cp%state == DEAD) cycle
 	ityp = cp%celltype
+	ccp => cc_parameters(ityp)
 	divide = .false.
 	mitosis_entry = .false.
+	mitosis_duration = ccp%T_M
 	in_mitosis = .false.
 	if (use_volume_method) then
 !        if (colony_simulation) then
