@@ -7,7 +7,6 @@
 #include "mainwindow.h"
 #include "log.h"
 #include "params.h"
-#include "graphs.h"
 #include "misc.h"
 #include "plot.h"
 #include "myvtk.h"
@@ -3231,6 +3230,52 @@ void MainWindow::setupCellColours()
 void MainWindow::setupGraphSelector()
 {
     QGridLayout *grid = new QGridLayout;
+    int row[5];
+    int col;
+    row[0] = row[1] = row[2] = row[3] = row[4] = -1;
+
+    cbox_ts = new QMyCheckBox*[grph->n_tsGraphs];
+    for (int i=0; i<grph->n_tsGraphs; i++) {
+        int itype = grph->tsGraphs[i].type;
+        if (itype == 0) {
+            if (i < 20) {
+                col = 0;
+            } else if (i < 40) {
+                col = 1;
+            } else if (i < 60) {
+                col = 2;
+            } else {
+                col = 3;
+            }
+        } else {
+            col = 4;
+        }
+        row[col]++;
+        QString text = grph->tsGraphs[i].title;
+        cbox_ts[i] = new QMyCheckBox;
+        cbox_ts[i]->setText(text);
+        cbox_ts[i]->setObjectName("cbox_"+grph->tsGraphs[i].tag);
+        grid->addWidget(cbox_ts[i],row[col],col);
+        connect((QObject *)cbox_ts[i], SIGNAL(checkBoxClicked(QString)), this, SLOT(showMore(QString)));
+    }
+    groupBox_graphselect->setLayout(grid);
+
+    QRect rect = groupBox_graphselect->geometry();
+#ifdef __DISPLAY768
+    rect.setHeight(460);
+#else
+    rect.setHeight(500);
+#endif
+    groupBox_graphselect->setGeometry(rect);
+}
+
+
+/*
+//--------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------
+void MainWindow::setupGraphSelector()
+{
+    QGridLayout *grid = new QGridLayout;
     int row[3];
     int col;
     row[0] = row[1] = row[2] = -1;
@@ -3264,7 +3309,7 @@ void MainWindow::setupGraphSelector()
 #endif
     groupBox_graphselect->setGeometry(rect);
 }
-
+*/
 
 //--------------------------------------------------------------------------------------------------------
 // Note that the initial selection of active graphs is now set in params.cpp

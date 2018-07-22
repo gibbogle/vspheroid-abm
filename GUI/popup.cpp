@@ -14,6 +14,8 @@ void MainWindow::setupPopup()
 {
     connect(pushButton_radSF_1,SIGNAL(clicked()),this,SLOT(pushButton_clicked()));
     connect(pushButton_radSF_2,SIGNAL(clicked()),this,SLOT(pushButton_clicked()));
+    connect(pushButton_TCP_1,SIGNAL(clicked()),this,SLOT(pushButton_clicked()));
+    connect(pushButton_TCP_2,SIGNAL(clicked()),this,SLOT(pushButton_clicked()));
     connect(pushButton_glucose_0,SIGNAL(clicked()),this,SLOT(pushButton_clicked()));
     connect(pushButton_drugKF_0,SIGNAL(clicked()),this,SLOT(pushButton_clicked()));
     connect(pushButton_drugSF_0,SIGNAL(clicked()),this,SLOT(pushButton_clicked()));
@@ -297,6 +299,33 @@ void MainWindow::pushButton_clicked()
             popup_plot->yAxis->setScaleLogBase(10);
             popup_plot->yAxis->setNumberFormat("eb"); // e = exponential, b = beautiful decimal powers
             popup_plot->yAxis->setNumberPrecision(0); // makes sure "1*10^4" is displayed only as "10^4"
+        } else if (plotType == "TCP") {
+            QLineEdit *line;
+            plotName = "Max Checkpoint Delay cell type " + list[2];
+            plotwin->setWindowTitle(plotName);
+            int maxNPL = 200;
+            QVector<double> x0(NPLOT), y0(NPLOT); // initialize with entries 0..100
+            line = findChild<QLineEdit *>("line_RMR_ATCP_" + list[2]);
+            double a = line->text().toDouble();
+            line = findChild<QLineEdit *>("line_RMR_BTCP_" + list[2]);
+            double b = line->text().toDouble();
+
+            makeTCPPlot(list[2], a, b, maxNPL, &x0, &y0);
+            // create graph and assign data to it:
+            popup_plot->addGraph();
+            popup_plot->graph(0)->setData(x0, y0);
+            popup_plot->graph(0)->setPen(QPen(Qt::blue));
+//            popup_plot->graph(0)->setName("O2 = 0%");
+            // give the axes some labels:
+            popup_plot->xAxis->setLabel("NPL");
+            popup_plot->yAxis->setLabel("Max delay (h)");
+            // set axes ranges
+            popup_plot->xAxis->setAutoTickStep(false);
+            popup_plot->xAxis->setTickStep(20);
+            popup_plot->xAxis->setRange(0, maxNPL);
+            popup_plot->yAxis->setRange(0, b);
+            popup_plot->yAxis->setScaleType(QCPAxis::stLinear);
+//            popup_plot->legend->setVisible(true);
         }
     }
     plotwin->show();
@@ -393,6 +422,19 @@ void MainWindow::makeSFPlot(QString cellTypeStr, double C_O2, double maxdose, QV
         (*y)[i] = SF;
     }
 }
+
+//--------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------
+void MainWindow::makeTCPPlot(QString cellTypeStr, double a, double b, int maxNPL, QVector<double> *x, QVector<double> *y)
+{
+    for (int i=0; i<NPLOT; ++i)
+    {
+        double rNPL = (double(maxNPL*i))/NPLOT;
+        (*x)[i] = rNPL;
+        (*y)[i] = b*rNPL/(a + rNPL);
+    }
+}
+
 
 //--------------------------------------------------------------------------------------------------------
 // idrug = 0,1 (DRUG_A, DRUG_B)

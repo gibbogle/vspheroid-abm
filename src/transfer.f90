@@ -5,11 +5,61 @@ module transfer
 use global
 use chemokine
 use metabolism
+use cycle_mod
 use envelope
 
 implicit none
 
 contains
+
+!-----------------------------------------------------------------------------------------
+! Removing references to anoxia, aglucosia
+! Adding non-viable, nogrow, ndead
+! Note: different variable naming
+!    Vmonolayer                                        Vspheroid
+!    ----------                                        ---------
+!    EC (Caverage at medium bottom, at cell layer)
+!    caverage (IC concentration - all the same)        cmedium (average in the medium outside the blob)
+!    cmedium (Cmediumave, average medium)              cbdry (average at blob boundary)
+!-----------------------------------------------------------------------------------------
+
+
+!--------------------------------------------------------------------------------
+! Need to compare growth rate with a fraction of average growth rate
+! Should ngrowth(i) include cells at checkpoints?
+! nogrow is the count of viable cells that are not growing
+!--------------------------------------------------------------------------------
+subroutine getGrowthCount(ngrowth, nogrow, nphase)
+integer :: ngrowth(3), nogrow(:), nphase(:)
+integer :: kcell, i, ityp, iphase
+real(REAL_KIND) :: r_mean(2)
+type(cell_type), pointer :: cp
+
+if (use_cell_cycle) then
+    r_mean = max_growthrate
+else
+    r_mean = Vdivide0/(2*divide_time_mean)
+endif
+ngrowth = 0
+nogrow = 0
+nphase = 0
+do kcell = 1,nlist
+	cp => cell_list(kcell)
+	ityp = cp%celltype
+	if (cp%state == DEAD) cycle
+	if (.not.(cp%state == DYING) .and. cp%metab%A_rate < ATPg) then
+		nogrow(ityp) = nogrow(ityp) + 1
+	endif
+	do i = 1,3
+		if (cp%dVdt < growthcutoff(i)*r_mean(ityp) .or. cp%phase == Checkpoint1 .or. cp%phase == Checkpoint2) then
+		    ngrowth(i) = ngrowth(i) + 1
+!		    write(*,'(a,3i6,3e12.3)') 'getGrowthCount: ',kcell,ityp,i,cell_list(kcell)%dVdt,growthcutoff(i),r_mean(ityp)
+		endif
+	enddo
+	iphase = min(cp%phase,M_phase)
+	nphase(iphase) = nphase(iphase) + 1
+enddo
+end subroutine
 
 !-----------------------------------------------------------------------------------------
 ! Note: the only requirement is that the array has the SAVE attribute
@@ -67,7 +117,7 @@ fdata%DX = DELTA_X
 fdata%conc_ptr = c_loc(Caverage)
 fdata%cell_ptr = c_loc(cdata)
 
-write(nflog,*) 'get_fielddata: axis: ',axis
+!write(nflog,*) 'get_fielddata: axis: ',axis
 ! Find blob centre
 csum = 0
 nc = 0
@@ -79,7 +129,6 @@ do kcell = 1,nlist
 !	write(nflog,'(a,i6,3f8.4)') 'cell centre: ',kcell,cp%centre(:,1) 
 enddo
 bcentre = csum/nc
-write(nflog,'(a,3f8.4)') 'actual blobcentre: ',bcentre
 
 nc = 0
 ! start by fixing on central plane, ignoring fraction
@@ -144,7 +193,6 @@ do kcell = 1,nlist
 		cdata(nc)%celltype = cp%celltype
 	enddo
 enddo
-write(nflog,*) 'axis: ',axis,' nc: ',nc
 fdata%ncells = nc
 res = 0
 end subroutine
@@ -156,11 +204,11 @@ function getstatus(cp) result(status)
 type(cell_type), pointer :: cp
 integer :: status
 
-if (cp%anoxia_tag) then
-	status = 2	! tagged to die of anoxia
-elseif (cp%aglucosia_tag) then
-	status = 4	! tagged to die of aglucosia
-elseif (cp%radiation_tag) then
+!if (cp%anoxia_tag) then
+!	status = 2	! tagged to die of anoxia
+!elseif (cp%aglucosia_tag) then
+!	status = 4	! tagged to die of aglucosia
+if (cp%radiation_tag) then
 	status = 11
 elseif (cp%drug_tag(1)) then
 	status = 12
@@ -940,156 +988,6 @@ real(REAL_KIND) :: r
 r = i
 end function
 
-!-----------------------------------------------------------------------------------------
-!-----------------------------------------------------------------------------------------
-subroutine get_summary(summaryData,i_hypoxia_cutoff,i_growth_cutoff) BIND(C)
-!DEC$ ATTRIBUTES DLLEXPORT :: get_summary
-use, intrinsic :: iso_c_binding
-real(c_double) :: summaryData(*)
-integer(c_int) :: i_hypoxia_cutoff,i_growth_cutoff
-integer :: Nviable(MAX_CELLTYPES), Nlive(MAX_CELLTYPES)
-integer :: nhypoxic(3), nclonohypoxic(3), ngrowth(3), &
-    medium_oxygen, medium_glucose, medium_lactate, medium_drug(2,0:2), &
-    bdry_oxygen, bdry_glucose, bdry_lactate, bdry_drug(2,0:2)
-integer :: TNanoxia_dead, TNaglucosia_dead, TNradiation_dead, TNdrug_dead(2),  TNviable, TNATP_dead, &
-           Ntagged_anoxia(MAX_CELLTYPES), Ntagged_aglucosia(MAX_CELLTYPES), Ntagged_ATP(MAX_CELLTYPES), &
-           Ntagged_radiation(MAX_CELLTYPES), Ntagged_drug(2,MAX_CELLTYPES), &
-           TNtagged_anoxia, TNtagged_aglucosia, TNtagged_ATP, TNtagged_radiation, TNtagged_drug(2)
-integer :: ityp, i, im, idrug
-real(REAL_KIND) :: diam_um, hypoxic_percent, clonohypoxic_percent, growth_percent, necrotic_percent,  npmm3, Tplate_eff
-real(REAL_KIND) :: diam_cm, vol_cm3, vol_mm3, hour, necrotic_fraction, doubling_time, plate_eff(MAX_CELLTYPES)
-real(REAL_KIND) :: volume_cm3(5), maxarea(5), diameter_um(5)
-real(REAL_KIND) :: cmedium(MAX_CHEMO), cbdry(MAX_CHEMO)
-real(REAL_KIND) :: r_G, r_P, r_A, r_I, P_utilisation
-
-hour = istep*DELTA_T/3600.
-call getDiamVol(diam_cm,vol_cm3)
-vol_mm3 = vol_cm3*1000				! volume in mm^3
-diam_um = diam_cm*10000
-npmm3 = Ncells/vol_mm3
-
-Ntagged_ATP(:) = NATP_tag(:)				! number currently dying of ATP starvation
-Ntagged_anoxia(:) = Nanoxia_tag(:)			! number currently tagged by anoxia
-Ntagged_aglucosia(:) = Naglucosia_tag(:)	! number currently tagged by aglucosia
-Ntagged_radiation(:) = Nradiation_tag(:)	! number currently tagged by radiation
-Ntagged_drug(1,:) = Ndrug_tag(1,:)			! number currently tagged by drugA
-Ntagged_drug(2,:) = Ndrug_tag(2,:)			! number currently tagged by drugA
-
-TNtagged_ATP = sum(Ntagged_ATP(1:Ncelltypes))
-TNtagged_anoxia = sum(Ntagged_anoxia(1:Ncelltypes))
-TNtagged_aglucosia = sum(Ntagged_aglucosia(1:Ncelltypes))
-TNtagged_radiation = sum(Ntagged_radiation(1:Ncelltypes))
-TNtagged_drug(1) = sum(Ntagged_drug(1,1:Ncelltypes))
-TNtagged_drug(2) = sum(Ntagged_drug(2,1:Ncelltypes))
-
-TNATP_dead = sum(NATP_dead(1:Ncelltypes))
-TNanoxia_dead = sum(Nanoxia_dead(1:Ncelltypes))
-TNaglucosia_dead = sum(Naglucosia_dead(1:Ncelltypes))
-TNradiation_dead = sum(Nradiation_dead(1:Ncelltypes))
-TNdrug_dead(1) = sum(Ndrug_dead(1,1:Ncelltypes))
-TNdrug_dead(2) = sum(Ndrug_dead(2,1:Ncelltypes))
-
-call getNviable(Nviable, Nlive)
-TNviable = sum(Nviable(1:Ncelltypes))
-
-call getHypoxicCount(nhypoxic)
-hypoxic_percent = (100.*nhypoxic(i_hypoxia_cutoff))/Ncells
-call getClonoHypoxicCount(nclonohypoxic)
-clonohypoxic_percent = (100.*nclonohypoxic(i_hypoxia_cutoff))/TNviable
-
-call getGrowthCount(ngrowth)
-growth_percent = (100.*ngrowth(i_growth_cutoff))/Ncells
-!call getNecroticFraction(necrotic_fraction,vol_cm3)
-!necrotic_percent = 100.*necrotic_fraction
-do ityp = 1,Ncelltypes
-	if (Nlive(ityp) > 0) then
-		plate_eff(ityp) = real(Nviable(ityp))/Nlive(ityp)
-	else
-		plate_eff(ityp) = 0
-	endif
-enddo
-plate_eff = 100.*plate_eff
-Tplate_eff = 0
-do ityp = 1,Ncelltypes
-	Tplate_eff = Tplate_eff + plate_eff(ityp)*celltype_fraction(ityp)
-enddo
-
-if (use_metabolism) then
-	! Get normalised metabolism state variables, averaged over cells
-	call AverageCellMetabolism(r_G,r_P,r_A,r_I,P_utilisation)
-else
-	r_G = 0
-	r_P = 0
-	r_A = 0
-	r_I = 0
-	P_utilisation = 0
-endif
-
-call getMediumConc(cmedium, cbdry)
-!medium_oxygen = cmedium(OXYGEN)
-!medium_glucose = cmedium(GLUCOSE)
-!medium_lactate = cmedium(LACTATE)
-!do i = 1,2
-!	do im = 0,2
-!		idrug = DRUG_A + 3*(i-1)
-!		medium_drug(i,im) = cmedium(idrug+im)
-!	enddo
-!enddo
-!bdry_oxygen = cbdry(OXYGEN)
-!bdry_glucose = cbdry(GLUCOSE)
-!bdry_lactate = cbdry(LACTATE)
-!do i = 1,2
-!	do im = 0,2
-!		idrug = DRUG_A + 3*(i-1)
-!		bdry_drug(i,im) = cbdry(idrug+im)
-!	enddo
-!enddo
-
-call getVolumes(volume_cm3,maxarea)
-do i = 1,5
-	diameter_um(i) = 10000*(6*volume_cm3(i)/PI)**(1./3)
-enddo
-necrotic_fraction = volume_cm3(1)/volume_cm3(5)
-necrotic_percent = 100.*necrotic_fraction
-
-if (ndoublings > 0) then
-    doubling_time = doubling_time_sum/(3600*ndoublings)
-else
-    doubling_time = 0
-endif
-
-summaryData(1:47) = [ rint(istep), rint(Ncells), rint(TNATP_dead), rint(TNanoxia_dead), rint(TNaglucosia_dead), &
-	rint(TNdrug_dead(1)), rint(TNdrug_dead(2)), rint(TNradiation_dead), &
-    rint(TNtagged_ATP), rint(TNtagged_anoxia), rint(TNtagged_aglucosia), &
-    rint(TNtagged_drug(1)), rint(TNtagged_drug(2)), rint(TNtagged_radiation), &
-	diam_um, vol_mm3, hypoxic_percent, clonohypoxic_percent, growth_percent, necrotic_percent, Tplate_eff, npmm3, &
-	cmedium(OXYGEN), cmedium(GLUCOSE), cmedium(LACTATE), cmedium(DRUG_A:DRUG_A+2), cmedium(DRUG_B:DRUG_B+2), &
-	cbdry(OXYGEN), cbdry(GLUCOSE), cbdry(LACTATE), cbdry(DRUG_A:DRUG_A+2), cbdry(DRUG_B:DRUG_B+2), &
-	doubling_time, r_G, r_P, r_A, r_I, rint(ndoublings), P_utilisation ]
-write(nfres,'(a,a,2a12,i8,7e12.4,26i7,37e12.4)') trim(header),' ',gui_run_version, dll_run_version, &
-	istep, hour, vol_mm3, diameter_um, Ncells_type(1:2), &
-    NATP_dead(1:2), Nanoxia_dead(1:2), Naglucosia_dead(1:2), Ndrug_dead(1,1:2), &
-    Ndrug_dead(2,1:2), Nradiation_dead(1:2), &
-    Ntagged_ATP(1:2), Ntagged_anoxia(1:2), Ntagged_aglucosia(1:2), Ntagged_drug(1,1:2), &
-    Ntagged_drug(2,1:2), Ntagged_radiation(1:2), &
-	nhypoxic(:)/real(Ncells), nclonohypoxic(:)/real(TNviable), ngrowth(:)/real(Ncells), &
-	necrotic_fraction, plate_eff(1:2), &
-	cmedium(OXYGEN), cmedium(GLUCOSE), cmedium(LACTATE), cmedium(DRUG_A:DRUG_A+2), cmedium(DRUG_B:DRUG_B+2), &
-	cbdry(OXYGEN), cbdry(GLUCOSE), cbdry(LACTATE), cbdry(DRUG_A:DRUG_A+2), cbdry(DRUG_B:DRUG_B+2), &
-	doubling_time, r_G, r_P, r_A, r_I, real(ndoublings), P_utilisation
-		
-call sum_dMdt(GLUCOSE)
-
-if (diam_count_limit > LIMIT_THRESHOLD) then
-	if (Ncells > diam_count_limit) limit_stop = .true.
-elseif (diam_count_limit > 0) then
-	if (diam_um > diam_count_limit) limit_stop = .true.
-endif
-
-ndoublings = 0
-doubling_time_sum = 0
-
-end subroutine
 
 
 !--------------------------------------------------------------------------------
@@ -1117,30 +1015,31 @@ total_dMdt = total_dMdt + asum
 !write(*,'(a,2i6,2e12.3)') 'sum_dMdt: ',ichemo,Nc,asum,total_dMdt*3600
 end subroutine
 
-!--------------------------------------------------------------------------------
-!--------------------------------------------------------------------------------
-subroutine getNviable(Nviable, Nlive)
-integer :: Nviable(:), Nlive(:)
-integer :: kcell, ityp, idrug
-logical :: tag
-type(cell_type), pointer :: cp
-
-Nviable = 0
-Nlive = 0
-do kcell = 1,nlist
-	cp => cell_list(kcell)
-	if (cp%state == DEAD) cycle
-    ityp = cp%celltype
-    Nlive(ityp) = Nlive(ityp) + 1
-	if (cp%anoxia_tag .or. cp%aglucosia_tag .or. cp%radiation_tag .or. cp%state == DYING) cycle
-    tag = .false.
-    do idrug = 1,ndrugs_used
-		if (cp%drug_tag(idrug)) tag = .true.
-	enddo
-	if (tag) cycle
-	Nviable(ityp) = Nviable(ityp) + 1
-enddo	
-end subroutine
+!!--------------------------------------------------------------------------------
+!!--------------------------------------------------------------------------------
+!subroutine getNviable(Nviable, Nlive)
+!integer :: Nviable(:), Nlive(:)
+!integer :: kcell, ityp, idrug
+!logical :: tag
+!type(cell_type), pointer :: cp
+!
+!Nviable = 0
+!Nlive = 0
+!do kcell = 1,nlist
+!	cp => cell_list(kcell)
+!	if (cp%state == DEAD) cycle
+!    ityp = cp%celltype
+!    Nlive(ityp) = Nlive(ityp) + 1
+!!	if (cp%anoxia_tag .or. cp%aglucosia_tag .or. cp%radiation_tag .or. cp%state == DYING) cycle
+!	if (cp%radiation_tag .or. cp%state == DYING) cycle
+!    tag = .false.
+!    do idrug = 1,ndrugs_used
+!		if (cp%drug_tag(idrug)) tag = .true.
+!	enddo
+!	if (tag) cycle
+!	Nviable(ityp) = Nviable(ityp) + 1
+!enddo	
+!end subroutine
 
 !--------------------------------------------------------------------------------
 !--------------------------------------------------------------------------------
@@ -1171,8 +1070,8 @@ nclonohypoxic = 0
 do kcell = 1,nlist
 	if (cell_list(kcell)%state == DEAD) cycle
 	if (cell_list(kcell)%state == DYING) cycle
-	if (cell_list(kcell)%anoxia_tag) cycle
-	if (cell_list(kcell)%aglucosia_tag) cycle
+!	if (cell_list(kcell)%anoxia_tag) cycle
+!	if (cell_list(kcell)%aglucosia_tag) cycle
 	if (cell_list(kcell)%radiation_tag) cycle
 	tagged = .false.
 	do idrug = 1,MAX_DRUGTYPES
@@ -1187,29 +1086,6 @@ do kcell = 1,nlist
 enddo
 end subroutine
 
-!--------------------------------------------------------------------------------
-! Need to compare growth rate with a fraction of average growth rate
-!--------------------------------------------------------------------------------
-subroutine getGrowthCount(ngrowth)
-integer :: ngrowth(3)
-integer :: kcell, i, ityp
-real(REAL_KIND) :: r_mean(2)
-type(cell_type), pointer :: cp
-
-r_mean(1:2) = Vdivide0/(2*divide_time_mean(1:2))
-ngrowth = 0
-do kcell = 1,nlist
-    cp => cell_list(kcell)
-	if (cp%state == DEAD) cycle
-	if (cp%dVdt == 0) cycle
-	ityp = cp%celltype
-	do i = 1,3
-		if (cp%dVdt < growthcutoff(i)*r_mean(ityp)) then
-		    ngrowth(i) = ngrowth(i) + 1
-		endif
-	enddo
-enddo
-end subroutine
 
 !--------------------------------------------------------------------------------
 ! Returns all the extracellular concentrations along a line through the blob centre.
@@ -1392,7 +1268,6 @@ if (axis == 1) then
 	allocate(ctemp(nxgpts,2,2,0:nvars-1))
 
 	ichemo = OXYGEN
-	write(nflog,'(a,40f8.5)') 'EC x O2: ',(Caverage(ix,iy0,iz0,ichemo),ix=ix1,ix2+1)
 
 	! First calculate averages at the enclosing grid pts
 	ctemp = 0
@@ -2277,7 +2152,7 @@ integer :: nvars
 character*(24) :: varID(nvars)
 real(REAL_KIND) :: ysim(nvars)
 integer :: ivar, ityp
-integer :: Nviable(MAX_CELLTYPES), Nlive(MAX_CELLTYPES)
+integer :: Nviable(MAX_CELLTYPES)	!, Nlive(MAX_CELLTYPES)
 real(REAL_KIND) :: plate_eff(MAX_CELLTYPES)
 
 call MakeMediumCave
@@ -2330,10 +2205,12 @@ do ivar = 1,nvars
 	elseif (varID(ivar) == 'NCELLS') then
 		ysim(ivar) = Ncells			! for now, total live cells
 	elseif (varID(ivar) == 'PE') then
-		call getNviable(Nviable, Nlive)
+		call getNviable	!(Nviable, Nlive)
 		do ityp = 1,Ncelltypes
-			if (Nlive(ityp) > 0) then
-				plate_eff(ityp) = real(Nviable(ityp))/Nlive(ityp)
+!			if (Nlive(ityp) > 0) then
+!				plate_eff(ityp) = real(Nviable(ityp))/Nlive(ityp)
+			if (Ncells_type(ityp) > 0) then
+				plate_eff(ityp) = real(Nviable(ityp))/Ncells_type(ityp)
 			else
 				plate_eff(ityp) = 0
 			endif
@@ -2360,4 +2237,207 @@ do ichemo = 1,MAX_CHEMO
 enddo
 end subroutine
 
+!-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
+subroutine get_summary(summaryData,i_hypoxia_cutoff,i_growth_cutoff) BIND(C)
+!DEC$ ATTRIBUTES DLLEXPORT :: get_summary
+use, intrinsic :: iso_c_binding
+real(c_double) :: summaryData(*)
+integer(c_int) :: i_hypoxia_cutoff,i_growth_cutoff
+!integer :: Nviable(MAX_CELLTYPES)
+integer :: nhypoxic(3), nclonohypoxic(3), ngrowth(3), nogrow(MAX_CELLTYPES), nphase(6), &
+    medium_oxygen, medium_glucose, medium_lactate, medium_drug(2,0:2), &
+    bdry_oxygen, bdry_glucose, bdry_lactate, bdry_drug(2,0:2)
+integer :: TNradiation_dead, TNdrug_dead(2),  TNdead, TNviable, TNnonviable, TNATP_dead, TNnogrow, &
+           Ntagged_ATP(MAX_CELLTYPES), Ntagged_radiation(MAX_CELLTYPES), Ntagged_drug(2,MAX_CELLTYPES), &
+           TNtagged_ATP, TNtagged_radiation, TNtagged_drug(2)
+integer :: ityp, i, im, idrug
+real(REAL_KIND) :: diam_um,  npmm3, Tplate_eff
+real(REAL_KIND) :: hypoxic_fraction, clonohypoxic_fraction(3), growth_fraction, nogrow_fraction, viable_fraction, phase_fraction(6)
+real(REAL_KIND) :: diam_cm, vol_cm3, vol_mm3, hour, necrotic_fraction, doubling_time, plate_eff(MAX_CELLTYPES)
+real(REAL_KIND) :: volume_cm3(5), maxarea(5), diameter_um(5)
+real(REAL_KIND) :: cmedium(MAX_CHEMO), cbdry(MAX_CHEMO)
+real(REAL_KIND) :: r_G, r_P, r_A, r_I, P_utilisation
+
+hour = istep*DELTA_T/3600.
+call getDiamVol(diam_cm,vol_cm3)
+vol_mm3 = vol_cm3*1000				! volume in mm^3
+diam_um = diam_cm*10000
+npmm3 = Ncells/vol_mm3
+
+Ntagged_ATP(:) = NATP_tag(:)				! number currently dying of ATP starvation
+Ntagged_radiation(:) = Nradiation_tag(:)	! number currently tagged by radiation
+Ntagged_drug(1,:) = Ndrug_tag(1,:)			! number currently tagged by drugA
+Ntagged_drug(2,:) = Ndrug_tag(2,:)			! number currently tagged by drugA
+
+TNtagged_ATP = sum(Ntagged_ATP(1:Ncelltypes))
+TNtagged_radiation = sum(Ntagged_radiation(1:Ncelltypes))
+TNtagged_drug(1) = sum(Ntagged_drug(1,1:Ncelltypes))
+TNtagged_drug(2) = sum(Ntagged_drug(2,1:Ncelltypes))
+
+TNATP_dead = sum(NATP_dead(1:Ncelltypes))
+TNradiation_dead = sum(Nradiation_dead(1:Ncelltypes))
+TNdrug_dead(1) = sum(Ndrug_dead(1,1:Ncelltypes))
+TNdrug_dead(2) = sum(Ndrug_dead(2,1:Ncelltypes))
+
+call getNviable	!(Nviable, Nlive)
+TNviable = sum(Nviable(1:Ncelltypes))
+TNnonviable = sum(Ndying(1:Ncelltypes))
+TNdead = sum(Ndead(1:Ncelltypes))
+viable_fraction = TNviable/real(Ncells)
+
+call getHypoxicCount(nhypoxic)
+hypoxic_fraction = nhypoxic(i_hypoxia_cutoff)/real(Ncells)
+call getClonoHypoxicCount(nclonohypoxic)
+if (TNviable > 0) then
+	clonohypoxic_fraction = nclonohypoxic(:)/real(TNviable)
+else
+	clonohypoxic_fraction = 0
+endif		
+call getGrowthCount(ngrowth, nogrow, nphase)
+TNnogrow = sum(nogrow(:))
+nogrow_fraction = TNnogrow/real(TNviable)
+growth_fraction = ngrowth(i_growth_cutoff)/real(Ncells)
+phase_fraction = nphase/real(Ncells)
+!call getNecroticFraction(necrotic_fraction,vol_cm3)
+!necrotic_percent = 100.*necrotic_fraction
+do ityp = 1,Ncelltypes
+!	if (Nlive(ityp) > 0) then
+!		plate_eff(ityp) = real(Nviable(ityp))/Nlive(ityp)
+	if (Ncells_type(ityp) > 0) then
+		plate_eff(ityp) = real(Nviable(ityp))/Ncells_type(ityp)
+	else
+		plate_eff(ityp) = 0
+	endif
+enddo
+plate_eff = 100.*plate_eff
+Tplate_eff = 0
+do ityp = 1,Ncelltypes
+	Tplate_eff = Tplate_eff + plate_eff(ityp)*celltype_fraction(ityp)
+enddo
+
+if (use_metabolism) then
+	! Get normalised metabolism state variables, averaged over cells
+	call AverageCellMetabolism(r_G,r_P,r_A,r_I,P_utilisation)
+else
+	r_G = 0
+	r_P = 0
+	r_A = 0
+	r_I = 0
+	P_utilisation = 0
+endif
+
+call getMediumConc(cmedium, cbdry)
+
+call getVolumes(volume_cm3,maxarea)
+do i = 1,5
+	diameter_um(i) = 10000*(6*volume_cm3(i)/PI)**(1./3)
+enddo
+necrotic_fraction = volume_cm3(1)/volume_cm3(5)
+
+if (ndoublings > 0) then
+    doubling_time = doubling_time_sum/(3600*ndoublings)
+else
+    doubling_time = 0
+endif
+
+summaryData(1:54) = [ rint(istep), rint(Ncells), rint(TNviable), rint(TNnonviable), &
+	rint(TNATP_dead), rint(TNdrug_dead(1)), rint(TNdrug_dead(2)), rint(TNradiation_dead), rint(TNdead), &
+    rint(TNtagged_ATP), rint(TNtagged_drug(1)), rint(TNtagged_drug(2)), rint(TNtagged_radiation), &
+	diam_um, vol_mm3, &
+	100*viable_fraction, 100*hypoxic_fraction, 100*clonohypoxic_fraction(i_hypoxia_cutoff), &
+	100*growth_fraction, 100*nogrow_fraction, 100*necrotic_fraction, &
+	Tplate_eff, npmm3, &
+	cmedium(OXYGEN), cmedium(GLUCOSE), cmedium(LACTATE), cmedium(DRUG_A:DRUG_A+2), cmedium(DRUG_B:DRUG_B+2), &
+	cbdry(OXYGEN), cbdry(GLUCOSE), cbdry(LACTATE), cbdry(DRUG_A:DRUG_A+2), cbdry(DRUG_B:DRUG_B+2), &
+	doubling_time, r_G, r_P, r_A, r_I, rint(ndoublings), P_utilisation, &
+	100*phase_fraction(1:6)]
+write(nfres,'(a,a,2a12,i8,7e12.4,21i7,39e12.4)') trim(header),' ',gui_run_version, dll_run_version, &
+	istep, hour, vol_mm3, diameter_um, &
+	Ncells_type(1:2), TNviable, TNnonviable, &
+	NATP_dead(1:2), Ndrug_dead(1,1:2), Ndrug_dead(2,1:2), Nradiation_dead(1:2), TNdead, &
+    Ntagged_ATP(1:2), Ntagged_drug(1,1:2), Ntagged_drug(2,1:2), Ntagged_radiation(1:2), &
+	viable_fraction, hypoxic_fraction, clonohypoxic_fraction(i_hypoxia_cutoff), &
+	growth_fraction, nogrow_fraction, necrotic_fraction, &
+	plate_eff(1:2), &
+	cmedium(OXYGEN), cmedium(GLUCOSE), cmedium(LACTATE), cmedium(DRUG_A:DRUG_A+2), cmedium(DRUG_B:DRUG_B+2), &
+	cbdry(OXYGEN), cbdry(GLUCOSE), cbdry(LACTATE), cbdry(DRUG_A:DRUG_A+2), cbdry(DRUG_B:DRUG_B+2), &
+	doubling_time, r_G, r_P, r_A, r_I, real(ndoublings), P_utilisation, &
+	100*phase_fraction(1:6)
+		
+call sum_dMdt(GLUCOSE)
+
+if (diam_count_limit > LIMIT_THRESHOLD) then
+	if (Ncells > diam_count_limit) limit_stop = .true.
+elseif (diam_count_limit > 0) then
+	if (diam_um > diam_count_limit) limit_stop = .true.
+endif
+
+ndoublings = 0
+doubling_time_sum = 0
+
+end subroutine
+
+!--------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------
+subroutine getNviable	!(Nviable, Nlive)
+!integer :: Nviable(:) 
+integer :: Nlive(MAX_CELLTYPES)
+integer :: kcell, ityp, idrug
+logical :: tag
+type(cell_type), pointer :: cp
+
+Nviable = 0
+Nlive = 0
+do kcell = 1,nlist
+	cp => cell_list(kcell)
+	if (cp%state == DEAD) cycle
+    ityp = cp%celltype
+    Nlive(ityp) = Nlive(ityp) + 1
+!	if (cp%anoxia_tag .or. cp%aglucosia_tag .or. cp%radiation_tag .or. cp%state == DYING) cycle
+!    tag = .false.
+!    do idrug = 1,ndrugs_used
+!		if (cell_list(kcell)%drug_tag(idrug)) tag = .true.
+!	enddo
+!	if (tag) cycle
+	if (cp%state == DYING) cycle
+	Nviable(ityp) = Nviable(ityp) + 1
+enddo
+if (Nlive(1) /= Ncells_type(1)) then
+	write(*,*) 'Error: getNviable: Nlive /= Ncells_type: ',Nlive(1),Ncells_type(1)
+	stop
+endif
+if (Nviable(1) /= Ncells_type(1) - Ndying(1)) then
+	write(*,'(a,3i8)') 'Error: getNviable: Nviable /= Ncells_type - Ndying: ',Nviable(1),Ncells_type(1),Ndying(1)
+	stop
+endif
+end subroutine
+
 end module
+
+#if 0
+!--------------------------------------------------------------------------------
+! Need to compare growth rate with a fraction of average growth rate
+!--------------------------------------------------------------------------------
+subroutine getGrowthCount(ngrowth)
+integer :: ngrowth(3)
+integer :: kcell, i, ityp
+real(REAL_KIND) :: r_mean(2)
+type(cell_type), pointer :: cp
+
+r_mean(1:2) = Vdivide0/(2*divide_time_mean(1:2))
+ngrowth = 0
+do kcell = 1,nlist
+    cp => cell_list(kcell)
+	if (cp%state == DEAD) cycle
+	if (cp%dVdt == 0) cycle
+	ityp = cp%celltype
+	do i = 1,3
+		if (cp%dVdt < growthcutoff(i)*r_mean(ityp)) then
+		    ngrowth(i) = ngrowth(i) + 1
+		endif
+	enddo
+enddo
+end subroutine
+
+#endif

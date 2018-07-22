@@ -131,8 +131,8 @@ type (cell_type), pointer :: cp
 
 !write(*,'(a,i6,2f8.0)') 'make_colony: ',kcell,tnow,tend
 ccell_list(1) = cell_list(kcell)
-ccell_list(1)%anoxia_tag = .false.
-ccell_list(1)%aglucosia_tag = .false.
+!ccell_list(1)%anoxia_tag = .false.
+!ccell_list(1)%aglucosia_tag = .false.
 ccell_list(1)%drug_tag = .false.
 ityp = ccell_list(1)%celltype
 !ccell_list(1)%divide_volume = get_divide_volume(ityp,V0,Tdiv0)
@@ -151,6 +151,8 @@ do icell = 1,nlist
 enddo
 end subroutine
 
+!-----------------------------------------------------------------------------------------
+! Needs to be fixed!!!!!!!!!!!!!
 !-----------------------------------------------------------------------------------------
 subroutine colony_grower(dt, changed, ok)
 real(REAL_KIND) :: dt
@@ -215,9 +217,9 @@ do kcell = 1,nlist0
 		drugkilled = .false.
 		do idrug = 1,ndrugs_used
 			if (cp%drug_tag(idrug)) then
-				call CellDies(kcell,cp)
+				call CellDies(kcell,.false.)
 				changed = .true.
-				Ndrug_dead(idrug,ityp) = Ndrug_dead(idrug,ityp) + 1
+!				Ndrug_dead(idrug,ityp) = Ndrug_dead(idrug,ityp) + 1
 				drugkilled = .true.
 				exit
 			endif
@@ -242,9 +244,9 @@ do kcell = 1,nlist0
 			if (cp%radiation_tag) then
 				R = par_uni(kpar)
 				if (R < cp%p_rad_death) then
-					call CellDies(kcell,cp)
+					call CellDies(kcell,.false.)
 					changed = .true.
-					Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
+!					Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
 					cycle
 				endif
 			endif		
@@ -255,9 +257,9 @@ do kcell = 1,nlist0
 		    !   remaining L1 lesions and L2c misrepair (non-reciprocal translocation) are treated the same way
 		    !   L2a and L2b are treated as non-fatal
 		    if (cp%NL1 > 0 .or. cp%NL2(2) > 0) then
-				call CellDies(kcell,cp)
+				call CellDies(kcell,.false.)
 				changed = .true.
-				Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
+!				Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
 				cycle
 			endif		        
 		endif
@@ -346,10 +348,10 @@ cp1%CFSE = generate_CFSE(cfse0/2)
 cfse2 = cfse0 - cp1%CFSE
 
 cp1%drug_tag = .false.
-cp1%anoxia_tag = .false.
-cp1%t_anoxia = 0
-cp1%aglucosia_tag = .false.
-cp1%t_aglucosia = 0
+!cp1%anoxia_tag = .false.
+!cp1%t_anoxia = 0
+!cp1%aglucosia_tag = .false.
+!cp1%t_aglucosia = 0
 
 if (cp1%growth_delay) then
 	cp1%N_delayed_cycles_left = cp1%N_delayed_cycles_left - 1

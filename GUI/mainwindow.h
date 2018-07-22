@@ -25,6 +25,7 @@ using namespace std;
 #include "plot.h"
 #include "myvtk.h"
 #include "field.h"
+#include "graphs.h"
 #include "result_set.h"
 #include "log.h"
 #include "SimpleView3DUI.h"
@@ -214,6 +215,7 @@ public slots:
 
     void pushButton_clicked();
     void makeSFPlot(QString, double, double, QVector<double> *x, QVector<double> *y);
+    void makeTCPPlot(QString cellTypeStr, double a, double b, int maxNPL, QVector<double> *x, QVector<double> *y);
     void makeGlucosePlot(double *ndays, QVector<double> *x, QVector<double> *y);
     void makeDrugPlot(int idrug, int kset, int ictyp, double *maxdose, QString plotStr, QVector<double> *x, QVector<double> *y);
     void makeDrugRadiationPlot(int idrug, int kset, int ictyp, double *maxO2, QString plotStr, QVector<double> *x, QVector<double> *y);

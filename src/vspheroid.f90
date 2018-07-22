@@ -128,12 +128,12 @@ read(nfcell,*) d_layer						! thickness of the unstirred layer around the sphero
 read(nfcell,*) Vdivide0						! nominal cell volume multiple for division
 read(nfcell,*) dVdivide						! variation about nominal divide volume
 read(nfcell,*) MM_THRESHOLD					! O2 concentration threshold Michaelis-Menten "soft-landing" (uM)
-read(nfcell,*) anoxia_threshold			    ! O2 threshold for anoxia (uM)
-read(nfcell,*) anoxia_tag_hours				! anoxia time leading to tagging to die by anoxia (h)
-read(nfcell,*) anoxia_death_hours			! time after tagging to death by anoxia (h)
-read(nfcell,*) aglucosia_threshold			! glucose threshold for aglucosia (uM)
-read(nfcell,*) aglucosia_tag_hours			! aglucosia time leading to tagging to die by aglucosia (h)
-read(nfcell,*) aglucosia_death_hours		! time after tagging to death by aglucosia (h)
+!read(nfcell,*) anoxia_threshold			    ! O2 threshold for anoxia (uM)
+!read(nfcell,*) anoxia_tag_hours				! anoxia time leading to tagging to die by anoxia (h)
+!read(nfcell,*) anoxia_death_hours			! time after tagging to death by anoxia (h)
+!read(nfcell,*) aglucosia_threshold			! glucose threshold for aglucosia (uM)
+!read(nfcell,*) aglucosia_tag_hours			! aglucosia time leading to tagging to die by aglucosia (h)
+!read(nfcell,*) aglucosia_death_hours		! time after tagging to death by aglucosia (h)
 read(nfcell,*) itestcase                    ! test case to simulate
 read(nfcell,*) seed(1)						! seed vector(1) for the RNGs
 read(nfcell,*) seed(2)						! seed vector(2) for the RNGs
@@ -300,8 +300,8 @@ NZ = NX
 NYB = NXB
 Kdrag = 1.0e5*Kdrag
 MM_THRESHOLD = MM_THRESHOLD/1000					! uM -> mM
-anoxia_threshold = anoxia_threshold/1000			! uM -> mM
-aglucosia_threshold = aglucosia_threshold/1000		! uM -> mM
+!anoxia_threshold = anoxia_threshold/1000			! uM -> mM
+!aglucosia_threshold = aglucosia_threshold/1000		! uM -> mM
 O2cutoff = O2cutoff/1000							! uM -> mM
 hypoxia_threshold = hypoxia_threshold/1000			! uM -> mM
 chemo(OXYGEN)%used = (iuse_oxygen == 1)
@@ -320,10 +320,10 @@ if (.not.chemo(GLUCOSE)%used) then
 endif
 
 LQ(:)%growth_delay_factor = 60*60*LQ(:)%growth_delay_factor	! hours -> seconds
-t_anoxia_limit = 60*60*anoxia_tag_hours				! hours -> seconds
-anoxia_death_delay = 60*60*anoxia_death_hours		! hours -> seconds
-t_aglucosia_limit = 60*60*aglucosia_tag_hours		! hours -> seconds
-aglucosia_death_delay = 60*60*aglucosia_death_hours	! hours -> seconds
+!t_anoxia_limit = 60*60*anoxia_tag_hours				! hours -> seconds
+!anoxia_death_delay = 60*60*anoxia_death_hours		! hours -> seconds
+!t_aglucosia_limit = 60*60*aglucosia_tag_hours		! hours -> seconds
+!aglucosia_death_delay = 60*60*aglucosia_death_hours	! hours -> seconds
 nsteps = days*24*3600./DELTA_T
 write(logmsg,*) 'nsteps: ',nsteps
 call logger(logmsg)
@@ -370,19 +370,18 @@ write(nflog,*)
 open(nfres,file='vspheroid_ts.out',status='replace')
 write(nfres,'(a)') 'data info GUI_version DLL_version &
 istep hour vol_mm3 diam_um(1) diam_um(2) diam_um(3) diam_um(4) diam_um(5) Ncells(1) Ncells(2) &
-NATP_dead(1) NATP_dead(2) Nanoxia_dead(1) Nanoxia_dead(2) Naglucosia_dead(1) Naglucosia_dead(2) NdrugA_dead(1) NdrugA_dead(2) &
-NdrugB_dead(1) NdrugB_dead(2) Nradiation_dead(1) Nradiation_dead(2) &
-Ntagged_ATP(1) Ntagged_ATP(2) Ntagged_anoxia(1) Ntagged_anoxia(2) Ntagged_aglucosia(1) Ntagged_aglucosia(2) Ntagged_drugA(1) Ntagged_drugA(2) &
+Nviable Nnonviable NATP_dead(1) NATP_dead(2) NdrugA_dead(1) NdrugA_dead(2) &
+NdrugB_dead(1) NdrugB_dead(2) Nradiation_dead(1) Nradiation_dead(2) Ndead &
+Ntagged_ATP(1) Ntagged_ATP(2) Ntagged_drugA(1) Ntagged_drugA(2) &
 Ntagged_drugB(1) Ntagged_drugB(2) Ntagged_radiation(1) Ntagged_radiation(2) &
-f_hypox(1) f_hypox(2) f_hypox(3) &
-f_clonohypox(1) f_clonohypox(2) f_clonohypox(3) &
-f_growth(1) f_growth(2) f_growth(3) &
-f_necrot plating_efficiency(1) plating_efficiency(2) &
+f_viable f_hypoxic f_clonohypoxic f_growth f_nogrow f_necrot &
+plating_efficiency(1) plating_efficiency(2) &
 medium_oxygen medium_glucose medium_lactate &
 medium_drugA medium_drugA_metab1 medium_drugA_metab2 medium_drugB medium_drugB_metab1 medium_drugB_metab2 &
 bdry_oxygen bdry_glucose bdry_lactate &
 bdry_drugA bdry_drugA_metab1 bdry_drugA_metab2 bdry_drugB bdry_drugB_metab1 bdry_drugB_metab2 &
-doubling_time glycolysis_rate pyruvate_oxidation_rate ATP_rate intermediates_rate Ndivided pyruvate_oxidised_fraction'
+doubling_time glycolysis_rate pyruvate_oxidation_rate ATP_rate intermediates_rate Ndivided pyruvate_oxidised_fraction &
+G1_phase G1_checkpoint S_phase G2_phase G2_checkpoint M_phase'
 
 write(logmsg,*) 'Opened nfout: ',outputfile
 call logger(logmsg)
@@ -395,7 +394,7 @@ end subroutine
 
 !-----------------------------------------------------------------------------------------
 ! The cell cycle parameters include the parameters for radiation damage and repair, 
-! and for the associated checkpoint duration limits Tcp(:).
+! and for the associated checkpoint duration limits Tcp(:). 
 ! Time unit = hour
 !-----------------------------------------------------------------------------------------
 subroutine ReadCellCycleParameters(nf)
@@ -820,7 +819,8 @@ Rdivide0 = Raverage*(2.0/1.5)**(1./3.)
 ! TESTING like monolayer_m
 !Vdivide0 = Vdivide0*Vcell_cm3
 !Rdivide0 = (3*Vdivide0/(4*PI))**(1./3.)
-!
+
+write(nflog,*) 'Vdivide0: ',Vdivide0
 
 dVdivide = dVdivide*Vdivide0	
 d_nbr_limit = 1.2*2*Rdivide0	! 1.5 is an arbitrary choice - was 1.2
@@ -867,14 +867,11 @@ total_dMdt = 0
 Nradiation_tag = 0
 Ndrug_tag = 0
 NATP_tag = 0
-Nanoxia_tag = 0
-Naglucosia_tag = 0
 Nradiation_dead = 0
 Ndrug_dead = 0
-Nanoxia_dead = 0
 NATP_dead = 0
-Naglucosia_dead = 0
-Ncells_dying = 0
+Ndying = 0
+Ndead = 0
 
 ndoublings = 0
 doubling_time_sum = 0
@@ -1013,6 +1010,7 @@ logical, allocatable :: occup(:,:,:)
 !blobcentre = DELTA_X*[(NX+1)/2,(NY+1)/2,(NZ+1)/2]
 blobcentre0 = DELTA_X*[(NX-1)/2,(NY-1)/2,(NZ-1)/2]
 write(nflog,'(a,4f8.5)') 'PlaceCells: DELTA_X,blobcentre0: ',DELTA_X,blobcentre0
+Ncells_type = 0
 if (use_packer) then
 	nblob = initial_count
 	cellradius = Raverage
@@ -1149,14 +1147,14 @@ cp%d_divide = (3*cp%divide_volume/PI)**(1./3.)
 
 cp%drug_tag = .false.
 cp%radiation_tag = .false.
-cp%anoxia_tag = .false.
-cp%aglucosia_tag = .false.
+!cp%anoxia_tag = .false.
+!cp%aglucosia_tag = .false.
 cp%growth_delay = .false.
 cp%G2_M = .false.
 cp%p_rad_death = 0
 
-cp%t_anoxia = 0
-cp%t_aglucosia = 0
+!cp%t_anoxia = 0
+!cp%t_aglucosia = 0
 
 ! Not needed because it is done in new_grower() at the time of mitosis
 !call get_random_vector3(v)	! set initial axis direction
@@ -1174,8 +1172,8 @@ cp%ndt = ndt
 
 if (use_metabolism) then
 	cp%metab = metabolic
-	cp%growth_rate_factor = get_growth_rate_factor()
-	cp%ATP_rate_factor = get_ATP_rate_factor()
+!	cp%growth_rate_factor = get_growth_rate_factor()
+!	cp%ATP_rate_factor = get_ATP_rate_factor()
 	if (cp%metab%A_rate == 0) then
 		write(*,*) 'A_rate = 0'
 		stop
@@ -1668,10 +1666,10 @@ call system_clock(count_2, count_rate, count_max)
 call update_all_nbrlists
 call system_clock(count_3, count_rate, count_max)
 
-write(nflog,'(a,3f8.2)') 'times: solver,mover,update: ', &
-	real(count_1-count_0)/count_rate, &
-	real(count_2-count_1)/count_rate, &
-	real(count_3-count_2)/count_rate
+!write(nflog,'(a,3f8.2)') 'times: solver,mover,update: ', &
+!	real(count_1-count_0)/count_rate, &
+!	real(count_2-count_1)/count_rate, &
+!	real(count_3-count_2)/count_rate
 	
 if (saveprofile%active) then
 	if (istep*DELTA_T >= saveprofile%it*saveprofile%dt) then
@@ -1711,7 +1709,7 @@ if (mod(istep,nt_hour) == 0) then
 	endif
 	write(logmsg,'(a,4i8,a,f5.2)') 'istep, hour, Ncells, ntagged: ',istep,istep/nt_hour,Ncells,Ndrug_tag(1,1),' t_double: ',t_ave_double
 	call logger(logmsg)
-	call show_central_cells
+!	call show_central_cells
 !	write(*,'(a,3f8.5,3f8.3)') 'blobcentre, rrsum: ',blobcentre,rrsum
 	if (dbug) write(*,*) 'DRUG_A present: ',chemo(DRUG_A:DRUG_A+2)%present
 !	write(*,'(7e11.3)') Caverage(NX/2,NY/2,11:17,DRUG_A)

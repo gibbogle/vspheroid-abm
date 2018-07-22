@@ -83,7 +83,7 @@ end subroutine
 subroutine Irradiation(dose,ok)
 real(REAL_KIND) :: dose
 logical :: ok
-integer :: kcell, site(3), iv, ityp, kpar=0
+integer :: kcell, site(3), iv, ityp, n, kpar=0
 real(REAL_KIND) :: C_O2, SER, SER_OER(2), p_death, p_recovery, R, kill_prob, tmin
 type(cell_type), pointer :: cp
 type(cycle_parameters_type), pointer :: ccp
@@ -150,6 +150,7 @@ if (use_volume_method) then
 	    endif
     enddo
 else
+	n = 0
     tmin = 1.0      ! for now...
     do kcell = 1,nlist
         if (colony_simulation) then
@@ -173,18 +174,51 @@ else
         call radiation_damage(cp, ccp, dose, SER_OER(1), tmin)
 	    if (cp%irrepairable) then	! irrepairable damage 
 			if (.not.cp%radiation_tag) then
-				cp%radiation_tag = .true.
+				n = n+1
+				cp%radiation_tag = .true.	! tagged, but not DYING yet
 			    Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
 !				write(nflog,*) 'Tagged with IRL: ',istep,cp%N_IRL,Nradiation_tag(ityp),kcell,cp%phase
 			endif	
-			if (cp%phase == S_phase) then	! kill immediately, otherwise dies at mitosis
-				call CellDies(kcell,cp)
-				Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
+			if (cp%phase == S_phase .or. cp%phase == M_phase) then	! kill immediately, otherwise dies at mitosis
+				call CellDies(kcell,.false.)
+!				Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
 !				write(nflog,*) 'S-phase - killed'
 			endif
 		endif
     enddo
+    call check_radiation
+    write(logmsg,*) '# irrepairable: ',n
+    call logger(logmsg)
 endif
+end subroutine
+
+!-----------------------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------------
+subroutine check_radiation
+type(cell_type), pointer :: cp
+type(cycle_parameters_type), pointer :: ccp
+integer :: kcell, n
+real(REAL_KIND) :: aveCh1, aveCh2, aveIRL, avePL
+
+n = 0
+aveCh1 = 0 
+aveCh2 = 0 
+aveIRL = 0 
+avePL = 0
+do kcell = 1,nlist
+    cp => cell_list(kcell)
+    if (cp%state == DEAD .or. cp%state == DYING) cycle
+	n = n+1
+	aveCh1 = aveCh1 + cp%N_Ch1
+	aveCh2 = aveCh2 + cp%N_Ch2
+	aveIRL = aveIRL + cp%N_IRL
+	avePL = avePL + cp%N_PL
+enddo
+write(nflog,*) 'check_radiation: n: ',n
+write(nflog,'(a,f9.3)') 'aveCh1: ',aveCh1/n
+write(nflog,'(a,f9.3)') 'aveCh2: ',aveCh2/n
+write(nflog,'(a,f9.3)') 'aveIRL: ',aveIRL/n
+write(nflog,'(a,f9.3)') 'avePL: ',avePL/n
 end subroutine
 
 !-----------------------------------------------------------------------------------------
@@ -285,16 +319,16 @@ end subroutine
 subroutine CellDeath(dt,changed,ok)
 real(REAL_KIND) :: dt
 logical :: changed, ok
-integer :: kcell, nlist0, site(3), i, ichemo, idrug, im, ityp, killmodel, kpar=0 
+integer :: kcell, nlist0, site(3), i, ichemo, idrug, im, ityp, n, killmodel, kpar=0 
 real(REAL_KIND) :: C_O2, C_glucose, kmet, Kd, dMdt, Cdrug, n_O2, kill_prob, dkill_prob, death_prob, survival_prob, u
-logical :: anoxia_death, aglucosia_death
+!logical :: anoxia_death, aglucosia_death
 real(REAL_KIND) :: delayed_death_prob
 logical :: flag
 type(cell_type), pointer :: cp
 type(drug_type), pointer :: dp
 real(REAL_KIND) :: p_tag = 0.3
 type(cycle_parameters_type), pointer :: ccp
-logical :: allow_anoxia = .true.
+!logical :: allow_anoxia = .true.
 
 !write(nflog,*) 'CellDeath'
 ok = .true.
@@ -303,39 +337,40 @@ if (colony_simulation) then
 endif
 
 !tnow = istep*DELTA_T	! seconds
-anoxia_death = chemo(OXYGEN)%controls_death
-aglucosia_death = chemo(GLUCOSE)%controls_death
+!anoxia_death = chemo(OXYGEN)%controls_death
+!aglucosia_death = chemo(GLUCOSE)%controls_death
 nlist0 = nlist
 flag = .false.
+n = 0
 do kcell = 1,nlist
     cp => cell_list(kcell)
 	if (cp%state == DEAD) cycle
 	ityp = cp%celltype
 	ccp => cc_parameters(ityp)
-	if (cp%ATP_tag) then
-		delayed_death_prob = ccp%apoptosis_rate*DELTA_T/3600
+	if (cp%state == DYING) then
+		delayed_death_prob = ccp%apoptosis_rate*dt/3600
 	    if (par_uni(kpar) < delayed_death_prob) then	
-			call CellDies(kcell,cp)
+			call CellDies(kcell,.true.)
 			changed = .true.
-			NATP_dead(ityp) = NATP_dead(ityp) + 1		! note that death from anoxia here means metabolic death 
+!			NATP_dead(ityp) = NATP_dead(ityp) + 1		! note that death from anoxia here means metabolic death 
 		endif
 		cycle
-	endif	
+	endif
+	if (cp%irrepairable) n = n+1
 	call getO2conc(cp,C_O2)
 	if (use_metabolism) then
-!		if (cp%metab%A_rate*cp%V < cp%ATP_rate_factor*ATPs(ityp)*Vcell_cm3) then
-		! Suppress death by anoxia for debugging
-		if (allow_anoxia) then
-		if (cp%metab%A_rate < cp%ATP_rate_factor*ATPs) then
-			cp%state = DYING
+		if (cp%metab%A_rate < ATPs) then
 			cp%ATP_tag = .true.
-			cp%dVdt = 0
-			Ncells_dying(ityp) = Ncells_dying(ityp) + 1
 			NATP_tag(ityp) = NATP_tag(ityp) + 1
+			cp%dVdt = 0
+			call CellDies(kcell,.false.)
+!			cp%state = DYING
+!			Ndying(ityp) = Ndying(ityp) + 1
 			cycle
 		endif
-		endif	
 	else
+	
+#if 0
 		if (cp%anoxia_tag) then
 !			if (tnow >= cp%t_anoxia_die) then
 			if (tnow >= cp%t_anoxia_die .and. par_uni(kpar) < p_tag*dt/DELTA_T) then
@@ -376,6 +411,7 @@ do kcell = 1,nlist
 				cp%t_aglucosia = 0
 			endif
 		endif
+#endif
 	endif
 	do idrug = 1,ndrugs_used	
 		ichemo = DRUG_A + 3*(idrug-1)	
@@ -417,6 +453,10 @@ do kcell = 1,nlist
 		flag = .true.
 	enddo
 enddo
+!if (n > 0) then
+!	write(logmsg,*) '# of irrepairable left: ',n
+!	call logger(logmsg)
+!endif
 end subroutine
 
 !-----------------------------------------------------------------------------------------
@@ -449,34 +489,41 @@ end subroutine
 ! If the site is on the boundary, it is removed from the boundary list, and %indx -> OUTSIDE_TAG
 ! The cell contents should be released into the site.
 !-----------------------------------------------------------------------------------------
-subroutine CellDies(kcell,cp)
+subroutine CellDies(kcell,now)
 integer :: kcell
+logical :: now
 type(cell_type), pointer :: cp
 integer :: ityp, idrug
 
 !write(*,*) 'CellDies: ',kcell
+cp => cell_list(kcell)
 ityp = cp%celltype
+if (.not.now) then
+	cp%state = DYING
+	Ndying(ityp) = Ndying(ityp) + 1
+!	write(nflog,*) 'CellDies: DYING: ',kcell,Ndying(ityp)
+	return
+endif
 if (cp%state == DYING) then
-	Ncells_dying(ityp) = Ncells_dying(ityp) - 1
+	Ndying(ityp) = Ndying(ityp) - 1
 endif
 Ncells = Ncells - 1
 Ncells_type(ityp) = Ncells_type(ityp) - 1
+Ndead(ityp) = Ndead(ityp) + 1
+!write(nflog,*) 'CellDies: DEAD: ',kcell,Ndead(ityp)
 if (cp%ATP_tag) then
 	NATP_tag(ityp) = NATP_tag(ityp) - 1
-endif
-if (cp%anoxia_tag) then
-	Nanoxia_tag(ityp) = Nanoxia_tag(ityp) - 1
-endif
-if (cp%aglucosia_tag) then
-	Naglucosia_tag(ityp) = Naglucosia_tag(ityp) - 1
+	NATP_dead(ityp) = NATP_dead(ityp) + 1
 endif
 do idrug = 1,ndrugs_used
 	if (cp%drug_tag(idrug)) then
 		Ndrug_tag(idrug,ityp) = Ndrug_tag(idrug,ityp) - 1
+		Ndrug_dead(idrug,ityp) = Ndrug_dead(idrug,ityp) + 1
 	endif
 enddo
 if (cp%radiation_tag) then
 	Nradiation_tag(ityp) = Nradiation_tag(ityp) - 1
+	Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
 endif
 ngaps = ngaps + 1
 if (ngaps > max_ngaps) then
@@ -505,7 +552,7 @@ real(REAL_KIND) :: dt
 logical :: changed, ok
 integer :: nlivecells
 integer, allocatable :: livelist(:)
-integer :: k, kcell, idrug, ityp
+integer :: k, kcell, idrug, ityp, n
 logical :: divide, drug_killed(2), radiation_killed
 integer, parameter :: MAX_DIVIDE_LIST = 10000
 integer :: ndivide, divide_list(MAX_DIVIDE_LIST)
@@ -575,8 +622,8 @@ do idrug = 1,2
     		cp => cell_list(kcell)
 		endif
 		ityp = cp%celltype
-		call CellDies(kcell,cp)
-		Ndrug_dead(idrug,ityp) = Ndrug_dead(idrug,ityp) + 1
+		call CellDies(kcell,.false.)
+!		Ndrug_dead(idrug,ityp) = Ndrug_dead(idrug,ityp) + 1
 	enddo
 enddo
 
@@ -589,8 +636,8 @@ do k = 1,nradiation_kill
 		cp => cell_list(kcell)
 	endif
 	ityp = cp%celltype
-	call CellDies(kcell,cp)
-	Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
+	call CellDies(kcell,.false.)
+!	Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
 enddo
 
 do k = 1,ndivide
@@ -636,9 +683,11 @@ radiation_killed = .false.
 	mitosis_entry = .false.
 	mitosis_duration = ccp%T_M
 	in_mitosis = .false.
-	tagged = cp%anoxia_tag .or. cp%aglucosia_tag .or. (cp%state == DYING)
-	if (tagged) then
+!	tagged = cp%anoxia_tag .or. cp%aglucosia_tag .or. (cp%state == DYING)
+!	if (tagged) then
+	if (cp%state == DYING) then
 		cp%dVdt = 0
+		return
 	endif
 	if (use_volume_method) then
 !        if (colony_simulation) then
@@ -1062,10 +1111,10 @@ cp1%CFSE = generate_CFSE(cfse0/2)
 cfse1 = cfse0 - cp1%CFSE
 
 cp1%drug_tag = .false.
-cp1%anoxia_tag = .false.
-cp1%t_anoxia = 0
-cp1%aglucosia_tag = .false.
-cp1%t_aglucosia = 0
+!cp1%anoxia_tag = .false.
+!cp1%t_anoxia = 0
+!cp1%aglucosia_tag = .false.
+!cp1%t_aglucosia = 0
 
 if (cp1%growth_delay) then
 	cp1%N_delayed_cycles_left = cp1%N_delayed_cycles_left - 1
@@ -1105,10 +1154,10 @@ if (cp2%radiation_tag) then
 	Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
 endif
 cp2%drug_tag = .false.
-cp2%anoxia_tag = .false.
-cp2%t_anoxia = 0
-cp2%aglucosia_tag = .false.
-cp2%t_aglucosia = 0
+!cp2%anoxia_tag = .false.
+!cp2%t_anoxia = 0
+!cp2%aglucosia_tag = .false.
+!cp2%t_aglucosia = 0
 
 cp2%growth_delay = cp1%growth_delay
 if (cp2%growth_delay) then
@@ -1205,10 +1254,10 @@ cp1%CFSE = generate_CFSE(cfse0/2)
 cfse2 = cfse0 - cp1%CFSE
 
 cp1%drug_tag = .false.
-cp1%anoxia_tag = .false.
-cp1%t_anoxia = 0
-cp1%aglucosia_tag = .false.
-cp1%t_aglucosia = 0
+!cp1%anoxia_tag = .false.
+!cp1%t_anoxia = 0
+!cp1%aglucosia_tag = .false.
+!cp1%t_aglucosia = 0
 
 if (cp1%growth_delay) then
 	cp1%N_delayed_cycles_left = cp1%N_delayed_cycles_left - 1
@@ -1245,8 +1294,8 @@ cp2%fg = gfactor
 if (use_metabolism) then	! Fraction of I needed to divide = fraction of volume needed to divide
 	cp2%metab%I2Divide = get_I2Divide(cp2)
 	cp2%metab%Itotal = 0
-	cp2%growth_rate_factor = get_growth_rate_factor()
-	cp2%ATP_rate_factor = get_ATP_rate_factor()
+!	cp2%growth_rate_factor = get_growth_rate_factor()
+!	cp2%ATP_rate_factor = get_ATP_rate_factor()
 endif
 cp2%CFSE = cfse2
 if (cp2%radiation_tag) then
@@ -1270,19 +1319,19 @@ end subroutine
 ! into divide times.
 ! dr = 0 suppresses variability
 !----------------------------------------------------------------------------------
-function get_growth_rate_factor() result(r)
-real(REAL_KIND) :: r
-real(REAL_KIND) :: dr = 0.0	! was 0.2
-integer :: kpar = 0
-
-r = 1 + (par_uni(kpar) - 0.5)*dr
-end function
+!function get_growth_rate_factor() result(r)
+!real(REAL_KIND) :: r
+!real(REAL_KIND) :: dr = 0.0	! was 0.2
+!integer :: kpar = 0
+!
+!r = 1 + (par_uni(kpar) - 0.5)*dr
+!end function
 
 !----------------------------------------------------------------------------------
 ! This is used to adjust a cell's ATP thresholds to introduce some random variability
 ! into transitions to no-growth and death.
 ! Too much variability?
-! dr = 0 suppresses variability
+! dr = 0 suppresses variability - not needed in spheroid
 !----------------------------------------------------------------------------------
 function get_ATP_rate_factor() result(r)
 real(REAL_KIND) :: r

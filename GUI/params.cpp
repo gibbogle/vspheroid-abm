@@ -69,21 +69,21 @@ Off-lattice model: Dimension of the fine grid (number of grid pts in X,Y and Z d
 //"Use divide time distribution",
 //"The divide time will be a random variate from a log-normal distribution."},
 
-{"DIVIDE_TIME_1_MEDIAN", 24, 0, 0,
+{"DIVIDE_TIME_1_MEDIAN", 18, 0, 0,
 "Median (h)",
 "The time taken for tumour cell division has a lognormal distribution, described by the median and shape parameters. \n\
 [hours]"},
 
-{"DIVIDE_TIME_1_SHAPE", 1.2, 0, 0,
+{"DIVIDE_TIME_1_SHAPE", 1.1, 0, 0,
 "Shape parameter",
 "The time taken for tumour cell division has a lognormal distribution, described by the median and shape parameters."},
 
-{"DIVIDE_TIME_2_MEDIAN", 24, 0, 0,
+{"DIVIDE_TIME_2_MEDIAN", 18, 0, 0,
 "Division time median parameter",
 "The time taken for tumour cell division has a lognormal distribution, described by the median and shape parameters. \n\
 [hours]"},
 
-{"DIVIDE_TIME_2_SHAPE", 1.2, 0, 0,
+{"DIVIDE_TIME_2_SHAPE", 1.1, 0, 0,
 "Division time shape parameter",
 "The time taken for tumour cell division has a lognormal distribution, described by the median and shape parameters."},
 
@@ -211,31 +211,31 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
 "O2 concentration at which the 'soft-landing' adjustment to the Michaelis-Menten function kicks in.\n\
 [uM]"},
 
-{"ANOXIA_THRESHOLD", 0.15, 0, 0,
-"Tag threshold",
-"A cell begins to experience starvation of oxygen (anoxia) or glucose (aglucosia) leading to cell death at the oxygen/glucose concentration given by this threshold value."},
+//{"ANOXIA_THRESHOLD", 0.15, 0, 0,
+//"Tag threshold",
+//"A cell begins to experience starvation of oxygen (anoxia) or glucose (aglucosia) leading to cell death at the oxygen/glucose concentration given by this threshold value."},
 
-{"ANOXIA_TAG_TIME", 3.0, 0, 0,
-"Tag time limit",
-"Length of time under anoxia (O2 < anoxia threshold) or aglucosia (glucose < aglucosia threshold) after which a cell is tagged to die of anoxia or aglucosia."},
+//{"ANOXIA_TAG_TIME", 3.0, 0, 0,
+//"Tag time limit",
+//"Length of time under anoxia (O2 < anoxia threshold) or aglucosia (glucose < aglucosia threshold) after which a cell is tagged to die of anoxia or aglucosia."},
 
-{"ANOXIA_DEATH_TIME", 3.0, 0, 0,
-"Death delay time",
-"Time taken for a cell to die after it is tagged to die of anoxia or aglucosia."},
+//{"ANOXIA_DEATH_TIME", 3.0, 0, 0,
+//"Death delay time",
+//"Time taken for a cell to die after it is tagged to die of anoxia or aglucosia."},
 
-{"AGLUCOSIA_THRESHOLD", 0.15, 0, 0,
-"Aglucosia threshold",
-"A cell begins to experience aglucosia leading to cell death at the glucose concentration given by this threshold value."},
+//{"AGLUCOSIA_THRESHOLD", 0.15, 0, 0,
+//"Aglucosia threshold",
+//"A cell begins to experience aglucosia leading to cell death at the glucose concentration given by this threshold value."},
 
-{"AGLUCOSIA_TAG_TIME", 3.0, 0, 0,
-"Aglucosia time limit",
-"Length of time under aglucosia (glucose < aglucosia threshold) after which a cell is tagged to die of aglucosia.\n\
-[h]"},
+//{"AGLUCOSIA_TAG_TIME", 3.0, 0, 0,
+//"Aglucosia time limit",
+//"Length of time under aglucosia (glucose < aglucosia threshold) after which a cell is tagged to die of aglucosia.\n\
+//[h]"},
 
-{"AGLUCOSIA_DEATH_TIME", 3.0, 0, 0,
-"Aglucosia death delay time",
-"Time taken for a cell to die after it is tagged to die of aglucosia.\n\
-[h]"},
+//{"AGLUCOSIA_DEATH_TIME", 3.0, 0, 0,
+//"Aglucosia death delay time",
+//"Time taken for a cell to die after it is tagged to die of aglucosia.\n\
+//[h]"},
 
 {"TEST_CASE", 0, 0, 0,
 "Test case #",
@@ -333,11 +333,11 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
 "Aglucosia death?",
 "Glucose controls death by aglucosia"},
 
-{"GLUCOSE_DIFF_COEF", 5.0e-7, 0, 0,
+{"GLUCOSE_DIFF_COEF", 3.0e-7, 0, 0,
  "Spheroid diffusion coeff",
  "GLUCOSE diffusion coefficient"},
 
-{"GLUCOSE_MEDIUM_DIFF", 6.0e-6, 0, 0,
+{"GLUCOSE_MEDIUM_DIFF", 8.0e-6, 0, 0,
  "Medium diffusion coeff",
  "Constituent diffusion coefficient in the medium"},
 
@@ -357,7 +357,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
  "Constant concentration",
  "Extracellular concentration to be held constant everywhere at the specified boundary value"},
 
-{"GLUCOSE_CONSUMPTION", 6.8e-17, 0, 0,
+{"GLUCOSE_CONSUMPTION", 7.1e-17, 0, 0,
  "Max consumption rate",
  "GLUCOSE consumption rate"},
 
@@ -385,7 +385,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "Membrane diff constant",
      "Cell membrane diffusion coefficient Kout"},
 
-    {"LACTATE_BDRY_CONC", 0.3, 0, 0,
+    {"LACTATE_BDRY_CONC", 3, 0, 0,
      "Boundary concentration",
      "LACTATE boundary concentration"},
 
@@ -573,7 +573,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "Ch1 fraction of misrepair",
      "Fraction of misrepaired lesions that are Ch1: fraction_Ch1"},
 
-     {"RMR_PSURVIVE1_1", 0.95, 0, 0,
+     {"RMR_PSURVIVE1_1", 0.45, 0, 0,
      "Ch1 prob of mitosis survival",
      "Probability that a cell with one Ch1 lesion survives mitosis: psurvive_Ch1"},
 
@@ -585,7 +585,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "TCP Hill a",
      "TCP, the maximum time spent in the checkpoint, is a Hill function of # of L1 lesions, n. TCP(n) = b.n/(a + n)"},
 
-      {"RMR_BTCP_1", 50, 0, 0,
+      {"RMR_BTCP_1", 25, 0, 0,
       "TCP Hill b",
       "TCP, the maximum time spent in the checkpoint, is a Hill function of # of L1 lesions, n. TCP(n) = b.n/(a + n)"},
 
@@ -652,7 +652,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
       "Ch1 fraction of misrepair",
       "Fraction of misrepaired lesions that are Ch1: fraction_Ch1"},
 
-      {"RMR_PSURVIVE1_2", 0.95, 0, 0,
+      {"RMR_PSURVIVE1_2", 0.45, 0, 0,
       "Ch1 prob of mitosis survival",
       "Probability that a cell with one Ch1 lesion survives mitosis: psurvive_Ch1"},
 
@@ -664,7 +664,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
       "TCP Hill a",
       "TCP, the maximum time spent in the checkpoint, is a Hill function of # of L1 lesions, n. TCP(n) = b.n/(a + n)"},
 
-      {"RMR_BTCP_2", 50, 0, 0,
+      {"RMR_BTCP_2", 25, 0, 0,
       "TCP Hill b",
       "TCP, the maximum time spent in the checkpoint, is a Hill function of # of L1 lesions, n. TCP(n) = b.n/(a + n)"},
 
@@ -749,18 +749,18 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
       "Cell growth stops when the ATP production rate falls below the fraction ATP_G of the maximum (no nutrient constraints) production rate.\n\
        Intermediates production from glycolysis and pyruvate ramps down when ATP rate is below ATPramp*ATP_G, to 0 when ATP rate = ATP_G."},
 
-     {"ATP_RAMP_1", 1.5, 0, 0,
+     {"ATP_RAMP_1", 1.3, 0, 0,
        "Ramp factor for reducing r_G, r_P based on ATP",
       "Fractional rates of production of intermediates from glycolysis (r_G) and pyruvate (r_P) are reduced as ATP production rate falls.\n\
        If the normal ATP rate is r_An, and the current rate is r_A, then the fractional production rate f_A = r_A/r_An.\n\
        A multiplying factor on both r_G and r_P, f, is calculated as a ramp from 0 - 1 as f_A varies from ATP_G - ATPramp*ATP_G\n\
        i.e. the reduction starts when f_A = ATPramp*ATP_G (f = 1), and when f_A = ATP_G, f = 0.  f_G = f*f_Gn, f_P = f*f_Pn"},
 
-     {"K_PL_1", 0.1, 0, 0,
+     {"K_PL_1", 0.001, 0, 0,
      "Pyruvate -> lactate rate constant",
      "The forward rate constant K_PL of the pyruvate-lactate reaction, i.e. the rate constant for conversion of pyruvate to lactate"},
 
-     {"K_LP_1", 0.1, 0, 0,
+     {"K_LP_1", 0.001, 0, 0,
      "Lactate -> pyruvate rate constant",
      "The reverse rate constant K_LP of the pyruvate-lactate reaction, i.e. the rate constant for conversion of lactate to pyruvate"},
 
@@ -1147,24 +1147,25 @@ A small value (e.g. 10) gives a more squashed spheroid, while a large value (e.g
 
 // Time-series plots
     {"nlive",                     1, 0,1,"","Number of live cells"},
+    {"nviable",                   1, 0,1,"","Number of viable cells"},
+    {"nonviable",                 1, 0,1,"","Total number of non-viable cells"},
     {"nATPdead",                  1, 0,1,"","Total number of cells that have been killed by lack of ATP"},
-    {"nanoxiadead",               0, 0,1,"","Total number of cells that have been killed by anoxia"},
-    {"naglucosiadead",            0, 0,1,"","Total number of cells that have been killed by aglucosia"},
     {"ndrugAdead",                0, 0,1,"","Total number of cells that have been killed by drugA"},
     {"ndrugBdead",                0, 0,1,"","Total number of cells that have been killed by drugB"},
     {"nradiationdead",            0, 0,1,"","Total number of cells that have been killed by radiation"},
+    {"ndead",                     1, 0,1,"","Total number of cellls that have died"},
     {"nATPtagged",                1, 0,1,"","Current number of cells tagged to die by lack of ATP"},
-    {"nanoxiatagged",             0, 0,1,"","Current number of cells tagged to die by anoxia"},
-    {"naglucosiatagged",          0, 0,1,"","Current number of cells tagged to die by aglucosia"},
     {"ndrugAtagged",              0, 0,1,"","Current number of cells tagged to die by drugA"},
     {"ndrugBtagged",              0, 0,1,"","Current number of cells tagged to die by drugB"},
     {"nradiationtagged",          0, 0,1,"","Current number of cells tagged to die by radiation"},
     {"diameter",                  1, 0,1,"","Spheroid diameter (um)"},
     {"volume",                    0, 0,1,"","Spheroid volume (mm3)"},
+    {"viablefraction",            1, 0,1,"","Fraction of cells that are viable"},
     {"hypoxicfraction",           1, 0,1,"","Fraction of cells with oxygen level below the specified threshold for hypoxia"},
     {"clonohypoxicfraction",      1, 0,1,"","Fraction of clonogenic cells with oxygen level below the specified threshold for hypoxia"},
     {"growthfraction",            0, 0,1,"","Percentage of cells that are growing at a rate less than the specified fraction of the mean growth rate with no nutrient limits"},
     {"necroticfraction",          0, 0,1,"","Percentage of the spheroid that is necrotic = (number of vacant sites)/(number of sites taken up by the spheroid)"},
+    {"nogrowfraction",            1, 0,1,"","Percentage of cells that are not growing (insufficient ATP rate for growth)"},
     {"platingefficiency",         1, 0,1,"","Percentage of live cells that are viable"},
     {"cellspermm3",               1, 0,1,"","Number of cells per mm3 in the blob"},
     {"mediumoxygen",              1, 0,1,"","Average concentration of oxygen in the medium (far-field)"},
@@ -1185,13 +1186,19 @@ A small value (e.g. 10) gives a more squashed spheroid, while a large value (e.g
     {"bdrydrugB",                 0, 0,1,"","Average concentration of drug B at the blob boundary"},
     {"bdrydrugBmet1",             0, 0,1,"","Average concentration of drug B metabolite 1 at the blob boundary"},
     {"bdrydrugBmet2",             0, 0,1,"","Average concentration of drug B metabolite 2 at the blob boundary"},
-     {"doublingtime",              0, 0,1,"","Average doubling time"},
-     {"Grate",                     1, 0,1,"","Normalised glycolysis rate"},
-     {"Prate",                     1, 0,1,"","Normalised pyruvate utilisation rate"},
-     {"Arate",                     1, 0,1,"","Normalised ATP production rate"},
-     {"Irate",                     1, 0,1,"","Normalised rate of production of anabolic intermediates"},
-     {"dividerate",                0, 0,1,"","# divided/hour"},
-     {"Pfraction",                 0, 0,1,"","% pyruvate utilised"},
+    {"doublingtime",              0, 0,1,"","Average doubling time"},
+    {"Grate",                     1, 0,1,"","Normalised glycolysis rate"},
+    {"Prate",                     1, 0,1,"","Normalised pyruvate utilisation rate"},
+    {"Arate",                     1, 0,1,"","Normalised ATP production rate"},
+    {"Irate",                     1, 0,1,"","Normalised rate of production of anabolic intermediates"},
+    {"dividerate",                0, 0,1,"","# divided/hour"},
+    {"Pfraction",                 0, 0,1,"","% pyruvate utilised"},
+    {"G1_phase",                  0, 0,1,"","G1_phase"},
+    {"G1_cp",                     0, 0,1,"","G1_cp"},
+    {"S_phase",                   0, 0,1,"","S_phase"},
+    {"G2_phase",                  0, 0,1,"","G2_phase"},
+    {"G2_cp",                     0, 0,1,"","G2_cp"},
+    {"M_phase",                   0, 0,1,"","M_phase"},
 
 // Profile plots
     {"MULTI",                     1, 0,1,"","Selected constituent on a line through the blob centre"},
