@@ -551,13 +551,13 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "IRL creation rate",
      "Coefficient of rate of creation of irrepairable lesions: eta_IRL"},
 
-     {"RMR_KREP_BASE_1", 0.1, 0, 0,
-     "Base lesion L1 repair rate",
+     {"RMR_KREP_BASE_1", 0.2, 0, 0,
+     "Base PL lesion repair rate",
      "Base coefficient of rate of repair of potentially lethal lesions: Krepair_base (Curtis's epsilon_PL)\n\
      The true repair rate varies linearly from Krepair_base to Krepair_max over the S phase"},
 
-     {"RMR_KREP_MAX_1", 0.8, 0, 0,
-     "Max lesion L1 repair rate",
+     {"RMR_KREP_MAX_1", 2.0, 0, 0,
+     "Max PL lesion repair rate",
      "Maximum coefficient of rate of repair of potentially lethal lesions: Krepair_max (Curtis's epsilon_PL)\n\
      The true repair rate varies linearly from Krepair_base to Krepair_max over the S phase"},
 
@@ -630,13 +630,13 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
       "IRL creation rate",
       "Coefficient of rate of creation of irrepairable lesions: eta_IRL"},
 
-      {"RMR_KREP_BASE_2", 0.1, 0, 0,
-      "Base lesion L1 repair rate",
+      {"RMR_KREP_BASE_2", 0.2, 0, 0,
+      "Base PL lesion repair rate",
       "Base coefficient of rate of repair of potentially lethal lesions: Krepair_base (Curtis's epsilon_PL)\n\
       The true repair rate varies linearly from Krepair_base to Krepair_max over the S phase"},
 
-      {"RMR_KREP_MAX_2", 0.8, 0, 0,
-      "Max lesion L1 repair rate",
+      {"RMR_KREP_MAX_2", 2.0, 0, 0,
+      "Max PL lesion repair rate",
       "Maximum coefficient of rate of repair of potentially lethal lesions: Krepair_max (Curtis's epsilon_PL)\n\
       The true repair rate varies linearly from Krepair_base to Krepair_max over the S phase"},
 
