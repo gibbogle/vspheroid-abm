@@ -374,6 +374,8 @@ real(REAL_KIND) :: C_O2_bdry
 real(REAL_KIND) :: total_dMdt
 
 ! Metabolism parameters
+real(REAL_KIND) :: f_G_norm ! normal fraction of glycosis (r_G) going to make intermediates
+real(REAL_KIND) :: f_P_norm ! normal fraction of pyruvates (r_P) going to make intermediates
 real(REAL_KIND) :: N_GA		! number of ATP molecules generated per glucose molecule in glycosis
 real(REAL_KIND) :: N_GI		! number of intermediate molecules generated per glucose molecule in glycosis
 real(REAL_KIND) :: N_PA		! number of ATP molecules generated per pyruvate molecule in pyruvate oxidation
@@ -387,6 +389,7 @@ real(REAL_KIND) :: ATPs		! threshold ATP production rates for cell survival
 real(REAL_KIND) :: CO_H		! threshold O2 for Ofactor
 real(REAL_KIND) :: CG_H		! threshold glucose for Gfactor
 type(metabolism_type), target :: metabolic
+!type(metabolism_type), target :: phase_metabolic(3)
 
 integer :: show_progeny
 logical :: use_V_dependence, randomise_initial_volume
@@ -432,12 +435,12 @@ logical :: suppress_growth = .false.
 logical :: use_hysteresis = .false.
 logical :: use_permute = .false.
 logical :: use_gaplist = .true.
-logical :: use_SS = .false.
 logical :: use_integration = .true.
 logical :: use_packer
 logical :: use_volume_method
 logical :: use_cell_cycle
 logical :: use_metabolism
+logical :: noSS = .false.   ! for now, settle on SS method
 logical :: use_constant_growthrate = .false. 
 logical :: colony_simulation
 logical :: medium_change_step

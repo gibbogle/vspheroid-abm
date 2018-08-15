@@ -678,6 +678,14 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
       "Use glucose metabolism",
       "If metabolism is turned on, cell cycle is used, and lactate is simulated.  If metabolism is turned off, lactate is not simulated"},
 
+       {"F_GNORM_1", 0.32, 0, 0,
+       "Normal fraction of glycolysis -> intermediates",
+       "Fraction of glycolysis (r_G) going to make intermediates under conditions of full nutrition"},
+
+       {"F_PNORM_1", 0.6, 0, 0,
+       "Normal fraction of pyruvate -> intermediates",
+        "Fraction of pyruvate (r_P) going to make intermediates under conditions of full nutrition"},
+
      {"N_GA_1", 2, 0, 0,
      "ATP moles produced per glucose mole",
      "Number of ATP moles produced by the glycolysis of one glucose mole"},
@@ -686,11 +694,11 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "ATP moles produced per pyruvate mole",
      "Number of ATP moles produced by the oxidation of one pyruvate mole"},
 
-     {"N_GI_1", 0.4, 0, 0,
+     {"N_GI_1", 1, 0, 0,
      "Intermediate moles produced per glucose mole",
      "Number of moles of anabolic intermediates produced the glycolysis of one glucose mole"},
 
-     {"N_PI_1", 0.4, 0, 0,
+     {"N_PI_1", 3, 0, 0,
      "Intermediate moles produced per pyruvate mole",
      "Number of moles of anabolic intermediates produced the oxidation of one pyruvate mole"},
 
@@ -706,7 +714,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "HIF-1 rate constant K_H",
      "The rate of change of HIF-1 level H is given by: dH/dt = K_H*(Hss - H), where C_O = oxygen concentration, Hss is steady-state level for C_O"},
 
-     {"K_HB_1", 0.2, 0, 0,
+     {"K_HB_1", 3, 0, 0,
      "K_HB",
      "Glycolysis rate = K_HA*(1 + K_HB*H)*C_G^N/(C_G^N + Km^N)\n\
        where: H = HIF-1 level, C_G = glucose concentration, K_HA is maximum glucose consumption rate when H=0, Km and N are the glucose consumption Hill function parameters"},
@@ -731,14 +739,6 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
       {"C_L_NORM_1", 0.0, 0, 0,
       "Nominal normal IC lactate concentration",
       "Nominal normal IC lactate concentration, used to set normal metabolic rates for unconstrained growth"},
-
-//       {"CO_H_1", 0.005, 0, 0,
-//        "Oxygen H threshold for Ofactor",
-//        "When C_O2 < CO_H both f_G and f_P are reduced by Ofactor, which ranges from 0 to 1 when CO_L < C_O2 < CO_H.  CO_L = 0.8*CO_H"},
-
-//       {"CG_H_1", 0.05, 0, 0,
-//        "Glucose H threshold for Gfactor",
-//        "When C_G < CG_H f_G is reduced by Gfactor, which ranges from 0 to 1 when CG_L < C_G < CG_H.  CG_L = 0.8*CG_H"},
 
      {"ATP_S_1", 0.3, 0, 0,
      "ATP production threshold for survival (fraction of peak)",

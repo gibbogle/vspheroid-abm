@@ -469,6 +469,8 @@ end subroutine
 subroutine ReadMetabolismParameters(nf)
 integer :: nf
 
+read(nf,*) f_G_norm
+read(nf,*) f_P_norm
 read(nf,*) N_GA
 read(nf,*) N_PA
 read(nf,*) N_GI
@@ -748,6 +750,8 @@ logical :: ok
 integer :: kcell, ityp
 real(REAL_KIND) :: k_v, tgrowth(MAX_CELLTYPES)
 type(cycle_parameters_type),pointer :: ccp
+type(metabolism_type), pointer :: mp
+
 ok = .true.
 initialized = .false.
 par_zig_init = .false.
@@ -801,10 +805,11 @@ endif
 
 call SetupChemo
 call logger('did SetupChemo')
-if (use_metabolism) then
-	call SetupMetabolism(ok)
+!if (use_metabolism) then
+    mp => metabolic
+	call SetupMetabolism(mp,ok)
 	if (.not.ok) return
-endif
+!endif
 
 ! Assume that Raverage is for cells midway in growth, i.e. between 0.8 and 1.6, at 1.2
 ! as a fraction of the average cell volume, (or, equivalently, between 1.0 and 2.0, at 1.5)
@@ -1328,7 +1333,7 @@ end subroutine
 
 !--------------------------------------------------------------------------------
 ! Add cells at the boundary to bring the total count from k up to initial_count
-! (1) Make a list of all boundary sites (sites in contact with an OUTSIDE site)
+! (1) Make a list of all boundary sites (sites in contact with an OUTSIDE site) 
 ! (2) Iteratively traverse the list to select the adjacent OUTSIDE site closest 
 ! to the centre.
 !--------------------------------------------------------------------------------
