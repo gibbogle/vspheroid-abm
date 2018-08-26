@@ -274,6 +274,9 @@ type drug_type
 	real(REAL_KIND) :: SER_max(MAX_CELLTYPES,0:2)
 	real(REAL_KIND) :: SER_Km(MAX_CELLTYPES,0:2)
 	real(REAL_KIND) :: SER_KO2(MAX_CELLTYPES,0:2)
+	
+	logical :: phase_dependent
+	logical :: active_phase(6)
 end type
 
 type LQ_type

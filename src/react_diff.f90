@@ -40,6 +40,7 @@ use chemokine
 use continuum
 use metabolism
 use ode_solver
+use cycle_mod
 
 use, intrinsic :: iso_c_binding
 
@@ -604,28 +605,34 @@ end subroutine
 ! Would it be best to find the steady-state solution analytically?
 ! 3 simultaneous quadratics... but this approach is wrong, I think.
 ! Updates Cin and dMdt by integrating ODEs for drug and metabolites.
+! Adding phase-drugs (EDU, PI, ...)
+! Currently assuming only metabolite 1
 !-------------------------------------------------------------------------------------------
 subroutine integrate_cell_Cin(ichemo_parent, kcell, dt)
 integer :: ichemo_parent, kcell
 real(REAL_KIND) :: dt
 type(cell_type), pointer :: cp
-integer :: ichemo, ictyp, idrug, im, it
-real(REAL_KIND) :: Vin, Cex(0:2), Cin(0:2), dCdt(0:2), dMdt(0:2), dtt, alfa
+integer :: ichemo, ictyp, idrug, im, it, imax
+real(REAL_KIND) :: Vin, Cex(0:2), Cin(0:2), dCdt(0:2), dMdt(0:2), dtt, alfa, area_factor
 real(REAL_KIND) :: CO2
 real(REAL_KIND) :: Kin(0:2), Kout(0:2), decay_rate(0:2)
 real(REAL_KIND) :: CC2, KO2(0:2), Kmet0(0:2), Vmax(0:2), Km(0:2)
 real(REAL_KIND) :: K1(0:2), K2(0:2)
-real(REAL_KIND) :: a0,a1,a2,b0,b1,b2,c0,c1,c2,d0,d1,d2,a,b,c,d,y0,y1,y2
+!real(REAL_KIND) :: a0,a1,a2,b0,b1,b2,c0,c1,c2,d0,d1,d2,a,b,c,d,y0,y1,y2
 integer :: n_O2(0:2)
 type(drug_type), pointer :: dp
 integer :: nt = 100
 real(REAL_KIND) :: tol = 1.0e-12
-logical :: use_analytic = .false.
+logical :: use_analytic = .false.   ! never use analytic solver
+! phase_drug
+real(REAL_KIND) :: C, Clabel, membrane_flux, KmetC, dCreact, PI_factor
+logical :: phase_drug, active
 
 dtt = dt/nt
 cp => cell_list(kcell)
 ictyp = cp%celltype
 Vin = cp%V
+area_factor = (Vin/Vcell_cm3)**(2./3.)
 CO2 = cp%Cin(OXYGEN)
 !if (kcell == 1) then
 !	write(*,'(a,i4,3e12.3)') 'integrate_cell_Cin: kcell,CO2,Vin,dt: ',kcell,CO2,Vin,dt
@@ -633,8 +640,18 @@ CO2 = cp%Cin(OXYGEN)
 !	write(*,'(a,3e12.3)') 'Cex: ',cp%Cex(DRUG_A:DRUG_A+2)
 !endif
 idrug = (ichemo_parent - DRUG_A)/3 + 1
+if (drug(idrug)%phase_dependent) then
+    phase_drug = .true.
+    imax = 0
+    active = drug(idrug)%active_phase(cp%phase)
+else
+    phase_drug = .false.
+    imax = 2
+    active = .true.
+endif
+
 dp => drug(idrug)
-do im = 0,2
+do im = 0,imax
 	ichemo = ichemo_parent + im
 	Cin(im) = cp%Cin(ichemo)
 	Cex(im) = cp%Cex(ichemo)
@@ -656,71 +673,106 @@ do im = 0,2
 !	endif
 enddo
 if (use_analytic) then
-	a0 = Kin(0)*Cex(0)/Vin
-	a1 = Kin(1)*Cex(1)/Vin
-	a2 = Kin(2)*Cex(2)/Vin
-	b0 = Kout(0)/Vin + decay_rate(0)
-	b1 = Kout(1)/Vin + decay_rate(1)
-	b2 = Kout(2)/Vin + decay_rate(2)
-	c0 = K1(0)*Kmet0(0)
-!	write(*,*) 'K1,Kmet0: ',K1(0),Kmet0(0)
-	c1 = K1(1)*Kmet0(1)
-	c2 = K1(2)*Kmet0(2)
-	d0 = K1(0)*Vmax(0)
-	d1 = K1(1)*Vmax(1)
-	d2 = K1(2)*Vmax(2)
-	a = b0 + c0
-	b = c0*Km(0) + d0 - a0 + b0*Km(0)
-	c = -a0*Km(0)
-	d = sqrt(b*b - 4*a*c)
-!	write(*,*) 'a0,b0,c0: ',a0,b0,c0
-!	write(*,*) 'a,b,c,d: ',a,b,c,d
-	y0 = (-b + d)/(2*a)
-!	write(*,*) 'y0: ',y0
-	
-	a1 = a1 + (a0 - b0*y0)
-	a = b1 + c1
-	b = c1*Km(1) + d1 - a1 + b1*Km(1)
-	c = -a1*Km(1)
-	d = sqrt(b*b - 4*a*c)
-!	write(*,*) 'a1,b1,c1: ',a1,b1,c1
-!	write(*,*) 'a,b,c,d: ',a,b,c,d
-	y1 = (-b + d)/(2*a)
-!	write(*,*) 'y1: ',y1
-	
-	a2 = a2 + (a1 - b1*y1)
-	a = b2 + c2 
-	b = c2*Km(2) + d2 - a2 + b2*Km(2)
-	c = -a2*Km(2)
-	d = sqrt(b*b - 4*a*c)
-	y2 = (-b + d)/(2*a)
-!	write(*,'(a,3e12.4)') 'y: ',y0,y1,y2
-	Cin = [y0,y1,y2]
+!	a0 = Kin(0)*Cex(0)/Vin
+!	a1 = Kin(1)*Cex(1)/Vin
+!	a2 = Kin(2)*Cex(2)/Vin
+!	b0 = Kout(0)/Vin + decay_rate(0)
+!	b1 = Kout(1)/Vin + decay_rate(1)
+!	b2 = Kout(2)/Vin + decay_rate(2)
+!	c0 = K1(0)*Kmet0(0)
+!!	write(*,*) 'K1,Kmet0: ',K1(0),Kmet0(0)
+!	c1 = K1(1)*Kmet0(1)
+!	c2 = K1(2)*Kmet0(2)
+!	d0 = K1(0)*Vmax(0)
+!	d1 = K1(1)*Vmax(1)
+!	d2 = K1(2)*Vmax(2)
+!	a = b0 + c0
+!	b = c0*Km(0) + d0 - a0 + b0*Km(0)
+!	c = -a0*Km(0)
+!	d = sqrt(b*b - 4*a*c)
+!!	write(*,*) 'a0,b0,c0: ',a0,b0,c0
+!!	write(*,*) 'a,b,c,d: ',a,b,c,d
+!	y0 = (-b + d)/(2*a)
+!!	write(*,*) 'y0: ',y0
+!	
+!	a1 = a1 + (a0 - b0*y0)
+!	a = b1 + c1
+!	b = c1*Km(1) + d1 - a1 + b1*Km(1)
+!	c = -a1*Km(1)
+!	d = sqrt(b*b - 4*a*c)
+!!	write(*,*) 'a1,b1,c1: ',a1,b1,c1
+!!	write(*,*) 'a,b,c,d: ',a,b,c,d
+!	y1 = (-b + d)/(2*a)
+!!	write(*,*) 'y1: ',y1
+!	
+!	a2 = a2 + (a1 - b1*y1)
+!	a = b2 + c2 
+!	b = c2*Km(2) + d2 - a2 + b2*Km(2)
+!	c = -a2*Km(2)
+!	d = sqrt(b*b - 4*a*c)
+!	y2 = (-b + d)/(2*a)
+!!	write(*,'(a,3e12.4)') 'y: ',y0,y1,y2
+!	Cin = [y0,y1,y2]
 else
 	cp%dMdt(ichemo_parent:ichemo_parent+2) = 0
-	do it = 1,nt
-		K2(0) = Kmet0(0) + Vmax(0)/(Km(0) + Cin(0))
-		K2(1) = Kmet0(1) + Vmax(1)/(Km(1) + Cin(1))
-		K2(2) = Kmet0(2) + Vmax(2)/(Km(2) + Cin(2))
-		dCdt(0) = Kin(0)*Cex(0)/Vin - Kout(0)*Cin(0)/Vin - decay_rate(0)*Cin(0) - K1(0)*K2(0)*Cin(0)
-		dCdt(1) = Kin(1)*Cex(1)/Vin - Kout(1)*Cin(1)/Vin - decay_rate(1)*Cin(1) - K1(1)*K2(1)*Cin(1) + K1(0)*K2(0)*Cin(0)
-		dCdt(2) = Kin(2)*Cex(2)/Vin - Kout(2)*Cin(2)/Vin - decay_rate(2)*Cin(2) - K1(2)*K2(2)*Cin(2) + K1(1)*K2(1)*Cin(1)
-!		if (kcell == 1) then
-!			write(*,'(a,i4,6e11.3)') 'it,Cin,dCdt: ',it,Cin,dCdt
-!			write(*,'(a,5e12.3)') 'Kin,Kout,Kdecay,K1,K2: ',Kin(0),Kout(0),decay_rate(0),K1(0),K2(0)
-!			write(*,'(a,5e12.3)') 'Cin,Cex,dCdt,Vin,dtt: ',Cin(0),Cex(0),dCdt(0),Vin,dtt
-!		endif
-		do im = 0,2
-			Cin(im) = max(0.0, Cin(im) + dCdt(im)*dtt)
-		enddo
-	enddo
+	if (phase_drug) then
+	    C = Cin(0)
+	    Clabel = Cin(1)
+	    do it = 1,nt    ! the following code is copied from vmonolayer, DrugPhaseSolver (ichemo -> ichemo_parent)
+		    membrane_flux = area_factor*(Kin(0)*Cex(0) - Kout(0)*C)    ! parent flux
+		    if (active) then	! .and. .not.tagged) then
+			    KmetC = Kmet0(0)*C
+			    if (Vmax(0) > 0) then
+				    KmetC = KmetC + Vmax(0)*C/(Km(0) + C)
+			    endif
+!			    dCreact = -(1 - dp%C2(ictyp,0) + dp%C2(ictyp,0)*KO2(0)**n_O2(0)/(KO2(0)**n_O2(0) + CO2**n_O2(0)))*KmetC
+                dCreact = -K1(0)*KmetC
+			    if (trim(dp%name) == 'EDU') then
+				    dCreact = dCreact*cp%dVdt/max_growthrate(ictyp)
+			    endif
+			    if (trim(dp%name) == 'PI') then
+				    if (cp%phase < S_phase) then
+					    PI_factor = 1
+				    elseif (cp%phase > S_phase) then
+					    PI_factor = 2
+				    else
+                        PI_factor = 1 + cp%S_time/cp%S_duration
+				    endif
+				    dCreact = 0.1*PI_factor*dCreact
+				    if (kcell == 1) write(nflog,'(a,2i6,4e12.3)') 'dCreact: ',kcell,it,C,Cex(0),dCreact,membrane_flux/Vin
+			    endif
+			    cp%dCdt(ichemo_parent) = dCreact + membrane_flux/Vin - C*decay_rate(0)
+			    cp%dCdt(ichemo_parent+1) = -dCreact
+			    Clabel = Clabel + dtt*cp%dCdt(ichemo_parent+1)
+		    else
+			    cp%dCdt(ichemo_parent) = membrane_flux/Vin - C*decay_rate(0)	
+		    endif
+		    C = C + dtt*cp%dCdt(ichemo_parent)	!*(1 + (R-0.5)*cov)    	    
+	    enddo
+	else
+	    do it = 1,nt
+		    K2(0) = Kmet0(0) + Vmax(0)/(Km(0) + Cin(0))
+		    K2(1) = Kmet0(1) + Vmax(1)/(Km(1) + Cin(1))
+   		    K2(2) = Kmet0(2) + Vmax(2)/(Km(2) + Cin(2))
+		    dCdt(0) = Kin(0)*Cex(0)/Vin - Kout(0)*Cin(0)/Vin - decay_rate(0)*Cin(0) - K1(0)*K2(0)*Cin(0)
+		    dCdt(1) = Kin(1)*Cex(1)/Vin - Kout(1)*Cin(1)/Vin - decay_rate(1)*Cin(1) - K1(1)*K2(1)*Cin(1) + K1(0)*K2(0)*Cin(0)
+   		    dCdt(2) = Kin(2)*Cex(2)/Vin - Kout(2)*Cin(2)/Vin - decay_rate(2)*Cin(2) - K1(2)*K2(2)*Cin(2) + K1(1)*K2(1)*Cin(1)
+		    do im = 0,2
+			    Cin(im) = max(0.0, Cin(im) + dCdt(im)*dtt)
+		    enddo
+	    enddo
+	endif
 endif
-do im = 0,2
-	cp%dMdt(ichemo_parent+im) = Kin(im)*Cex(im) - Kout(im)*Cin(im)
-	cp%Cin(ichemo_parent+im) = Cin(im)
-enddo
-!if (kcell == 1) write(*,'(a,3e12.3)') 'Cin: ',Cin(0:2)
-!if (kcell == 1) write(*,'(a,2f7.4,3e12.3)') 'integrate_Cin: Cex,Cin,Kin,Kout,dMdt: ',Cex(0),Cin(0),Kin(0),Kout(0),cp%dMdt(ichemo_parent)
+if (phase_drug) then
+    cp%Cin(ichemo_parent) = C
+    cp%Cin(ichemo_parent+1) = Clabel    !*(1 + (par_uni(kpar)-0.5)*cov) ! don't need this
+    cp%dMdt(ichemo_parent) = membrane_flux
+else
+    do im = 0,2
+	    cp%dMdt(ichemo_parent+im) = area_factor*(Kin(im)*Cex(im) - Kout(im)*Cin(im))
+	    cp%Cin(ichemo_parent+im) = Cin(im)
+    enddo
+endif
 
 end subroutine
 

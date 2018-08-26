@@ -559,6 +559,16 @@ do idrug = 1,Ndrugs_used
             drug(idrug)%KO2(ictyp,im) = 1.0e-3*drug(idrug)%KO2(ictyp,im)					! um -> mM
             drug(idrug)%kill_duration(ictyp,im) = 60*drug(idrug)%kill_duration(ictyp,im)	! min -> sec
 		enddo
+	    if (drug(idrug)%name == 'EDU') then
+			drug(idrug)%nmetabolites = 1
+			drug(idrug)%phase_dependent = .true.
+			drug(idrug)%active_phase(S_phase) = .true.
+		endif
+	    if (drug(idrug)%name == 'PI') then
+			drug(idrug)%nmetabolites = 1
+			drug(idrug)%phase_dependent = .true.
+			drug(idrug)%active_phase(1:6) = .true.
+		endif
     enddo
     write(nflog,*) 'drug: ',idrug,drug(idrug)%classname,'  ',drug(idrug)%name
 enddo
