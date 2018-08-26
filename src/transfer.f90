@@ -58,6 +58,9 @@ do kcell = 1,nlist
 	enddo
 	iphase = min(cp%phase,M_phase)
 	nphase(iphase) = nphase(iphase) + 1
+	if (iphase == S_phase) then
+	    if (.not.cp%arrested) nphase(7) = nphase(7) + 1
+	endif
 enddo
 end subroutine
 
@@ -208,7 +211,9 @@ integer :: status
 !	status = 2	! tagged to die of anoxia
 !elseif (cp%aglucosia_tag) then
 !	status = 4	! tagged to die of aglucosia
-if (cp%radiation_tag) then
+if (cp%state == DYING) then
+    status = 2
+elseif (cp%radiation_tag) then
 	status = 11
 elseif (cp%drug_tag(1)) then
 	status = 12
@@ -2245,7 +2250,7 @@ use, intrinsic :: iso_c_binding
 real(c_double) :: summaryData(*)
 integer(c_int) :: i_hypoxia_cutoff,i_growth_cutoff
 !integer :: Nviable(MAX_CELLTYPES)
-integer :: nhypoxic(3), nclonohypoxic(3), ngrowth(3), nogrow(MAX_CELLTYPES), nphase(6), &
+integer :: nhypoxic(3), nclonohypoxic(3), ngrowth(3), nogrow(MAX_CELLTYPES), nphase(6+1), &
     medium_oxygen, medium_glucose, medium_lactate, medium_drug(2,0:2), &
     bdry_oxygen, bdry_glucose, bdry_lactate, bdry_drug(2,0:2)
 integer :: TNradiation_dead, TNdrug_dead(2),  TNdead, TNviable, TNnonviable, TNATP_dead, TNnogrow, &
@@ -2253,7 +2258,7 @@ integer :: TNradiation_dead, TNdrug_dead(2),  TNdead, TNviable, TNnonviable, TNA
            TNtagged_ATP, TNtagged_radiation, TNtagged_drug(2)
 integer :: ityp, i, im, idrug
 real(REAL_KIND) :: diam_um,  npmm3, Tplate_eff
-real(REAL_KIND) :: hypoxic_fraction, clonohypoxic_fraction(3), growth_fraction, nogrow_fraction, viable_fraction, phase_fraction(6)
+real(REAL_KIND) :: hypoxic_fraction, clonohypoxic_fraction(3), growth_fraction, nogrow_fraction, viable_fraction, phase_fraction(6+1)
 real(REAL_KIND) :: diam_cm, vol_cm3, vol_mm3, hour, necrotic_fraction, doubling_time, plate_eff(MAX_CELLTYPES)
 real(REAL_KIND) :: volume_cm3(5), maxarea(5), diameter_um(5)
 real(REAL_KIND) :: cmedium(MAX_CHEMO), cbdry(MAX_CHEMO)
@@ -2341,7 +2346,7 @@ else
     doubling_time = 0
 endif
 
-summaryData(1:54) = [ rint(istep), rint(Ncells), rint(TNviable), rint(TNnonviable), &
+summaryData(1:55) = [ rint(istep), rint(Ncells), rint(TNviable), rint(TNnonviable), &
 	rint(TNATP_dead), rint(TNdrug_dead(1)), rint(TNdrug_dead(2)), rint(TNradiation_dead), rint(TNdead), &
     rint(TNtagged_ATP), rint(TNtagged_drug(1)), rint(TNtagged_drug(2)), rint(TNtagged_radiation), &
 	diam_um, vol_mm3, &
@@ -2351,8 +2356,8 @@ summaryData(1:54) = [ rint(istep), rint(Ncells), rint(TNviable), rint(TNnonviabl
 	cmedium(OXYGEN), cmedium(GLUCOSE), cmedium(LACTATE), cmedium(DRUG_A:DRUG_A+2), cmedium(DRUG_B:DRUG_B+2), &
 	cbdry(OXYGEN), cbdry(GLUCOSE), cbdry(LACTATE), cbdry(DRUG_A:DRUG_A+2), cbdry(DRUG_B:DRUG_B+2), &
 	doubling_time, r_G, r_P, r_A, r_I, rint(ndoublings), P_utilisation, &
-	100*phase_fraction(1:6)]
-write(nfres,'(a,a,2a12,i8,7e12.4,21i7,39e12.4)') trim(header),' ',gui_run_version, dll_run_version, &
+	100*phase_fraction(1:7)]
+write(nfres,'(a,a,2a12,i8,7e12.4,21i7,40e12.4)') trim(header),' ',gui_run_version, dll_run_version, &
 	istep, hour, vol_mm3, diameter_um, &
 	Ncells_type(1:2), TNviable, TNnonviable, &
 	NATP_dead(1:2), Ndrug_dead(1,1:2), Ndrug_dead(2,1:2), Nradiation_dead(1:2), TNdead, &
@@ -2363,7 +2368,7 @@ write(nfres,'(a,a,2a12,i8,7e12.4,21i7,39e12.4)') trim(header),' ',gui_run_versio
 	cmedium(OXYGEN), cmedium(GLUCOSE), cmedium(LACTATE), cmedium(DRUG_A:DRUG_A+2), cmedium(DRUG_B:DRUG_B+2), &
 	cbdry(OXYGEN), cbdry(GLUCOSE), cbdry(LACTATE), cbdry(DRUG_A:DRUG_A+2), cbdry(DRUG_B:DRUG_B+2), &
 	doubling_time, r_G, r_P, r_A, r_I, real(ndoublings), P_utilisation, &
-	100*phase_fraction(1:6)
+	100*phase_fraction(1:7)
 		
 call sum_dMdt(GLUCOSE)
 

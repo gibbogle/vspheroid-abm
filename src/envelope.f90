@@ -57,7 +57,7 @@ subroutine getVolume(iregion,volume,maxarea)
 integer :: iregion
 real(REAL_KIND) :: volume, maxarea
 real(REAL_KIND) :: z, zmin, zmax, r, cntr(2)
-integer :: kcell, iz, nzz, nbig, nzlmax, i
+integer :: kcell, iz, nzz, nbig, nzlmax, i, nc
 type(cell_type), pointer :: cp
 
 if (iregion == 1) then
@@ -66,6 +66,7 @@ if (iregion == 1) then
 endif
 zmin = 1.0e10
 zmax = -1.0e10
+nc = 0
 do kcell = 1,nlist
 	if (cell_list(kcell)%state == DEAD) cycle
 	cp => cell_list(kcell)
@@ -74,9 +75,15 @@ do kcell = 1,nlist
 		i = iregion - 1
 		if (cp%Cin(OXYGEN) > O2cutoff(i)) cycle
 	endif
+	nc = nc+1
 	zmin = min(zmin,z)
 	zmax = max(zmax,z)
 enddo
+if (nc == 0) then
+    volume = 0
+    maxarea = 0
+    return
+endif
 zmin = zmin - dz
 zmax = zmax + dz
 nzz = (zmax-zmin)/dz + 1

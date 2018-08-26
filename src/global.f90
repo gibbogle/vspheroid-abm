@@ -162,7 +162,7 @@ type cell_type
 	real(REAL_KIND) :: wt(8)
 	
 	integer :: nbrs
-	type(neighbour_type) :: nbrlist(NBR_LIST_MAX+10)
+	type(neighbour_type) :: nbrlist(NBR_LIST_MAX+20)
 	real(REAL_KIND) :: Cin(NCONST)
 	real(REAL_KIND) :: Cex(NCONST)
 	real(REAL_KIND) :: dCdt(NCONST)
@@ -181,10 +181,11 @@ type cell_type
 	! Cell cycle 
     integer :: phase
     logical :: G1_flag, G1S_flag, G2_flag, G2M_flag
-    real(REAL_KIND) :: G1_time, S_time, G2_time
+    real(REAL_KIND) :: G1_time, S_time, G2_time, S_duration
     real(REAL_KIND) :: G1_V, S_V, G2_V
     real(REAL_KIND) :: G1S_time, G2M_time, M_time
     real(REAL_KIND) :: doubling_time
+    logical :: arrested ! for S-phase arrest
     real(REAL_KIND) :: S_start_time	! for PI labelling
     integer :: NL1, NL2(2)
 
@@ -201,9 +202,7 @@ type cycle_parameters_type
     real(REAL_KIND) :: G1_mean_delay, G2_mean_delay
     real(REAL_KIND) :: Pk_G1, Pk_G2
     real(REAL_KIND) :: apoptosis_rate
-!    real(REAL_KIND) :: eta_PL, eta_L(2), Kcp
-!    real(REAL_KIND) :: Krepair_base, Krepair_max, Kmisrepair(2)
-!    real(REAL_KIND) :: Tcp(0:NTCP)
+    real(REAL_KIND) :: arrest_threshold
     ! Radiation damage/repair
     real(REAL_KIND) :: eta_PL, Kcp, eta_L(2)
     real(REAL_KIND) :: Krepair_base, Krepair_max, Kmisrepair	!(2)

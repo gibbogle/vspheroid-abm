@@ -381,7 +381,7 @@ medium_drugA medium_drugA_metab1 medium_drugA_metab2 medium_drugB medium_drugB_m
 bdry_oxygen bdry_glucose bdry_lactate &
 bdry_drugA bdry_drugA_metab1 bdry_drugA_metab2 bdry_drugB bdry_drugB_metab1 bdry_drugB_metab2 &
 doubling_time glycolysis_rate pyruvate_oxidation_rate ATP_rate intermediates_rate Ndivided pyruvate_oxidised_fraction &
-G1_phase G1_checkpoint S_phase G2_phase G2_checkpoint M_phase'
+G1_phase G1_checkpoint S_phase G2_phase G2_checkpoint M_phase S_phase_nonarrest'
 
 write(logmsg,*) 'Opened nfout: ',outputfile
 call logger(logmsg)
@@ -413,6 +413,7 @@ read(nf,*) ccp%T_M
 read(nf,*) ccp%G1_mean_delay
 read(nf,*) ccp%G2_mean_delay
 read(nf,*) ccp%Apoptosis_rate
+read(nf,*) ccp%arrest_threshold
 read(nf,*) ccp%eta_PL
 read(nf,*) ccp%eta_IRL
 read(nf,*) ccp%Krepair_base
@@ -1254,8 +1255,10 @@ do iphase = 1,6
 			cp%t_divide_last = -(phase_time(1) + y*phase_time(2))
 		elseif (iphase == S_phase) then
 			cp%phase = S_phase
-			cp%S_start_time = -y*phase_time(3)
-			cp%S_time = z*phase_time(3)
+!			cp%S_start_time = -y*phase_time(3)
+!			cp%S_time = z*phase_time(3)
+			cp%S_time = y*phase_time(3)     ! for S phase this is progress, not end time
+			cp%S_duration = phase_time(3)
 			cp%V = V0 + (phase_time(1) + y*phase_time(3))*rVmax 
 			cp%t_divide_last = -(phase_time(1) + phase_time(2) + y*phase_time(3))
 		elseif (iphase == G2_phase) then
@@ -1916,7 +1919,6 @@ subroutine squeezer
 integer :: igap, kcell, nlist0
 
 if (ngaps == 0) return
-write(*,*) 'squeezer: ngaps: ',ngaps
 !do igap = 1,ngaps
 !	kcell = gaplist(igap)
 !	if (

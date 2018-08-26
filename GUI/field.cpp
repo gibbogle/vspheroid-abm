@@ -711,10 +711,10 @@ void Field::displayField(int hr, int *res)
                 rgbcol[0] = 50;
                 rgbcol[1] = 100;
                 rgbcol[2] = 32;
-            } else if (status == 2 || status == 4) {    // tagged to die of starvation
-                rgbcol[0] = 0;
+            } else if (status == 2 || status == 4) {    // tagged to die of ATP starvation
+                rgbcol[0] = 255;
                 rgbcol[1] = 0;
-                rgbcol[2] = 255;
+                rgbcol[2] = 0;
             } else if (status == 3) {                   // mitosis
                 rgbcol[0] = 255;
                 rgbcol[1] = 0;

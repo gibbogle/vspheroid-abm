@@ -664,7 +664,7 @@ logical :: divide, drug_killed(2), radiation_killed
 integer :: k, ityp, idrug, prev_phase, kpar=0
 type(cell_type), pointer :: cp
 type(cycle_parameters_type), pointer :: ccp
-real(REAL_KIND) :: rr(3), c(3), rad, d_desired, R, pdeath, mitosis_duration
+real(REAL_KIND) :: rr(3), c(3), rad, d_desired, R, pdeath, mitosis_duration, deviation, rad0
 logical :: mitosis_entry, in_mitosis, tagged
 logical :: dbug
 
@@ -782,29 +782,35 @@ radiation_killed = .false.
 	if (in_mitosis) then
 		do idrug = 1,ndrugs_used
 			if (cp%drug_tag(idrug)) then
-!				call CellDies(kcell,cp)
-!				changed = .true.
-!				Ndrug_dead(idrug,ityp) = Ndrug_dead(idrug,ityp) + 1
-!				cycle
 				drug_killed(idrug) = .true.
 				return
 			endif
 		enddo
-!		if (drugkilled) cycle
 
 		cp%mitosis = (tnow - cp%t_start_mitosis)/mitosis_duration
 		d_desired = max(cp%mitosis*cp%d_divide,small_d)
 		rr = cp%centre(:,2) - cp%centre(:,1)
 		cp%d = sqrt(dot_product(rr,rr))
+		deviation = (cp%d - d_desired)/d_desired
 !		rr = rr/cp%d	! axis direction
 		c = (cp%centre(:,1) + cp%centre(:,2))/2
 		cp%site = c/DELTA_X + 1
-		call cubic_solver(d_desired,cp%V,rad)
-		cp%radius = rad
-		if (cp%d > 2*rad) then	! completion of mitosis - note that this overrides cp%phase
-			write(logmsg,'(a,i6,2e12.3,f7.3)') 'divides: d > 2*rad: ',kcell,cp%d,rad,cp%mitosis
-			call logger(logmsg)
-			divide = .true.
+!		call cubic_solver(d_desired,cp%V,rad)
+        if (cp%d > cp%d_divide) then
+            divide = .true.
+        else
+		    call cubic_solver(d_desired,cp%V,rad)
+		    cp%radius = rad
+!		    if (cp%d > 0.75*cp%d_divide/2 .and. abs(deviation) > 0.2) then
+!		        write(logmsg,'(a,i8,f8.4)') 'deviation: ',kcell,deviation
+!			    call logger(logmsg)
+!		    endif
+!		    if (cp%d > 2*rad) then	! completion of mitosis - note that this overrides cp%phase 
+!			    write(logmsg,'(a,i6,2e12.3,f7.3)') 'divides: d > 2*rad: ',kcell,cp%d,rad,cp%mitosis
+!			    call logger(logmsg)
+!			    write(nflog,'(a,6e12.3)') 'centre(1),centre(2): ',cp%centre(:,1),cp%centre(:,2)
+!			    divide = .true.
+!		    endif
 		endif
 			
 		if (use_volume_method) then
@@ -827,22 +833,13 @@ radiation_killed = .false.
 			if (cp%radiation_tag) then
 				R = par_uni(kpar)
 				if (R < cp%p_rad_death) then
-!					call CellDies(kcell,cp)
-!					changed = .true.
-!					Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
-!					cycle
 					radiation_killed = .true.
 					return
 				endif
 			endif		
 		else
 		    ! Check for cell death by radiation lesions
-!		    if (cp%NL1 > 0 .or. cp%NL2(2) > 0) then
 			if (cp%radiation_tag) then
-!				call CellDies(kcell,cp)
-!				changed = .true.
-!				Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
-!				cycle
 				radiation_killed = .true.
 				return
 			endif		        
@@ -1009,6 +1006,7 @@ else
 	    endif
     endif
 endif
+dVdt = dVdt/cp%fg   ! apply growth factor here instead of in cycle
 !if (cp%dVdt == 0) then
 !    write(nflog,*) 'get_dVdt: = 0'
 !    write(*,*) 'get_dVdt: dVdt = 0'
@@ -1266,7 +1264,8 @@ endif
 !if (use_metabolism .and. cp1%dVdt == 0) then
 !	cp1%dVdt = (cp1%metab%I_rate/cp1%metab%I_rate_max)*max_growthrate(ityp)
 !endif
-cp1%G1_time = tnow + (max_growthrate(ityp)/cp1%dVdt)*cp1%fg*ccp%T_G1    ! time spend in G1 varies inversely with dV/dt
+!cp1%G1_time = tnow + (max_growthrate(ityp)/cp1%dVdt)*cp1%fg*ccp%T_G1    ! time spend in G1 varies inversely with dV/dt
+cp1%G1_time = tnow + (max_growthrate(ityp)/cp1%dVdt)*ccp%T_G1    ! time spend in G1 varies inversely with dV/dt
 
 if (.not.colony_simulation) then
     nbrs0 = cp1%nbrs

@@ -1194,6 +1194,7 @@ yb2 = yb0 + idyb
 zb1 = 1
 zb2 = (NZ-1)/NRF + 1
 
+if (.not.chemo(ichemo)%constant) then
 !write(nflog,'(a,6i4)') 'interpolate_Cave: xb1,xb2,...: ',xb1,xb2,yb1,yb2,zb1,zb2
 !write(nflog,*) 'Cave_b(14,14,9): ',Cave_b(14,14,9)
 csum = 0
@@ -1333,9 +1334,14 @@ chemo(ichemo)%fine_grid_cbnd = csum/ncsum		! average concentration on the bounda
 if (dbug .and. ichemo >= DRUG_A) then
     write(*,'(a,i2,i6,e12.3)') 'finegrid_Cbnd (bdry of fine grid): ',ichemo,ncsum,chemo(ichemo)%fine_grid_cbnd
 endif
+endif
+
+if (chemo(ichemo)%constant) then
+    chemo(ichemo)%fine_grid_cbnd = chemo(ichemo)%bdry_conc
+endif
 ! Try putting average conc everywhere on the boundary to see if it still
 ! results in asymetry of the profile at low O2
-if (use_bdryaverage) then
+if (use_bdryaverage .or. chemo(ichemo)%constant) then
 	write(*,'(a,i2,f8.5)') 'finegrid bdry average: ',ichemo,chemo(ichemo)%fine_grid_cbnd
 	do iyb = yb1,yb2-1
 		iy0 = (iyb - yb0)*NRF + (NY+1)/2
@@ -1771,7 +1777,7 @@ endif
 !$omp parallel do private(Cave, Cprev, Fprev, Fcurr, a, x, rhs, ix, iy, iz, ixb, iyb, izb, it, done, ichemo, icc, k, Csum, dCsum, msum, iters, ichemof, im, im1, im2, ierr)
 do ic = 1,nfinemap
 	ichemof = finemap(ic)
-	if (chemo(ichemof)%constant) cycle
+!	if (chemo(ichemof)%constant) cycle  !try removing this - we want only bdry of fine grid constant
 	allocate(rhs(nrow))
 	allocate(x(nrow))
 !	allocate(a(MAX_CHEMO*nrow))
@@ -1912,10 +1918,10 @@ tdiff = t1 - t0
 ! This updates Cex, Cin and dMdt, grid fluxes
 if (use_metabolism) then
 	call update_IC
-	if (Ncells > nspeedtest) then
-		call speedtest
-		nspeedtest = nspeedtest + 10000
-	endif
+!	if (Ncells > nspeedtest) then
+!		call speedtest
+!		nspeedtest = nspeedtest + 10000
+!	endif
 endif
 
 tmetab = mytimer() - t1

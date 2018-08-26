@@ -326,6 +326,12 @@ GRAPH_SET tsGraphSet[] = {
     "% of cells in M phase",
     53, false, 0, 0.001, 0, TS_TYPE},
 
+    {"S_phase_nonarrest",
+    "S phase non-arrested %",
+    "%",
+    "% of non-arrested cells in S phase",
+    54, false, 0, 0.001, 0, TS_TYPE},
+
 // Extracellular profiles
 
     {"MULTI",

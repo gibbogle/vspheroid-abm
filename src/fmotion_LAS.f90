@@ -69,7 +69,7 @@ if (ncells <= 1 .and. cell_list(1)%Iphase) then
 endif
 allocate(force(3,ncells,2))
 allocate(famp(ncells,2))
-allocate(biglist(ncells/10))
+allocate(biglist(ncells/5))     ! was /10, gave array bound exceeded
 allocate(big(ncells))
 
 if (ncells < 500) then

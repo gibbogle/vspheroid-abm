@@ -542,6 +542,10 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "Apoptosis rate/hr",
      "The rate of passage from state = DYING to state = DEAD, probability/hour"},
 
+     {"ARREST_THRESHOLD_1", 0.1, 0, 0,
+     "Arrest threshold",
+     "Threshold level of fraction of maximum growth rate that causes arrest in S phase"},
+
 
      {"RMR_ETA_PL_1", 35, 0, 0,
      "PL lesion creation rate",
@@ -620,6 +624,10 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
       {"APOPTOSIS_RATE_2", 0.1, 0, 0,
       "Apoptosis rate/hr",
       "The rate of passage from state = DYING to state = DEAD, probability/hour"},
+
+      {"ARREST_THRESHOLD_2", 0.1, 0, 0,
+      "Arrest threshold",
+      "Threshold level of fraction of maximum growth rate that causes arrest in S phase"},
 
 
       {"RMR_ETA_PL_2", 35, 0, 0,
@@ -1199,6 +1207,7 @@ A small value (e.g. 10) gives a more squashed spheroid, while a large value (e.g
     {"G2_phase",                  0, 0,1,"","G2_phase"},
     {"G2_cp",                     0, 0,1,"","G2_cp"},
     {"M_phase",                   0, 0,1,"","M_phase"},
+    {"S_phase_nonarrest",         0, 0,1,"","S_phase_nonarrest"},
 
 // Profile plots
     {"MULTI",                     1, 0,1,"","Selected constituent on a line through the blob centre"},
