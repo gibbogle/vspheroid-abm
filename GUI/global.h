@@ -146,7 +146,7 @@ namespace Global
     extern bool only2colours2D;
     extern QColor celltype_colour[3];
 
-    extern int volume_scaling;
+    extern bool volume_scaling;
 
     extern bool simulate_colony;
     extern double colony_days;

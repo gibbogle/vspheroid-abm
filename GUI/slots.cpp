@@ -452,13 +452,7 @@ void MainWindow::on_pushButton_update_FACS_Histo_clicked()
 //--------------------------------------------------------------------------------------------------------
 void MainWindow::on_checkBox_volume_scaling_toggled(bool checked)
 {
-    if (checked) {
-        Global::volume_scaling = 1;
-        LOG_MSG("volume_scaling: on");
-    } else {
-        Global::volume_scaling = 0;
-        LOG_MSG("volume_scaling: off");
-    }
+    Global::volume_scaling = checked;
 }
 
 //--------------------------------------------------------------------------------------------------------
@@ -474,7 +468,7 @@ void MainWindow::on_cbox_USE_DIVIDE_TIME_DIST_toggled(bool checked)
 //--------------------------------------------------------------------------------------------------------
 void MainWindow::on_pushButton_saveHisto_clicked()
 {
-    saveHistoImage();
+    saveHistoImage(checkBox_save_histo_data->isChecked());
 }
 
 //--------------------------------------------------------------------------------------------------------

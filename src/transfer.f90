@@ -548,17 +548,15 @@ end subroutine
 
 !-----------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------
-subroutine get_FACS(facs_data, vmin, vmax, volume_scaling) BIND(C)
+subroutine get_FACS(facs_data, vmin, vmax, scale_drug_by_vol) BIND(C)
 !DEC$ ATTRIBUTES DLLEXPORT :: get_facs
 use, intrinsic :: iso_c_binding
-integer(c_int),value :: volume_scaling
 real(c_double) :: val, facs_data(*), vmin(*), vmax(*)
+logical(c_bool),value :: scale_drug_by_vol
 integer :: k, kcell, iextra, ichemo, ivar, nvars, var_index(32)
 real(REAL_KIND) :: cfse_min, Vcell_pL
-logical :: volscale
 
 write(nflog,*) 'get_FACS'
-volscale = (volume_scaling == 1)
 nvars = 1	! CFSE
 var_index(nvars) = 0
 do ichemo = 1,MAX_CHEMO
@@ -584,6 +582,9 @@ do kcell = 1,nlist
 			cfse_min = min(val,cfse_min)
 		elseif (ichemo <= MAX_CHEMO) then
 			val = cell_list(kcell)%Cin(ichemo)
+			if (ichemo >= DRUG_A) then
+			    val = val*Vcell_pL
+			endif
 		elseif (ichemo == GROWTH_RATE) then
 			val = cm3_pL*cell_list(kcell)%dVdt
 		elseif (ichemo == CELL_VOLUME) then
@@ -592,9 +593,6 @@ do kcell = 1,nlist
 			val = Vcell_pL*cell_list(kcell)%Cin(OXYGEN)
 		elseif (ichemo == CYCLE_PHASE) then
 			val = cell_list(kcell)%phase
-		endif
-		if (volscale .and. (ichemo >= DRUG_A .and. ichemo <= DRUG_B + 2)) then
-			val = val*Vcell_pL
 		endif
 		k = k+1
 		facs_data(k) = val
@@ -614,12 +612,13 @@ end subroutine
 !                          3 = type 2
 ! Stack three cases in vmax() and histo_data()
 !-----------------------------------------------------------------------------------------
-subroutine get_histo(nhisto, histo_data, vmin, vmax, histo_data_log, vmin_log, vmax_log, volume_scaling) BIND(C)
+subroutine get_histo(nhisto, histo_data, vmin, vmax, histo_data_log, vmin_log, vmax_log, scale_drug_by_vol) BIND(C)
 !DEC$ ATTRIBUTES DLLEXPORT :: get_histo
 use, intrinsic :: iso_c_binding
-integer(c_int),value :: nhisto, volume_scaling
+integer(c_int),value :: nhisto
 real(c_double) :: vmin(*), vmax(*), histo_data(*)
 real(c_double) :: vmin_log(*), vmax_log(*), histo_data_log(*)
+logical(c_bool),value :: scale_drug_by_vol
 real(REAL_KIND) :: val, val_log, Vcell_pL
 integer :: n(3), i, ih, k, kcell, ict, ichemo, ivar, nvars, var_index(32)
 integer,allocatable :: cnt(:,:,:)
@@ -628,12 +627,10 @@ integer,allocatable :: cnt_log(:,:,:)
 integer :: phase_cnt(3,7), ivar_phase
 real(REAL_KIND),allocatable :: dv_log(:,:), valmin_log(:,:), valmax_log(:,:)
 type(cell_type), pointer :: cp
-logical :: volscale
 !real(REAL_KIND) :: vmin_log(100), vmax_log(100)
 !real(REAL_KIND),allocatable :: histo_data_log(:)
 
-volscale = (volume_scaling == 1)
-write(nflog,*) 'get_histo: histogram using volume scaling for drugs: ',volume_scaling,' ',volscale
+write(nflog,*) 'get_histo: histogram using volume scaling for drugs: ',scale_drug_by_vol
 nvars = 1	! CFSE
 var_index(nvars) = 0
 do ichemo = 1,MAX_CHEMO
@@ -687,7 +684,7 @@ do kcell = 1,nlist
 		elseif (ichemo == CYCLE_PHASE) then
 			val = cp%phase
 		endif
-		if (volscale .and. (ichemo >= DRUG_A .and. ichemo <= DRUG_B + 2)) then
+		if (scale_drug_by_vol .and. (ichemo >= DRUG_A .and. ichemo <= DRUG_B + 2)) then
 			val = val*Vcell_pL
 		endif
 		valmax(ict+1,ivar) = max(valmax(ict+1,ivar),val)	! cell type 1 or 2
@@ -744,7 +741,7 @@ do kcell = 1,nlist
 			phase_cnt(1,cp%phase) = phase_cnt(1,cp%phase) + 1
 			phase_cnt(ict+1,cp%phase) = phase_cnt(ict+1,cp%phase) + 1
 		endif
-		if (volscale .and. (ichemo >= DRUG_A .and. ichemo <= DRUG_B + 2)) then
+		if (scale_drug_by_vol .and. (ichemo >= DRUG_A .and. ichemo <= DRUG_B + 2)) then
 			val = val*Vcell_pL
 		endif
 		k = (val-valmin(1,ivar))/dv(1,ivar) + 1

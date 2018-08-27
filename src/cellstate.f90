@@ -897,7 +897,7 @@ subroutine growcell(cp, dt)
 type(cell_type), pointer :: cp
 real(REAL_KIND) :: dt
 real(REAL_KIND) :: Cin_0(NCONST), Cex_0(NCONST)		! at some point NCONST -> MAX_CHEMO
-real(REAL_KIND) :: dVdt,  Vin_0, dV, metab_O2, metab_glucose, metab
+real(REAL_KIND) :: dVdt,  Vin_0, dV, metab_O2, metab_glucose, metab, Cdrug(6)
 logical :: oxygen_growth, glucose_growth
 integer :: ityp
 integer :: C_option = 1	! we must use this
@@ -948,19 +948,23 @@ endif
 cp%dVdt = dVdt
 Vin_0 = cp%V
 dV = dVdt*dt
+Cdrug(:) = cp%Cin(DRUG_A:DRUG_B+2)
 if (use_cell_cycle .and. .not.(cp%phase == G1_phase .or. cp%phase == S_phase .or. cp%phase == G2_phase)) then
     dV = 0
 endif
 cp%V = Vin_0 + dV
-if (.not.colony_simulation) then
-    if (C_option == 1) then
-        ! Calculation based on transfer of an extracellular volume dV with constituents, i.e. holding extracellular concentrations constant
-        cp%Cin = (Vin_0*Cin_0 + dV*Cex_0)/(Vin_0 + dV)
-    elseif (C_option == 2) then
-        ! Calculation based on change in volumes without mass transfer of constituents
-        cp%Cin = Vin_0*Cin_0/(Vin_0 + dV)
-    endif
-endif
+cp%Cin(DRUG_A:DRUG_B+2) = Cdrug(:)*Vin_0/cp%V
+
+! This is not needed with the metabolism model, except for drugs
+!if (.not.colony_simulation) then
+!    if (C_option == 1) then
+!        ! Calculation based on transfer of an extracellular volume dV with constituents, i.e. holding extracellular concentrations constant
+!        cp%Cin = (Vin_0*Cin_0 + dV*Cex_0)/(Vin_0 + dV)
+!    elseif (C_option == 2) then
+!        ! Calculation based on change in volumes without mass transfer of constituents
+!        cp%Cin = Vin_0*Cin_0/(Vin_0 + dV)
+!    endif
+!endif
 end subroutine
 
 !-----------------------------------------------------------------------------------------

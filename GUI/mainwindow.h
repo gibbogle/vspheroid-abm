@@ -153,7 +153,8 @@ private slots:
     void on_pushButton_saveHisto_clicked();
     void on_pushButton_saveFACS_clicked();
     void saveFACSImage();
-    void saveHistoImage();
+    void saveHistoImage(bool save_data);
+    void saveHistoData(QString dataFile);
 
     void LoadProtocol(QString);
 //    void SaveProtocol(QString, int);

@@ -89,7 +89,7 @@ namespace Global
     bool only2colours2D;
     QColor celltype_colour[3];
 
-    int volume_scaling;
+    bool volume_scaling;
 
     bool simulate_colony;
     double colony_days;

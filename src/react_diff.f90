@@ -585,19 +585,29 @@ subroutine integrate_Cin(dt)
 real(REAL_KIND) :: dt
 integer :: kcell
 type(cell_type), pointer :: cp
+! Checking
+integer :: n
+real(REAL_KIND) :: csum
 
-!$omp parallel do
+n = 0
+csum = 0
+!!$omp parallel do
 do kcell = 1,nlist
 	cp => cell_list(kcell)
 	if (cp%state == DEAD .or. cp%state == DYING) cycle
 	if (chemo(DRUG_A)%present) then
 		call integrate_cell_Cin(DRUG_A,kcell,dt)
+		n = n+1
+		csum = csum + cp%Cin(DRUG_A+1)
 	endif
 	if (chemo(DRUG_B)%present) then
 		call integrate_cell_Cin(DRUG_B,kcell,dt)
 	endif
 enddo
-!$omp end parallel do
+!!$omp end parallel do
+if (n > 0) then
+    write(nflog,'(a,f8.4)') 'IC Drug A metab1: ',csum/n
+endif
 end subroutine
 
 !-------------------------------------------------------------------------------------------
@@ -717,10 +727,11 @@ else
 	cp%dMdt(ichemo_parent:ichemo_parent+2) = 0
 	if (phase_drug) then
 	    C = Cin(0)
-	    Clabel = Cin(1)
+	    Clabel = cp%Cin(ichemo_parent+1)
 	    do it = 1,nt    ! the following code is copied from vmonolayer, DrugPhaseSolver (ichemo -> ichemo_parent)
 		    membrane_flux = area_factor*(Kin(0)*Cex(0) - Kout(0)*C)    ! parent flux
 		    if (active) then	! .and. .not.tagged) then
+!		        if (it == 1) write(nflog,*) 'active: kcell: ',kcell,C,Clabel
 			    KmetC = Kmet0(0)*C
 			    if (Vmax(0) > 0) then
 				    KmetC = KmetC + Vmax(0)*C/(Km(0) + C)
