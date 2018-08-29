@@ -924,6 +924,7 @@ integer :: ix, iy, iz, kcell, k
 real(REAL_KIND) :: c(3)
 type(cell_type), pointer :: cp
 
+ok = .true.
 !!$omp parallel do private(cp,ix,iy,iz) 
 do kcell = 1,nlist
 	cp => cell_list(kcell)
@@ -2104,9 +2105,9 @@ do kcell = 1,nlist
 !		call OGLSolver(kcell,tstart,dtt,ok)
 !	enddo
 	ichemo = GLUCOSE
-	if (cp%Cin(ichemo) > cp%Cex(ichemo)) then
-		write(nflog,*) 'Cin > Cex: ',kcell,ichemo,cp%Cin(ichemo),cp%Cex(ichemo)
-	endif
+!	if (cp%Cin(ichemo) > cp%Cex(ichemo)) then
+!		write(nflog,*) 'Cin > Cex: ',kcell,ichemo,cp%Cin(ichemo),cp%Cex(ichemo)
+!	endif
 	do ichemo = OXYGEN,LACTATE
 		Kin = chemo(ichemo)%membrane_diff_in
 		Kout = chemo(ichemo)%membrane_diff_out

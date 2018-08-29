@@ -921,6 +921,7 @@ rrsum = 0
 total_dose_time = 0
 !call showallcells
 call averages
+use_permute = .true.
 !if (is_radiation) then
 !	ccp => cc_parameters(1)
 !	call logger('makeTCPradiation')
@@ -1477,6 +1478,7 @@ real(REAL_KIND), parameter :: FULL_NBRLIST_UPDATE_HOURS = 4
 type(cell_type), pointer :: cp
 logical :: ok, done, changed, dotimer
 integer :: count_0, count_1, count_2, count_3, count_rate, count_max
+integer :: ngaplimit = 3000     ! was 2000
 
 !call testmetab
 !call test_finesolver
@@ -1542,12 +1544,6 @@ call DrugChecks
 
 !dt = DELTA_T/NT_CONC
 ! the idea is to accumulate time steps until DELTA_T is reached 
-call make_perm_index(ok)
-if (.not.ok) then
-	call logger('make_perm_index error')
-	res = 4
-	return
-endif
 !if (ncells > nshow) write(*,*) 'start moving'
 
 ! Moved to after diff_solver
@@ -1604,22 +1600,30 @@ ndt = ndt + 1
 
 call make_grid_flux_weights(ok)
 if (.not.ok) then
+    write(nflog,*) 'ERROR: make_grid_flux_weights'
 	res = 8
 	return
 endif
 
-if (ngaps > 2000 .or. mod(istep,nt_nbr) == 0) then
-	if (ngaps > 2000) then
+if (ngaps > ngaplimit .or. mod(istep,nt_nbr) == 0) then
+	if (ngaps > ngaplimit) then
 		call squeezer
 	endif
 	call system_clock(count_0, count_rate, count_max)
 	call setup_nbrlists(ok)
 	if (.not.ok) then
+        write(nflog,*) 'ERROR: setup_nbrlists'
 		res = 5
 		return
 	endif
 	call system_clock(count_1, count_rate, count_max)
 	write(nflog,'(a,f8.2)') 'time: setup_nbrlists: ',real(count_1-count_0)/count_rate
+endif
+call make_perm_index(ok)
+if (.not.ok) then
+	write(nflog,*) 'ERROR: make_perm_index' 
+	res = 4
+	return
 endif
 
 if (use_metabolism) then

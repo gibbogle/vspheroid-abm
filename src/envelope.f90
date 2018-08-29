@@ -75,6 +75,8 @@ do kcell = 1,nlist
 		i = iregion - 1
 		if (cp%Cin(OXYGEN) > O2cutoff(i)) cycle
 	endif
+	if (z < 0) write(nflog,'(a,i6,e12.3)') 'kcell,z: ',kcell, z
+	if (z > 1) write(nflog,'(a,i6,e12.3)') 'kcell,z: ',kcell, z
 	nc = nc+1
 	zmin = min(zmin,z)
 	zmax = max(zmax,z)
@@ -90,6 +92,7 @@ nzz = (zmax-zmin)/dz + 1
 r = (3*Ncells/(4*PI))**(1./3.)
 nbig = PI*r**2
 nbig = 1.5*nbig
+!write(nflog,'(a,i6,2e12.3,2i8)') 'istep,zmin,zmax,nzz,nbig: ',istep,zmin,zmax,nzz,nbig
 ! We need an array to store the cells indicies
 allocate(nzlist(nzz))
 allocate(czlist(nzz,nbig))

@@ -358,60 +358,12 @@ do kcell = 1,nlist
 	endif
 	if (cp%irrepairable) n = n+1
 	call getO2conc(cp,C_O2)
-	if (use_metabolism) then
-		if (cp%metab%A_rate < ATPs) then
-			cp%ATP_tag = .true.
-			NATP_tag(ityp) = NATP_tag(ityp) + 1
-			cp%dVdt = 0
-			call CellDies(kcell,.false.)
-!			cp%state = DYING
-!			Ndying(ityp) = Ndying(ityp) + 1
-			cycle
-		endif
-	else
-	
-#if 0
-		if (cp%anoxia_tag) then
-!			if (tnow >= cp%t_anoxia_die) then
-			if (tnow >= cp%t_anoxia_die .and. par_uni(kpar) < p_tag*dt/DELTA_T) then
-				call CellDies(kcell,cp)
-				changed = .true.
-				Nanoxia_dead(ityp) = Nanoxia_dead(ityp) + 1
-				cycle
-			endif
-		else
-			if (anoxia_death .and. C_O2 < anoxia_threshold) then
-				cp%t_anoxia = cp%t_anoxia + dt
-				if (cp%t_anoxia > t_anoxia_limit) then
-					cp%anoxia_tag = .true.						! tagged to die later
-					cp%t_anoxia_die = tnow + anoxia_death_delay	! time that the cell will die
-					Nanoxia_tag(ityp) = Nanoxia_tag(ityp) + 1
-				endif
-			else
-				cp%t_anoxia = 0
-			endif
-		endif
-		call getGlucoseconc(cp,C_glucose)
-		if (cp%aglucosia_tag) then
-			if (tnow >= cp%t_aglucosia_die) then
-				call CellDies(kcell,cp)
-				changed = .true.
-				Naglucosia_dead(ityp) = Naglucosia_dead(ityp) + 1
-				cycle
-			endif
-		else
-			if (aglucosia_death .and. C_O2 < aglucosia_threshold) then
-				cp%t_aglucosia = cp%t_aglucosia + dt
-				if (cp%t_aglucosia > t_aglucosia_limit) then
-					cp%aglucosia_tag = .true.						    ! tagged to die later
-					cp%t_aglucosia_die = tnow + aglucosia_death_delay	! time that the cell will die
-					Naglucosia_tag(ityp) = Naglucosia_tag(ityp) + 1
-				endif
-			else
-				cp%t_aglucosia = 0
-			endif
-		endif
-#endif
+	if (cp%metab%A_rate < ATPs) then
+		cp%ATP_tag = .true.
+		NATP_tag(ityp) = NATP_tag(ityp) + 1
+		cp%dVdt = 0
+		call CellDies(kcell,.false.)
+		cycle
 	endif
 	do idrug = 1,ndrugs_used	
 		ichemo = DRUG_A + 3*(idrug-1)	
@@ -486,7 +438,6 @@ end subroutine
 ! If the dying cell site is less than a specified fraction f_migrate of the blob radius,
 ! the site migrates towards the blob centre.
 ! %indx -> 0
-! If the site is on the boundary, it is removed from the boundary list, and %indx -> OUTSIDE_TAG
 ! The cell contents should be released into the site.
 !-----------------------------------------------------------------------------------------
 subroutine CellDies(kcell,now)
@@ -499,8 +450,13 @@ integer :: ityp, idrug
 cp => cell_list(kcell)
 ityp = cp%celltype
 if (.not.now) then
-	cp%state = DYING
-	Ndying(ityp) = Ndying(ityp) + 1
+    if (cp%state == DYING) then
+!        write(nflog,'(a,i6,5L2)')  'CellDies: already DYING: ',kcell,cp%radiation_tag,cp%drug_tag, cp%ATP_tag,cp%irrepairable
+        ! probably, cell tagged for irrepairable damage was already tagged for ATP death
+    else
+    	cp%state = DYING
+    	Ndying(ityp) = Ndying(ityp) + 1
+    endif
 !	write(nflog,*) 'CellDies: DYING: ',kcell,Ndying(ityp)
 	return
 endif
@@ -621,9 +577,9 @@ do idrug = 1,2
 		else
     		cp => cell_list(kcell)
 		endif
+		if (cp%state == DYING) cycle
 		ityp = cp%celltype
 		call CellDies(kcell,.false.)
-!		Ndrug_dead(idrug,ityp) = Ndrug_dead(idrug,ityp) + 1
 	enddo
 enddo
 
@@ -635,9 +591,9 @@ do k = 1,nradiation_kill
 	else
 		cp => cell_list(kcell)
 	endif
+	if (cp%state == DYING) cycle
 	ityp = cp%celltype
 	call CellDies(kcell,.false.)
-!	Nradiation_dead(ityp) = Nradiation_dead(ityp) + 1
 enddo
 
 do k = 1,ndivide

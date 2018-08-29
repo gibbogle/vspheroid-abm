@@ -53,7 +53,7 @@ logical :: badforce
 integer, allocatable :: biglist(:)
 logical, allocatable :: big(:)
 real(REAL_KIND), allocatable :: force(:,:,:), famp(:,:)
-real(REAL_KIND) :: fmax, fsump(0:8), fave, fbig, dx1(3), dx2(3), f(3), F2(3,2), ddt_move
+real(REAL_KIND) :: fmax, fsump(0:8), fave, fbig, dx1(3), dx2(3), f(3), F2(3,2), ddt_move,dzmax,fsum
 real(REAL_KIND) :: big_factor = 5
 integer :: nits = 5	! was 10
 type(cell_type), pointer :: cp, cp1
@@ -115,8 +115,13 @@ do kpar = 0,tMnodes-1
 	navep(kpar) = navep(kpar) + 1
 	f = force(:,k1,1)
 	famp(k1,1) = sqrt(dot_product(f,f))
+	if (isnan(famp(k1,1))) then
+	    write(nflog,*) 'famp isnan: k1,kcell,state: ',k1,kcell,cp%state
+	    write(*,*) 'famp isnan: k1,kcell,state: ',k1,kcell,cp%state
+	    stop
+	endif
 	fsump(kpar) = fsump(kpar) + famp(k1,1)
-	if (.not.cp%Iphase) then
+	if (.not.cp%Iphase) then    ! in mitosis
 		navep(kpar) = navep(kpar) + 1
 		f = force(:,k1,2)
 		famp(k1,2) = sqrt(dot_product(f,f))
@@ -125,30 +130,41 @@ do kpar = 0,tMnodes-1
 enddo
 enddo
 !omp end parallel do
-fave = sum(fsump(0:tMnodes-1))/sum(navep(0:tMnodes-1))
+fsum = sum(fsump(0:tMnodes-1))
+if (isnan(fsum)) then
+    write(nflog,*) 'fsum isnan'
+    write(*,*) 'fsum isnan'
+    stop
+endif
+if (sum(navep(0:tMnodes-1)) == 0) then
+    write(nflog,*) 'sum navep = 0'
+    write(*,*) 'sum navep = 0'
+    stop
+endif
+fave = fsum/sum(navep(0:tMnodes-1))
 
 ! Adjust GAS time step
 if (.not.use_cell_radius) then
-do
-	if (dt_move*fave/kdrag > delta_max) then
-		ndt = ndt/2
-!		write(*,'(a,5e12.3,i4)') 'fmover: -ndt: ',dt_move,fmax,kdrag,dt_move*fmax/kdrag,delta_min,ndt
-		if (ndt <= 1) then
-			ndt = 1
-			dt_move = ndt*delta_tmove
-			exit
-		endif
-	elseif (dt_move*fave/kdrag < delta_min) then
-		ndt = ndt + 1
-!		write(*,'(a,5e12.3,i4)') 'fmover: +ndt: ',dt_move,fmax,kdrag,dt_move*fmax/kdrag,delta_min,ndt
-		if (ndt >= ndt_max) then
-			ndt = ndt_max
-			dt_move = ndt*delta_tmove
-			exit
-		endif
-	endif
-	exit
-enddo
+    do
+	    if (dt_move*fave/kdrag > delta_max) then
+		    ndt = ndt/2
+    !		write(*,'(a,5e12.3,i4)') 'fmover: -ndt: ',dt_move,fmax,kdrag,dt_move*fmax/kdrag,delta_min,ndt
+		    if (ndt <= 1) then
+			    ndt = 1
+			    dt_move = ndt*delta_tmove
+			    exit
+		    endif
+	    elseif (dt_move*fave/kdrag < delta_min) then
+		    ndt = ndt + 1
+    !		write(*,'(a,5e12.3,i4)') 'fmover: +ndt: ',dt_move,fmax,kdrag,dt_move*fmax/kdrag,delta_min,ndt
+		    if (ndt >= ndt_max) then
+			    ndt = ndt_max
+			    dt_move = ndt*delta_tmove
+			    exit
+		    endif
+	    endif
+	    exit
+    enddo
 else
 	dt_move = RAVERAGE*kdrag/(fave*30)
 	ndt = min(40.,dt_move/delta_tmove)	! was 30
@@ -159,6 +175,7 @@ if (dt_move + t_fmover > DELTA_T) then
 	done = .true.
 endif
 if (dt_move == 0) return
+!write(nflog,'(a,4e12.3)') 'fave,t_fmover,dt_move,ndt: ',fave,t_fmover,dt_move,real(ndt)
 
 ! Tag cells with big forces
 fbig = big_factor*fave
@@ -209,7 +226,8 @@ if (badforce) then
 	stop
 endif
 
-!$omp parallel do private(k1,kcell,cp1,dx1,dx2)
+!dzmax = 0
+!$omp parallel do private(k1,kcell,cp1,dx1,dx2)    !TESTING
 do kpar = 0,tMnodes-1
     do k1 = kfrom(kpar),kto(kpar)
     kcell = perm_index(k1)
@@ -224,10 +242,13 @@ do kpar = 0,tMnodes-1
 		dx2 = dt_move*force(:,k1,2)/kdrag
 		cp1%centre(:,1) = cp1%centre(:,1) + dx1
 		cp1%centre(:,2) = cp1%centre(:,2) + dx2
+!		dzmax = max(dzmax,abs(dx1(3)))
+!		dzmax = max(dzmax,abs(dx2(3)))
 	endif
 enddo
 enddo
 !omp end parallel do
+!write(nflog,'(a,e12.3)') 'dzmax: ',dzmax
 deallocate(force)
 deallocate(famp)
 deallocate(biglist)

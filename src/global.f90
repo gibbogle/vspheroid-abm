@@ -435,7 +435,7 @@ logical :: use_constant_divide_volume = .true.
 logical :: use_new_drugdata = .true.
 logical :: suppress_growth = .false.
 logical :: use_hysteresis = .false.
-logical :: use_permute = .false.
+logical :: use_permute
 logical :: use_gaplist = .true.
 logical :: use_integration = .true.
 logical :: use_packer
