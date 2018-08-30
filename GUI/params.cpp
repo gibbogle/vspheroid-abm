@@ -1174,6 +1174,7 @@ A small value (e.g. 10) gives a more squashed spheroid, while a large value (e.g
     {"growthfraction",            0, 0,1,"","Percentage of cells that are growing at a rate less than the specified fraction of the mean growth rate with no nutrient limits"},
     {"necroticfraction",          0, 0,1,"","Percentage of the spheroid that is necrotic = (number of vacant sites)/(number of sites taken up by the spheroid)"},
     {"nogrowfraction",            1, 0,1,"","Percentage of cells that are not growing (insufficient ATP rate for growth)"},
+    {"clonofraction",             0, 0,1,"","Percentage of cells that are clonogenic (will give a colony >= 50)"},
     {"platingefficiency",         1, 0,1,"","Percentage of live cells that are viable"},
     {"cellspermm3",               1, 0,1,"","Number of cells per mm3 in the blob"},
     {"mediumoxygen",              1, 0,1,"","Average concentration of oxygen in the medium (far-field)"},
@@ -1208,6 +1209,7 @@ A small value (e.g. 10) gives a more squashed spheroid, while a large value (e.g
     {"G2_cp",                     0, 0,1,"","G2_cp"},
     {"M_phase",                   0, 0,1,"","M_phase"},
     {"S_phase_nonarrest",         0, 0,1,"","S_phase_nonarrest"},
+    {"nmutations",                0, 0,1,"","nmutations"},
 
 // Profile plots
     {"MULTI",                     1, 0,1,"","Selected constituent on a line through the blob centre"},

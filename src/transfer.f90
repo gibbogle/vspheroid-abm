@@ -10,6 +10,9 @@ use envelope
 
 implicit none
 
+real(REAL_KIND), allocatable :: SFlookup(:)
+real(REAL_KIND) :: dp_survive
+
 contains
 
 !-----------------------------------------------------------------------------------------
@@ -29,11 +32,13 @@ contains
 ! Should ngrowth(i) include cells at checkpoints?
 ! nogrow is the count of viable cells that are not growing
 !--------------------------------------------------------------------------------
-subroutine getGrowthCount(ngrowth, nogrow, nphase)
-integer :: ngrowth(3), nogrow(:), nphase(:)
-integer :: kcell, i, ityp, iphase
-real(REAL_KIND) :: r_mean(2)
+subroutine getGrowthCount(ngrowth, nogrow, nphase,nmutations,nclono)
+integer :: ngrowth(3), nogrow(:), nphase(:), nmutations, nclono
+integer :: kcell, i, ityp, iphase, nch1, nch2, ip
+real(REAL_KIND) :: r_mean(2), ps1, ps2, ps, rclono, alfa, SF
+real(REAL_KIND) :: N50 = 5.64	! number of divisions to get 50 cells
 type(cell_type), pointer :: cp
+type(cycle_parameters_type), pointer :: ccp
 
 if (use_cell_cycle) then
     r_mean = max_growthrate
@@ -43,6 +48,8 @@ endif
 ngrowth = 0
 nogrow = 0
 nphase = 0
+nmutations = 0
+rclono = 0
 do kcell = 1,nlist
 	cp => cell_list(kcell)
 	ityp = cp%celltype
@@ -61,6 +68,124 @@ do kcell = 1,nlist
 	if (iphase == S_phase) then
 	    if (.not.cp%arrested) nphase(7) = nphase(7) + 1
 	endif
+	nmutations = nmutations + cp%N_Ch1 + cp%N_Ch2
+	ccp => cc_parameters(ityp)
+	if (.not.cp%state == DYING) then
+		nch1 = cp%N_Ch1
+		if (nch1 > 0) then
+			ps1 = ccp%psurvive_Ch1**nch1
+		else
+			ps1 = 1
+		endif
+		nch2 = cp%N_Ch2
+		if (nch2 > 0) then
+			ps2 = ccp%psurvive_Ch2**nch2
+		else
+			ps2 = 1
+		endif
+		ps = ps1*ps2
+		if (ps == 1) then
+			rclono = rclono + 1
+		else
+!			rclono = rclono + ps**N50
+            ip = ps/dp_survive
+            alfa = ps - ip*dp_survive
+            SF = (1-alfa)*SFlookup(ip) + alfa*SFlookup(ip+1)
+		endif
+	endif
+enddo
+nclono = rclono + 0.5
+end subroutine
+
+!--------------------------------------------------------------------------------
+! From the probability of survival of division, estimate the probability of
+! growing a colony with more than Nlim cells.
+!--------------------------------------------------------------------------------
+subroutine clonogenic(ityp, p_survive, Nlim, SF)
+real(REAL_KIND) :: p_survive, SF
+integer :: ityp, Nlim
+real(REAL_KIND) :: R, p_d
+integer :: nc, irun, nruns, idiv, ndiv, n, ntemp, i, kpar = 0
+logical :: ended, dbug
+integer :: n_colony_days = 10
+
+p_d = 1 - p_survive
+dbug = .false.
+nruns = 10000
+ndiv = 24*3600*n_colony_days/divide_time_mean(ityp) + 1
+nc = 0
+do irun = 1,nruns
+	n = 1
+	ended = .false.
+	do idiv = 1,ndiv
+		ntemp = n
+		do i = 1,ntemp
+!			call random_number(R)
+            R = par_uni(kpar)
+			if (R < p_d) then
+				n = n - 1
+				if (n == 0) then
+					ended = .true.
+					exit
+				endif
+			else
+				n = n + 1
+			endif
+	        if (n >= Nlim) then
+	            nc = nc + 1
+	            ended = .true.
+	            exit
+	        endif
+		enddo
+	    if (dbug) then
+	        write(*,*) 'irun, n: ',irun,n
+	    endif
+		if (ended) exit
+	enddo
+!	if (n == 0) then
+!		kbox = 0
+!	else
+!		if (boxsize == 1) then
+!			kbox = n
+!		else
+!			kbox = n/boxsize + 1
+!		endif
+!	endif
+!	if (kbox > nboxes) then
+!		write(*,*) 'Error: irun, n, kbox, nboxes: ',irun, n, kbox, nboxes
+!		stop
+!	endif
+!	ncol(kbox) = ncol(kbox) + 1
+enddo
+SF = nc/real(nruns)
+end subroutine
+
+!--------------------------------------------------------------------------------
+! Generate and store a lookup table for SF as a function of p (division survival prob).
+!--------------------------------------------------------------------------------
+subroutine GenerateSFlookup(ityp)
+integer :: ityp
+integer :: np_survive
+integer :: Nlim = 50
+integer :: i
+real(REAL_KIND) :: p_survive
+
+write(nflog,*)
+write(nflog,*) 'GenerateSFlookup: ityp: ',ityp
+dp_survive = 0.01
+np_survive = 100
+if (allocated(SFlookup)) deallocate(SFlookup)
+allocate(SFlookup(0:np_survive))
+do i = 0,np_survive
+    p_survive = i*dp_survive
+    if (i == 0) then
+        SFlookup(i) = 0
+    elseif (i == np_survive) then
+        SFlookup(i) = 1
+    else
+        call clonogenic(ityp, p_survive, Nlim, SFlookup(i))
+    endif
+    write(nflog,'(i4,2f8.5)') i,p_survive,SFlookup(i)
 enddo
 end subroutine
 
@@ -2247,7 +2372,7 @@ use, intrinsic :: iso_c_binding
 real(c_double) :: summaryData(*)
 integer(c_int) :: i_hypoxia_cutoff,i_growth_cutoff
 !integer :: Nviable(MAX_CELLTYPES)
-integer :: nhypoxic(3), nclonohypoxic(3), ngrowth(3), nogrow(MAX_CELLTYPES), nphase(6+1), &
+integer :: nhypoxic(3), nclonohypoxic(3), ngrowth(3), nogrow(MAX_CELLTYPES), nphase(6+1), nmutations, nclono, &
     medium_oxygen, medium_glucose, medium_lactate, medium_drug(2,0:2), &
     bdry_oxygen, bdry_glucose, bdry_lactate, bdry_drug(2,0:2)
 integer :: TNradiation_dead, TNdrug_dead(2),  TNdead, TNviable, TNnonviable, TNATP_dead, TNnogrow, &
@@ -2255,7 +2380,7 @@ integer :: TNradiation_dead, TNdrug_dead(2),  TNdead, TNviable, TNnonviable, TNA
            TNtagged_ATP, TNtagged_radiation, TNtagged_drug(2)
 integer :: ityp, i, im, idrug
 real(REAL_KIND) :: diam_um,  npmm3, Tplate_eff
-real(REAL_KIND) :: hypoxic_fraction, clonohypoxic_fraction(3), growth_fraction, nogrow_fraction, viable_fraction, phase_fraction(6+1)
+real(REAL_KIND) :: hypoxic_fraction, clonohypoxic_fraction(3), growth_fraction, nogrow_fraction, viable_fraction, clono_fraction, phase_fraction(6+1), rmutations
 real(REAL_KIND) :: diam_cm, vol_cm3, vol_mm3, hour, necrotic_fraction, doubling_time, plate_eff(MAX_CELLTYPES)
 real(REAL_KIND) :: volume_cm3(5), maxarea(5), diameter_um(5)
 real(REAL_KIND) :: cmedium(MAX_CHEMO), cbdry(MAX_CHEMO)
@@ -2296,11 +2421,14 @@ if (TNviable > 0) then
 else
 	clonohypoxic_fraction = 0
 endif		
-call getGrowthCount(ngrowth, nogrow, nphase)
+!call getGrowthCount(ngrowth, nogrow, nphase)
+call getGrowthCount(ngrowth,nogrow,nphase,nmutations,nclono)
 TNnogrow = sum(nogrow(:))
 nogrow_fraction = TNnogrow/real(TNviable)
 growth_fraction = ngrowth(i_growth_cutoff)/real(Ncells)
 phase_fraction = nphase/real(Ncells)
+clono_fraction = nclono/real(Ncells)
+rmutations = (nmutations*1000000.)/Ncells
 !call getNecroticFraction(necrotic_fraction,vol_cm3)
 !necrotic_percent = 100.*necrotic_fraction
 do ityp = 1,Ncelltypes
@@ -2343,29 +2471,29 @@ else
     doubling_time = 0
 endif
 
-summaryData(1:55) = [ rint(istep), rint(Ncells), rint(TNviable), rint(TNnonviable), &
+summaryData(1:57) = [ rint(istep), rint(Ncells), rint(TNviable), rint(TNnonviable), &
 	rint(TNATP_dead), rint(TNdrug_dead(1)), rint(TNdrug_dead(2)), rint(TNradiation_dead), rint(TNdead), &
     rint(TNtagged_ATP), rint(TNtagged_drug(1)), rint(TNtagged_drug(2)), rint(TNtagged_radiation), &
 	diam_um, vol_mm3, &
 	100*viable_fraction, 100*hypoxic_fraction, 100*clonohypoxic_fraction(i_hypoxia_cutoff), &
-	100*growth_fraction, 100*nogrow_fraction, 100*necrotic_fraction, &
+	100*growth_fraction, 100*nogrow_fraction, 100*necrotic_fraction, 100*clono_fraction, &
 	Tplate_eff, npmm3, &
 	cmedium(OXYGEN), cmedium(GLUCOSE), cmedium(LACTATE), cmedium(DRUG_A:DRUG_A+2), cmedium(DRUG_B:DRUG_B+2), &
 	cbdry(OXYGEN), cbdry(GLUCOSE), cbdry(LACTATE), cbdry(DRUG_A:DRUG_A+2), cbdry(DRUG_B:DRUG_B+2), &
 	doubling_time, r_G, r_P, r_A, r_I, rint(ndoublings), P_utilisation, &
-	100*phase_fraction(1:7)]
-write(nfres,'(a,a,2a12,i8,7e12.4,21i7,40e12.4)') trim(header),' ',gui_run_version, dll_run_version, &
+	100*phase_fraction(1:7), rmutations]
+write(nfres,'(a,a,2a12,i8,7e12.4,21i7,42e12.4)') trim(header),' ',gui_run_version, dll_run_version, &
 	istep, hour, vol_mm3, diameter_um, &
 	Ncells_type(1:2), TNviable, TNnonviable, &
 	NATP_dead(1:2), Ndrug_dead(1,1:2), Ndrug_dead(2,1:2), Nradiation_dead(1:2), TNdead, &
     Ntagged_ATP(1:2), Ntagged_drug(1,1:2), Ntagged_drug(2,1:2), Ntagged_radiation(1:2), &
 	viable_fraction, hypoxic_fraction, clonohypoxic_fraction(i_hypoxia_cutoff), &
 	growth_fraction, nogrow_fraction, necrotic_fraction, &
-	plate_eff(1:2), &
+	clono_fraction, plate_eff(1:2), &
 	cmedium(OXYGEN), cmedium(GLUCOSE), cmedium(LACTATE), cmedium(DRUG_A:DRUG_A+2), cmedium(DRUG_B:DRUG_B+2), &
 	cbdry(OXYGEN), cbdry(GLUCOSE), cbdry(LACTATE), cbdry(DRUG_A:DRUG_A+2), cbdry(DRUG_B:DRUG_B+2), &
 	doubling_time, r_G, r_P, r_A, r_I, real(ndoublings), P_utilisation, &
-	100*phase_fraction(1:7)
+	100*phase_fraction(1:7), rmutations
 		
 call sum_dMdt(GLUCOSE)
 

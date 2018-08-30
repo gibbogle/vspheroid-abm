@@ -374,14 +374,14 @@ Nviable Nnonviable NATP_dead(1) NATP_dead(2) NdrugA_dead(1) NdrugA_dead(2) &
 NdrugB_dead(1) NdrugB_dead(2) Nradiation_dead(1) Nradiation_dead(2) Ndead &
 Ntagged_ATP(1) Ntagged_ATP(2) Ntagged_drugA(1) Ntagged_drugA(2) &
 Ntagged_drugB(1) Ntagged_drugB(2) Ntagged_radiation(1) Ntagged_radiation(2) &
-f_viable f_hypoxic f_clonohypoxic f_growth f_nogrow f_necrot &
+f_viable f_hypoxic f_clonohypoxic f_growth f_nogrow f_necrot f_clonogenic &
 plating_efficiency(1) plating_efficiency(2) &
 medium_oxygen medium_glucose medium_lactate &
 medium_drugA medium_drugA_metab1 medium_drugA_metab2 medium_drugB medium_drugB_metab1 medium_drugB_metab2 &
 bdry_oxygen bdry_glucose bdry_lactate &
 bdry_drugA bdry_drugA_metab1 bdry_drugA_metab2 bdry_drugB bdry_drugB_metab1 bdry_drugB_metab2 &
 doubling_time glycolysis_rate pyruvate_oxidation_rate ATP_rate intermediates_rate Ndivided pyruvate_oxidised_fraction &
-G1_phase G1_checkpoint S_phase G2_phase G2_checkpoint M_phase S_phase_nonarrest'
+G1_phase G1_checkpoint S_phase G2_phase G2_checkpoint M_phase S_phase_nonarrest Nmutations'
 
 write(logmsg,*) 'Opened nfout: ',outputfile
 call logger(logmsg)
@@ -921,6 +921,7 @@ rrsum = 0
 total_dose_time = 0
 !call showallcells
 call averages
+call GenerateSFlookup(1)
 use_permute = .true.
 !if (is_radiation) then
 !	ccp => cc_parameters(1)
