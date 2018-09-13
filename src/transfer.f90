@@ -326,9 +326,37 @@ res = 0
 end subroutine
 
 !--------------------------------------------------------------------------------
-! A growing cell has status 0 for celltype 1, 10 for celltype 2
+! A growing cell (r_A > ATPg) has status 0 for celltype 1, 10 for celltype 2
+! Otherwise:
+!   1 = not growing (ATPs < r_A < ATPg
+!   2 = DYING
+!   3 = in mitosis
 !--------------------------------------------------------------------------------
 function getstatus(cp) result(status)
+type(cell_type), pointer :: cp
+real(REAL_KIND) :: A_rate
+integer :: status
+
+A_rate = cp%metab%A_rate
+if (cp%state == DYING) then
+    status = 2
+elseif (cp%phase >= M_phase) then
+    status = 3
+elseif (A_rate < ATPg) then
+    status = 1
+else    ! happy growing cell
+	if (cp%celltype == 1) then
+		status = 0
+	else
+		status = 10
+	endif
+endif
+end function
+
+!--------------------------------------------------------------------------------
+! A growing cell has status 0 for celltype 1, 10 for celltype 2
+!--------------------------------------------------------------------------------
+function old_getstatus(cp) result(status)
 type(cell_type), pointer :: cp
 integer :: status
 

@@ -116,7 +116,7 @@ MainWindow::MainWindow(QWidget *parent)
     xQpval = NULL;
     yQpval = NULL;
 
-	rbut_HYPOXIA_3->setChecked(true);
+    rbut_HYPOXIA_3->setChecked(true);
     Global::i_hypoxia_cutoff = 3;
 
     setupGraphSelector();
@@ -941,10 +941,10 @@ void MainWindow::reloadParams()
 			|| qsname.startsWith("rbut_") || qsname.startsWith("text_")) {
 			QString wtag = qsname.mid(5);
 			int rbutton_case = 0;
-			if (qsname.startsWith("rbut_")) {
+//			if (qsname.startsWith("rbut_")) {
 //				parse_rbutton(wtag,&rbutton_case);
 //                wtag = parse_rbutton(qsname,&rbutton_case);
-            }
+//            }
             // Find corresponding data in workingParameterList
             bool found = false;
 			for (int k=0; k<nParams; k++) {
@@ -958,6 +958,9 @@ void MainWindow::reloadParams()
 						QString val_str = QString::number(val);
 						QLineEdit *w_l = (QLineEdit *)w;
                         w_l->setText(val_str);
+                        if (wtag.contains("HYPOXIA_THRESHOLD")) {   // need to set the rb
+                            setHypoxiaRadioButton(val_str);
+                        }
 					} else if (qsname.startsWith("text_")) {
 						QLineEdit *w_l = (QLineEdit *)w;
 						w_l->setText(p.label);
@@ -2654,6 +2657,7 @@ void MainWindow::changeParam()
 				}
 			}
 		} else if (wname.contains("rbut_")) {
+            if (wname.contains("HYPOXIA")) return;
 			QRadioButton *radioButton = (QRadioButton *)w;
             QString wtag = wname.mid(5);
             for (int k=0; k<parm->nParams; k++) {

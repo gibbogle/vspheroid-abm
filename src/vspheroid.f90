@@ -1481,6 +1481,7 @@ logical :: ok, done, changed, dotimer
 integer :: count_0, count_1, count_2, count_3, count_rate, count_max
 integer :: ngaplimit = 3000     ! was 2000
 
+!call check_grid_interp
 !call testmetab
 !call test_finesolver
 !call test_coarsesolver
@@ -1732,6 +1733,8 @@ if (mod(istep,nt_hour) == 0) then
 	endif
 	write(logmsg,'(a,4i8,a,f5.2)') 'istep, hour, Ncells, ntagged: ',istep,istep/nt_hour,Ncells,Ndrug_tag(1,1),' t_double: ',t_ave_double
 	call logger(logmsg)
+	cp =>cell_list(1)
+	write(nflog,'(a,3e12.3)') 'C_G,HIF1,r_G: ',cp%Cin(GLUCOSE),cp%metab%HIF1, cp%metab%G_rate
 !	call show_central_cells
 !	write(*,'(a,3f8.5,3f8.3)') 'blobcentre, rrsum: ',blobcentre,rrsum
 	if (dbug) write(*,*) 'DRUG_A present: ',chemo(DRUG_A:DRUG_A+2)%present
@@ -2517,5 +2520,29 @@ do kcell = 1,nlist
 	endif
 enddo
 end subroutine
+
+!---------------------------------------------------------------------
+!---------------------------------------------------------------------
+subroutine check_grid_interp
+integer :: kcell
+real(REAL_KIND) :: alfa(3)
+type(cell_type), pointer :: cp
+
+write(nflog,*) 'check_grid_interp' 
+write(nflog,'(a,e14.5)') 'dx: ',DELTA_X
+write(nflog,'(a,e14.5)') 'middle: ',DXF*(NX-1)/2
+do kcell = 1,10
+    cp => cell_list(kcell)
+    write(nflog,*)
+    write(nflog,*) 'kcell, nspheres: ',kcell,cp%nspheres
+    write(nflog,*) 'site: ',cp%site
+    write(nflog,'(a,3e14.5)') 'centre: ',cp%centre(:,1)
+    call grid_interp(kcell,alfa)
+    write(nflog,'(a,3e14.5)') 'alfa: ',alfa
+enddo
+stop
+end subroutine
+
+
 
 end module

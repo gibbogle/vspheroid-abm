@@ -496,7 +496,7 @@ void Field::displayField(int hr, int *res)
 //    QGraphicsScene* scene = new QGraphicsScene(QRect(0, 0, CANVAS_WIDTH, CANVAS_WIDTH));
     QBrush brush;
     int i, k, ix, iy, iz, w, rgbcol[3], ichemo, ixyz;
-    double xp, yp, x, y, d, C, cmin, cmax, rmax, valmin;
+    double xp, yp, x, y, d, C, cmin, cmax, rmax, valmin, Csum;
     double a, b, Wc, dx, Wx, radius;
     int Nc, NX, NY, NZ;
     double beta = 1.0;
@@ -581,8 +581,10 @@ void Field::displayField(int hr, int *res)
             x = iy*dx;
             for (iz=0; iz<NZ; iz++) {
                 y = (NZ-1-iz)*dx;
+
                 k = (ichemo-1)*NZ*NY*NX + iz*NY*NX + iy*NX + ix;    // index(ix,iy,iz,ichemo);
                 C = fdata.Cave[k];
+
                 valmin = MIN(C,valmin);
                 rgbcol[1] = 255*min(C,cmax)/cmax;
                 rgbcol[2] = 255*min(C,cmax)/cmax;
@@ -707,11 +709,11 @@ void Field::displayField(int hr, int *res)
                     rgbcol[1] = color.green();
                     rgbcol[2] = color.blue();
                 }
-            } else if (status == 1) {                   // radiobiological hypoxia
-                rgbcol[0] = 50;
-                rgbcol[1] = 100;
-                rgbcol[2] = 32;
-            } else if (status == 2 || status == 4) {    // tagged to die of ATP starvation
+            } else if (status == 1) {                   // not growing
+                rgbcol[0] = 70; //50;
+                rgbcol[1] = 140;    //100;
+                rgbcol[2] = 60; //32;
+            } else if (status == 2 || status == 4) {    // DYING
                 rgbcol[0] = 255;
                 rgbcol[1] = 0;
                 rgbcol[2] = 0;
@@ -744,7 +746,7 @@ void Field::displayField(int hr, int *res)
     hour_text->setPos(scalebar0,3*scalebar0);
 //    hour_text->setBrush(Qt::yellow);
     view->show();
-    return;
+//    return;
 
     if (save_images) {
         scene->clearSelection();                                                  // Selections would also render to the file

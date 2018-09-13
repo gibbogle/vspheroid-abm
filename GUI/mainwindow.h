@@ -238,6 +238,7 @@ private:
     void setupParamList();
 	void loadParams();
 	void reloadParams();
+    void setHypoxiaRadioButton(QString);
 
     void trackError();
 

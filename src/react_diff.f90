@@ -1406,7 +1406,7 @@ endif
 ! Try putting average conc everywhere on the boundary to see if it still
 ! results in asymetry of the profile at low O2
 if (use_bdryaverage .or. chemo(ichemo)%constant) then
-	write(*,'(a,i2,f8.5)') 'finegrid bdry average: ',ichemo,chemo(ichemo)%fine_grid_cbnd
+!	write(*,'(a,i2,f8.5)') 'finegrid bdry average: ',ichemo,chemo(ichemo)%fine_grid_cbnd
 	do iyb = yb1,yb2-1
 		iy0 = (iyb - yb0)*NRF + (NY+1)/2
 		do izb = zb1,zb2-1

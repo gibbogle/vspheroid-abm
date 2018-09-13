@@ -241,16 +241,17 @@ void MainWindow::radioButtonChanged(QAbstractButton *b)
         for (int k=0; k<nParams; k++) {
             PARAM_SET p = parm->get_param(k);
             if (wtag.compare(p.tag) == 0) {
-                parm->set_value(k,double(rbutton_case));
                 LOG_QMSG("found: " + wtag);
-                sprintf(msg,"parm->set_value: %d",rbutton_case);
-                LOG_MSG(msg);
                 if (ptag.compare("HYPOXIA")==0) {
                     Global::i_hypoxia_cutoff = rbutton_case;
                     QString linetag = "line_HYPOXIA_"+QString::number(rbutton_case);
                     LOG_QMSG("hypoxia tag: " + linetag);
                     QLineEdit *line = findChild<QLineEdit *>(linetag);
                     line_HYPOXIA_THRESHOLD->setText(line->text());
+                } else {
+                    parm->set_value(k,double(rbutton_case));
+                    sprintf(msg,"parm->set_value: %d",rbutton_case);
+                    LOG_MSG(msg);
                 }
                 break;
             }
@@ -266,6 +267,17 @@ void MainWindow::radioButtonChanged(QAbstractButton *b)
 //            line_HYPOXIA_THRESHOLD->setText(line_HYPOXIA_3->text());
 //        }
 
+}
+
+void MainWindow::setHypoxiaRadioButton(QString val_str)
+{
+    if (line_HYPOXIA_1->text().compare(val_str) == 0) {
+        rbut_HYPOXIA_1->setChecked(true);
+    } else if (line_HYPOXIA_2->text().compare(val_str) == 0) {
+        rbut_HYPOXIA_2->setChecked(true);
+    } else if (line_HYPOXIA_3->text().compare(val_str) == 0) {
+        rbut_HYPOXIA_3->setChecked(true);
+    }
 }
 
 void MainWindow::buttonClick_cell_constituent(QAbstractButton* button)
