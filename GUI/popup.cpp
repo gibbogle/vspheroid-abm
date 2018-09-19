@@ -342,6 +342,7 @@ void MainWindow::makeGlucosePlot(double *ndays, QVector<double> *x, QVector<doub
     double C, vol_cm3, t, metab, dCdt;
     double MM_C0, max_cell_rate;
     int ncells, Ng, nt;
+    char msg[100];
 
     // Get parameter values from the GUI fields for glucose
     line = findChild<QLineEdit *>("lineEdit_glucose_ncells");
@@ -352,14 +353,19 @@ void MainWindow::makeGlucosePlot(double *ndays, QVector<double> *x, QVector<doub
     vol_cm3 = line->text().toDouble();
     line = findChild<QLineEdit *>("line_GLUCOSE_BDRY_CONC");
     C = line->text().toDouble();
+//    sprintf(msg,"ncells: %d ndays: %e vol_cm3: %e C: %e\n",ncells,*ndays,vol_cm3,C);
+//    LOG_MSG(msg);
     line = findChild<QLineEdit *>("line_GLUCOSE_MM_KM");
     MM_C0 = line->text().toDouble();
+    MM_C0 /= 1000;  // uM -> mM
     line = findChild<QLineEdit *>("line_GLUCOSE_HILL_N");
     Ng = line->text().toInt();
     line = findChild<QLineEdit *>("line_GLUCOSE_CONSUMPTION");
     max_cell_rate = line->text().toDouble();
-
     max_cell_rate *= 1.0e6;     // mol/cell/s -> mumol/cell/s
+//    double rate_day = max_cell_rate*24*60*60*ncells*1.0e-6;
+//    sprintf(msg,"max_cell_rate (mumol/cell/s): %e rate_day (mol/d): %e\n",max_cell_rate,rate_day);
+//    LOG_MSG(msg);
     nt = ((*ndays)*24*60*60)/((NPLOT-1)*dt);
     (*x)[0] = 0;
     (*y)[0] = C;

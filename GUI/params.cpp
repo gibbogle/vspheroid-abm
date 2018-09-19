@@ -172,11 +172,11 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
 
 {"KDRAG", 10, 0, 0,
  "Drag factor",
- "Displacement = dt*F/drag"},
+ "Displacement = dt*F/Kdrag, drag factor: Kdrag"},
 
 {"FRANDOM",0.02, 0, 0,
  "Random force factor",
- "Magnitude of random additive force"},
+ "Magnitude of random additive force: Frandom"},
 
 {"NT_CONC", 1, 0, 0,
 "Number of ODE solver sub-steps.",
@@ -557,13 +557,13 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
 
      {"RMR_KREP_BASE_1", 0.2, 0, 0,
      "Base PL lesion repair rate",
-     "Base coefficient of rate of repair of potentially lethal lesions: Krepair_base (Curtis's epsilon_PL)\n\
-     The true repair rate varies linearly from Krepair_base to Krepair_max over the S phase"},
+     "Base coefficient of rate of repair of potentially lethal lesions: Krepair_min\n\
+     The true repair rate varies linearly from Krepair_min to Krepair_max over the S phase"},
 
      {"RMR_KREP_MAX_1", 2.0, 0, 0,
      "Max PL lesion repair rate",
-     "Maximum coefficient of rate of repair of potentially lethal lesions: Krepair_max (Curtis's epsilon_PL)\n\
-     The true repair rate varies linearly from Krepair_base to Krepair_max over the S phase"},
+     "Maximum coefficient of rate of repair of potentially lethal lesions: Krepair_max\n\
+     The true repair rate varies linearly from Krepair_min to Krepair_max over the S phase"},
 
      {"RMR_KMIS_1", 0.0001, 0, 0,
      "Lesion misrepair rate",
@@ -571,31 +571,29 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
 
      {"RMR_F_MITOSIS_1", 4, 0, 0,
      "Mitosis factor",
-     "Multiplying factor of misrepair during mitosis: mitosis_factor"},
+     "Multiplying factor of misrepair during mitosis: f_mitosis"},
 
      {"RMR_F_CH1_1", 0.5, 0, 0,
      "Ch1 fraction of misrepair",
-     "Fraction of misrepaired lesions that are Ch1: fraction_Ch1"},
+     "Fraction of misrepaired lesions that are Ch1: f_Ch1"},
 
      {"RMR_PSURVIVE1_1", 0.45, 0, 0,
      "Ch1 prob of mitosis survival",
-     "Probability that a cell with one Ch1 lesion survives mitosis: psurvive_Ch1"},
+     "Probability that a cell with one Ch1 lesion survives mitosis: P_Ch1"},
 
      {"RMR_PSURVIVE2_1", 0.05, 0, 0,
      "Ch2 prob of mitosis survival",
-     "Probability that a cell with one Ch2 lesion survives mitosis: psurvive_Ch2"},
+     "Probability that a cell with one Ch2 lesion survives mitosis: P_Ch2"},
 
      {"RMR_ATCP_1", 50, 0, 0,
      "TCP Hill a",
-     "TCP, the maximum time spent in the checkpoint, is a Hill function of # of L1 lesions, n. TCP(n) = b.n/(a + n)"},
+     "Parameter in TCP formula: a_TCP\n\
+     TCP, the maximum time spent in the checkpoint, is a Hill function of # of L1 lesions, n. TCP(n) = n.b_TCP/(a_TCP + n)"},
 
       {"RMR_BTCP_1", 25, 0, 0,
       "TCP Hill b",
-      "TCP, the maximum time spent in the checkpoint, is a Hill function of # of L1 lesions, n. TCP(n) = b.n/(a + n)"},
-
-//     {"RMR_KCP_1", 0.13, 0, 0,
-//     "Checkpoint time limit factor",
-//     "Factor for computing maximum time spent in the checkpoint, as a function of # of L1 lesions: Kcp"},
+      "Parameter in TCP formula: b_TCP\n\
+      TCP, the maximum time spent in the checkpoint, is a Hill function of # of L1 lesions, n. TCP(n) = n.b_TCP/(a_TCP + n)"},
 
       {"T_G1_2", 6, 0, 0,
       "G1 phase base time (h)",
@@ -640,13 +638,13 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
 
       {"RMR_KREP_BASE_2", 0.2, 0, 0,
       "Base PL lesion repair rate",
-      "Base coefficient of rate of repair of potentially lethal lesions: Krepair_base (Curtis's epsilon_PL)\n\
-      The true repair rate varies linearly from Krepair_base to Krepair_max over the S phase"},
+      "Base coefficient of rate of repair of potentially lethal lesions: Krepair_min\n\
+      The true repair rate varies linearly from Krepair_min to Krepair_max over the S phase"},
 
       {"RMR_KREP_MAX_2", 2.0, 0, 0,
       "Max PL lesion repair rate",
-      "Maximum coefficient of rate of repair of potentially lethal lesions: Krepair_max (Curtis's epsilon_PL)\n\
-      The true repair rate varies linearly from Krepair_base to Krepair_max over the S phase"},
+      "Maximum coefficient of rate of repair of potentially lethal lesions: Krepair_max\n\
+      The true repair rate varies linearly from Krepair_min to Krepair_max over the S phase"},
 
       {"RMR_KMIS_2", 0.0001, 0, 0,
       "Lesion misrepair rate",
@@ -654,31 +652,29 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
 
       {"RMR_F_MITOSIS_2", 4, 0, 0,
       "Mitosis factor",
-      "Multiplying factor of misrepair during mitosis: mitosis_factor"},
+      "Multiplying factor of misrepair during mitosis: f_mitosis"},
 
       {"RMR_F_CH1_2", 0.5, 0, 0,
       "Ch1 fraction of misrepair",
-      "Fraction of misrepaired lesions that are Ch1: fraction_Ch1"},
+      "Fraction of misrepaired lesions that are Ch1: f_Ch1"},
 
       {"RMR_PSURVIVE1_2", 0.45, 0, 0,
       "Ch1 prob of mitosis survival",
-      "Probability that a cell with one Ch1 lesion survives mitosis: psurvive_Ch1"},
+      "Probability that a cell with one Ch1 lesion survives mitosis: P_Ch1"},
 
       {"RMR_PSURVIVE2_2", 0.05, 0, 0,
       "Ch2 prob of mitosis survival",
-      "Probability that a cell with one Ch2 lesion survives mitosis: psurvive_Ch2"},
+      "Probability that a cell with one Ch2 lesion survives mitosis: P_Ch2"},
 
       {"RMR_ATCP_2", 50, 0, 0,
       "TCP Hill a",
-      "TCP, the maximum time spent in the checkpoint, is a Hill function of # of L1 lesions, n. TCP(n) = b.n/(a + n)"},
+      "Parameter in TCP formula: a_TCP\n\
+      TCP, the maximum time spent in the checkpoint, is a Hill function of # of L1 lesions, n. TCP(n) = n.b_TCP/(a_TCP + n)"},
 
-      {"RMR_BTCP_2", 25, 0, 0,
-      "TCP Hill b",
-      "TCP, the maximum time spent in the checkpoint, is a Hill function of # of L1 lesions, n. TCP(n) = b.n/(a + n)"},
-
-//      {"RMR_KCP_2", 0.13, 0, 0,
-//      "Checkpoint time limit factor",
-//      "Factor for computing maximum time spent in the checkpoint, as a function of # of L1 lesions: Kcp"},
+       {"RMR_BTCP_2", 25, 0, 0,
+       "TCP Hill b",
+       "Parameter in TCP formula: b_TCP\n\
+       TCP, the maximum time spent in the checkpoint, is a Hill function of # of L1 lesions, n. TCP(n) = n.b_TCP/(a_TCP + n)"},
 
      // Metabolism parameters
 
