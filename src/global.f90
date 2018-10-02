@@ -451,6 +451,7 @@ logical :: dbug = .false.
 
 integer :: kcell_now, kcell_test=1
 integer :: ndivided
+integer :: icolourscheme = 0
 
 !dec$ attributes dllexport :: nsteps, DELTA_T
 

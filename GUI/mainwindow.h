@@ -134,6 +134,7 @@ private slots:
 
     void onSelectCellConstituent();
     void onSelectFieldConstituent();
+    void setColourScheme(int);
 
     void on_verticalSliderTransparency1_sliderMoved(int position);
     void on_verticalSliderTransparency2_sliderMoved(int position);

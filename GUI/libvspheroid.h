@@ -27,6 +27,7 @@ void get_facs(double *, double *, double *, bool);
 void get_histo(int, double *, double *, double *, double *, double *, double *, bool);
 //void get_histo(int, double *, double *, double *, double *, double *, double *);
 void get_constituents(int *, int *, int *, char *, int *);
+void set_colourscheme(int);
 
 void make_colony_distribution(double *, double *, double *, int *);
 

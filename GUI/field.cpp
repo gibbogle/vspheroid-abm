@@ -40,6 +40,7 @@ Field::Field(QWidget *aParent) : QWidget(aParent)
     line_maxConc_list.clear();
     cell_constituent_rb_list.clear();
     field_constituent_rb_list.clear();
+    icolourscheme = 0;
 //    data = NULL;
 }
 

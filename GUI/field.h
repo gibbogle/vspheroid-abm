@@ -75,6 +75,7 @@ public:
     bool useVolPlot;
     bool useOxyPlot;
     FIELD_DATA fdata;
+    int icolourscheme;
     Plot *pGconc, *pGvol, *pGoxy;
     bool executing;
     char msg[1024];

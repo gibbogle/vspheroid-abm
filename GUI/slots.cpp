@@ -490,3 +490,10 @@ void MainWindow::on_pushButton_saveFACS_clicked()
     saveFACSImage();
 }
 
+//--------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------
+void MainWindow::setColourScheme(int icset)
+{
+    set_colourscheme(icset);
+    field->icolourscheme = icset;
+}

@@ -261,7 +261,8 @@ do ix = 2,NX-1
 			enddo
 			nc = ncsum/n
 			
-			alfa = min(nc,nc_max)/nc_max
+			alfa = min(nc,nc_max)/real(nc_max)
+!			if (nc > 0) write(*,'(a,3i4,f6.3)') 'ncsum,n,nc,alfa: ',ncsum,n,nc,alfa
 !			Kdiff = Kdiff*(1 - chemo(ichemo)%diff_reduction_factor*alfa)
 			! Kdiff should range between Kmedium and Ktissue as nc goes from 0 to nc_max
 			Kdiff = (1-alfa)*Kmedium + alfa*Ktissue

@@ -251,17 +251,19 @@ if (.not.do_repair) then
 	if (R < p_PL) then
 		nPL = nPL + 1
 	endif
-	cp%N_PL = nPL0 + nPL
 	nIRL = dose*ccp%eta_IRL
 	p_IRL = dose*ccp%eta_IRL - nIRL
 	R = par_uni(kpar)
 	if (R < p_IRL) then
 		nIRL = nIRL + 1
 	endif
+	
+	cp%N_PL = nPL0 + nPL
 	cp%N_IRL = nIRL
 	cp%irrepairable = (nIRL > 0)
 	return
 endif
+
 p_PL = ccp%eta_PL*dose/nt
 p_IRL = ccp%eta_IRL*dose/nt
 do it = 1,nt

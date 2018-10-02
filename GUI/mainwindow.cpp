@@ -27,6 +27,8 @@
 #include <QTcpServer.h>
 #endif
 
+#include <QTextStream>
+
 LOG_USE();
 
 Params *parm;	// I don't believe this is the right way, but it works
@@ -100,6 +102,15 @@ MainWindow::MainWindow(QWidget *parent)
 
 	parm = new Params();
 	nParams = parm->nParams;
+
+    // To write out tooltips
+//    QTextStream out(stdout);
+//    for (int i=0; i<nParams; i++) {
+//        PARAM_SET p = parm->get_param(i);
+//        QString qmsg = p.tag + "  " + p.text;
+//        out << qmsg << endl;
+//    }
+
     field = new Field(page_2D);
     grph = new Graphs();
 //    pal = new Colours();
@@ -269,6 +280,7 @@ void MainWindow::createActions()
     connect(actionSelect_field_constituent, SIGNAL(triggered()), SLOT(onSelectFieldConstituent()));
     connect(line_CELLPERCENT_1, SIGNAL(textEdited(QString)), this, SLOT(on_line_CELLPERCENT_1_textEdited(QString)));
     connect(line_CELLPERCENT_2, SIGNAL(textEdited(QString)), this, SLOT(on_line_CELLPERCENT_2_textEdited(QString)));
+    connect(spinBox_colourscheme, SIGNAL(valueChanged(int)), this, SLOT(setColourScheme(int)));
 
 // For Kd computed in the GUI
 //    connect(buttonGroup_SN30K_killmodel_1, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(radioButtonChanged(QAbstractButton*)));

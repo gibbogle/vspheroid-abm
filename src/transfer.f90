@@ -328,6 +328,8 @@ end subroutine
 !--------------------------------------------------------------------------------
 ! A growing cell (r_A > ATPg) has status 0 for celltype 1, 10 for celltype 2
 ! Otherwise:
+!
+! icolourscheme = 0
 !   1 = not growing (ATPs < r_A < ATPg
 !   2 = DYING
 !   3 = in mitosis
@@ -338,18 +340,42 @@ real(REAL_KIND) :: A_rate
 integer :: status
 
 A_rate = cp%metab%A_rate
-if (cp%state == DYING) then
-    status = 2
-elseif (cp%phase >= M_phase) then
-    status = 3
-elseif (A_rate < ATPg) then
-    status = 1
-else    ! happy growing cell
-	if (cp%celltype == 1) then
-		status = 0
-	else
-		status = 10
-	endif
+if (icolourscheme == 0) then
+    if (A_rate >= ATPg) then    ! happy growing cell
+	    if (cp%celltype == 1) then
+		    status = 0
+	    else
+		    status = 10
+	    endif
+    elseif (cp%state == DYING) then
+        status = 2
+    elseif (cp%phase >= M_phase) then
+        status = 3
+    elseif (A_rate < ATPg) then
+        status = 1
+    endif
+elseif (icolourscheme == 1) then
+    if (cp%state == DYING) then
+        if (cp%ATP_tag) then                            ! ATP death
+            status = 4
+        else                                            ! treatment death
+            status = 5
+        endif
+    elseif (cp%Cin(OXYGEN) < hypoxia_threshold) then    ! hypoxic
+        status = 6
+    elseif (A_rate < ATPg) then                         ! not growing
+        status = 3
+    else                                                ! growing
+        if (cp%phase == S_phase) then
+            status = 1                                  ! S-phase
+        elseif (cp%phase == M_phase) then
+            status = 2                                  ! M-phase
+        elseif (cp%celltype == 1) then
+            status = 0                                  ! type 1
+        else
+            status = 10                                 ! type 2
+        endif
+    endif   
 endif
 end function
 
@@ -2569,6 +2595,17 @@ if (Nviable(1) /= Ncells_type(1) - Ndying(1)) then
 	write(*,'(a,3i8)') 'Error: getNviable: Nviable /= Ncells_type - Ndying: ',Nviable(1),Ncells_type(1),Ndying(1)
 	stop
 endif
+end subroutine
+
+!--------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------
+subroutine set_colourscheme(icset) bind(C)
+!DEC$ ATTRIBUTES DLLEXPORT :: set_colourscheme
+use, intrinsic :: iso_c_binding
+integer(c_int),value :: icset
+
+icolourscheme = icset
+write(nflog,*) 'icolourscheme: ',icset
 end subroutine
 
 end module
