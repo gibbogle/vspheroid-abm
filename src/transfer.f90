@@ -354,7 +354,7 @@ if (icolourscheme == 0) then
     elseif (A_rate < ATPg) then
         status = 1
     endif
-elseif (icolourscheme == 1) then
+elseif (icolourscheme == 1 .or. icolourscheme == 2) then
     if (cp%state == DYING) then
         if (cp%ATP_tag) then                            ! ATP death
             status = 4

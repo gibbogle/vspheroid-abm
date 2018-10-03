@@ -14,7 +14,11 @@
 
 using namespace std;
 
+#ifdef __DISPLAY768
+#include "ui_vspheroid-768.h"
+#else
 #include "ui_vspheroid.h"
+#endif
 #include <qwt_plot_curve.h>
 #include <qwt_plot_marker.h>
 #include <qwt_symbol.h>

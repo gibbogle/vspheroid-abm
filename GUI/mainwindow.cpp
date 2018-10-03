@@ -3182,6 +3182,7 @@ void MainWindow::setupCellColours()
     QComboBox *combo;
     int i, k;
 
+    spinBox_colourscheme->setMaximum(2);
     for (i=0; i<2; i++) {
         if (i == 0)
             combo = comboBox_CELLCOLOUR_1;

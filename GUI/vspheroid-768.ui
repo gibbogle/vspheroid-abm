@@ -10325,7 +10325,7 @@ padding: 8px
        <widget class="QGroupBox" name="groupBox_display">
         <property name="geometry">
          <rect>
-          <x>930</x>
+          <x>820</x>
           <y>30</y>
           <width>221</width>
           <height>121</height>
@@ -10451,7 +10451,7 @@ padding: 8px
         </property>
         <property name="geometry">
          <rect>
-          <x>990</x>
+          <x>880</x>
           <y>160</y>
           <width>19</width>
           <height>221</height>
@@ -10473,7 +10473,7 @@ padding: 8px
         </property>
         <property name="geometry">
          <rect>
-          <x>1070</x>
+          <x>960</x>
           <y>160</y>
           <width>19</width>
           <height>221</height>
@@ -10535,7 +10535,7 @@ padding: 8px
        <widget class="QGroupBox" name="groupBox_plane">
         <property name="geometry">
          <rect>
-          <x>1110</x>
+          <x>1010</x>
           <y>0</y>
           <width>91</width>
           <height>111</height>
@@ -10599,8 +10599,8 @@ padding: 8px
        <widget class="QLineEdit" name="lineEdit_fraction">
         <property name="geometry">
          <rect>
-          <x>1110</x>
-          <y>120</y>
+          <x>1010</x>
+          <y>130</y>
           <width>41</width>
           <height>21</height>
          </rect>
@@ -10615,8 +10615,8 @@ padding: 8px
        <widget class="QLabel" name="alabel_fraction">
         <property name="geometry">
          <rect>
-          <x>1160</x>
-          <y>120</y>
+          <x>1060</x>
+          <y>130</y>
           <width>41</width>
           <height>21</height>
          </rect>
@@ -10628,7 +10628,7 @@ padding: 8px
        <widget class="QGroupBox" name="groupBox_maxconc">
         <property name="geometry">
          <rect>
-          <x>850</x>
+          <x>790</x>
           <y>0</y>
           <width>101</width>
           <height>80</height>
@@ -10641,9 +10641,9 @@ padding: 8px
        <widget class="QGroupBox" name="groupBox_field_constituent">
         <property name="geometry">
          <rect>
-          <x>960</x>
+          <x>900</x>
           <y>0</y>
-          <width>141</width>
+          <width>101</width>
           <height>80</height>
          </rect>
         </property>
@@ -10660,7 +10660,7 @@ padding: 8px
        <widget class="QGroupBox" name="groupBox_cell_constituent">
         <property name="geometry">
          <rect>
-          <x>710</x>
+          <x>650</x>
           <y>0</y>
           <width>141</width>
           <height>80</height>
@@ -10682,8 +10682,8 @@ padding: 8px
         </property>
         <property name="geometry">
          <rect>
-          <x>1110</x>
-          <y>200</y>
+          <x>890</x>
+          <y>210</y>
           <width>41</width>
           <height>20</height>
          </rect>
@@ -10695,8 +10695,8 @@ padding: 8px
        <widget class="QMyLabel" name="label_HYPOXIA_THRESHOLD">
         <property name="geometry">
          <rect>
-          <x>1160</x>
-          <y>200</y>
+          <x>940</x>
+          <y>210</y>
           <width>111</width>
           <height>21</height>
          </rect>
@@ -10708,8 +10708,8 @@ padding: 8px
        <widget class="QCheckBox" name="checkBox_show_cells">
         <property name="geometry">
          <rect>
-          <x>1110</x>
-          <y>160</y>
+          <x>1010</x>
+          <y>170</y>
           <width>81</width>
           <height>17</height>
          </rect>
@@ -10724,7 +10724,7 @@ padding: 8px
        <widget class="QLabel" name="alabel_2Dcolours">
         <property name="geometry">
          <rect>
-          <x>710</x>
+          <x>650</x>
           <y>280</y>
           <width>201</width>
           <height>16</height>
@@ -10740,7 +10740,7 @@ padding: 8px
         </property>
         <property name="geometry">
          <rect>
-          <x>710</x>
+          <x>650</x>
           <y>250</y>
           <width>181</width>
           <height>18</height>
@@ -10756,7 +10756,7 @@ padding: 8px
         </property>
         <property name="geometry">
          <rect>
-          <x>710</x>
+          <x>650</x>
           <y>320</y>
           <width>171</width>
           <height>18</height>
@@ -10769,7 +10769,7 @@ padding: 8px
        <widget class="QSpinBox" name="spinBox_colourscheme">
         <property name="geometry">
          <rect>
-          <x>950</x>
+          <x>890</x>
           <y>250</y>
           <width>42</width>
           <height>22</height>
@@ -10782,7 +10782,7 @@ padding: 8px
        <widget class="QLabel" name="alabel_colourscheme">
         <property name="geometry">
          <rect>
-          <x>1000</x>
+          <x>940</x>
           <y>250</y>
           <width>81</width>
           <height>21</height>

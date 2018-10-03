@@ -41,6 +41,7 @@ public:
     void displayField1();
     void setSliceChanged();
     void chooseFieldColor(double c, double cmin, double cmax, bool use_log, int rgbcol[]);
+    void setCellColours(int icolschm, QColor color[]);
     void chooseRateColor(double fr, int rgbcol[]);
     void getTitle(int iconst, QString *title);
     bool isConcPlot();

@@ -11,4 +11,7 @@ Build/**/*
 vspheroid-build/**/*
 GUI/vspheroid.pro.user
 GUI/vspheroid.pro
+vspheroid-768-build/**/*
+GUI/vspheroid-768.pro.user
+GUI/vspheroid-768.pro
 VBA/**/*

@@ -644,6 +644,14 @@ void Field::displayField(int hr, int *res)
 //    ichemo = Global::GUI_to_DLL_index[cell_constituent];
 //    LOG_QMSG("displayField: cell: " + QString::number(cell_constituent) + " --> " + QString::number(ichemo));
 //    LOG_QMSG("displayField: nc: " + QString::number(fdata.ncells));
+
+    QColor statusColor[11];
+    QColor color;
+    if (Global::celltypecolours2D) {
+        setCellColours(0,statusColor);
+    } else {
+        setCellColours(icolourscheme,statusColor);
+    }
     for (i=0; i<fdata.ncells; i++) {
         x = fdata.cell_data[i].centre[0];
         y = fdata.cell_data[i].centre[1];
@@ -654,29 +662,112 @@ void Field::displayField(int hr, int *res)
         int status = fdata.cell_data[i].status;
 //        sprintf(msg,"Cell: %d x,y: %f %f radius: %f xp,yp: %f %f",i,x,y,radius,xp,yp);
 //        LOG_MSG(msg);
-        /*
-        if (fdata.cell_data[i].status == 0) {
-            rgbcol[0] = 0;
-            rgbcol[1] = 200;
-            rgbcol[2] = 32;
-        } else if (fdata.cell_data[i].status == 1) {
-            rgbcol[0] = 50;
-            rgbcol[1] = 100;
-            rgbcol[2] = 32;
-        } else if (fdata.cell_data[i].status == 2 || fdata.cell_data[i].status == 4) {
-            rgbcol[0] = 0;
-            rgbcol[1] = 0;
-            rgbcol[2] = 255;
-        } else if (fdata.cell_data[i].status == 3) {
-            rgbcol[0] = 255;
-            rgbcol[1] = 0;
-            rgbcol[2] = 255;
-        } else if (fdata.cell_data[i].status >= 10) {   // tagged to die of treatment
-            rgbcol[0] = 255;
-            rgbcol[1] = 150;
-            rgbcol[2] = 0;
+
+        if (Global::celltypecolours2D) {
+            if (Global::only2colours2D) {
+                if (status != 2) {
+                    int celltype = fdata.cell_data[i].celltype;
+                    color = Global::celltype_colour[celltype];
+                } else {    // tagged to die
+                    color.setRgb(0,0,255);
+                }
+            } else {
+                if (status == 0) {           // use colours from 3D screen
+                    color = Global::celltype_colour[1];
+                } else if (status == 10) {
+                    color = Global::celltype_colour[2];
+                } else {
+                    color = statusColor[status];
+                }
+            }
+        } else {
+            color = statusColor[status];
         }
-        */
+//        rgbcol[0] = color.red();
+//        rgbcol[1] = color.green();
+//        rgbcol[2] = color.blue();
+//        brush.setColor(QColor(rgbcol[0],rgbcol[1],rgbcol[2]));
+        brush.setColor(color);
+        scene->addEllipse(xp,yp,d,d,Qt::NoPen, brush);
+    }
+
+    double w_scalebar = a*0.01 + b; // 100um = 0.01cm
+    double scalebar0 = a*1*dx + b;
+    QPen pen;
+    QFont font;
+    pen.setBrush(Qt::black);
+    pen.setWidth(3);
+    scene->addLine(scalebar0, scalebar0, scalebar0+w_scalebar, scalebar0, pen);
+    QGraphicsTextItem *scalebar_text = scene->addText("100 um",font);
+    scalebar_text->setPos(scalebar0,1.4*scalebar0);
+
+    QString hourStr = "Hour " + QString::number(Global::hour);
+    QGraphicsSimpleTextItem *hour_text = scene->addSimpleText(hourStr,font);
+    hour_text->setPos(scalebar0,3*scalebar0);
+//    hour_text->setBrush(Qt::yellow);
+    view->show();
+//    return;
+
+    if (save_images) {
+        scene->clearSelection();                                                  // Selections would also render to the file
+        scene->setSceneRect(scene->itemsBoundingRect());                          // Re-shrink the scene to it's bounding contents
+        QImage image(scene->sceneRect().size().toSize(), QImage::Format_ARGB32);  // Create the image with the exact size of the shrunk scene
+        image.fill(Qt::transparent);                                              // Start all pixels transparent
+
+        QPainter painter(&image);
+        scene->render(&painter);
+        ifield++;
+        char filename[] = "image/field0000.png";
+        char numstr[5];
+        sprintf(numstr,"%04d",hour);
+        for (int i=0; i<4; i++)
+            filename[11+i] = numstr[i];
+        image.save(filename);
+    }
+}
+
+//-----------------------------------------------------------------------------------------
+// For icolourscheme > 0:
+// 0,10 = growing, not S-, M-phase
+// 1    = S-phase
+// 2    = M-phase
+// 3    = non-growing
+// 4    = dying of ATP
+// 5    = dying of treatment
+// 6    = hypoxic
+//-----------------------------------------------------------------------------------------
+void Field::setCellColours(int icolschm, QColor color[])
+{
+    if (icolschm == 0) {
+        color[0].setRgb(0,255,0);
+        color[10].setRgb(0,255,0);
+        color[1].setRgb(70,140,60);
+        color[2].setRgb(255,0,0);
+        color[3].setRgb(255,0,255);
+    } else if (icolschm == 1) {
+        color[0].setRgb(70,140,60);
+        color[10].setRgb(70,140,60);
+        color[1].setRgb(0,255,0);
+        color[2].setRgb(255,0,255);
+        color[3].setRgb(153,55,139);
+        color[4].setRgb(57,84,247);
+        color[5].setRgb(255,150,0);
+        color[6].setRgb(255,0,0);
+    } else if (icolschm == 2) {
+        color[0].setRgb(0,110,190);
+        color[10].setRgb(0,110,190);
+        color[1].setRgb(0,255,0);
+        color[2].setRgb(255,0,255);
+        color[3].setRgb(153,55,139);
+        color[4].setRgb(60,140,250);
+        color[5].setRgb(255,150,0);
+        color[6].setRgb(255,0,0);
+    }
+}
+
+
+/*
+
         if (Global::only2colours2D && Global::celltypecolours2D) {
             if (status == 0 || status == 10 || status == 1 || status == 3) {
                 int celltype = fdata.cell_data[i].celltype;
@@ -728,47 +819,7 @@ void Field::displayField(int hr, int *res)
                 rgbcol[2] = 0;
             }
         }
-        brush.setColor(QColor(rgbcol[0],rgbcol[1],rgbcol[2]));
-        scene->addEllipse(xp,yp,d,d,Qt::NoPen, brush);
-    }
 
-    double w_scalebar = a*0.01 + b; // 100um = 0.01cm
-    double scalebar0 = a*1*dx + b;
-    QPen pen;
-    QFont font;
-    pen.setBrush(Qt::black);
-    pen.setWidth(3);
-    scene->addLine(scalebar0, scalebar0, scalebar0+w_scalebar, scalebar0, pen);
-    QGraphicsTextItem *scalebar_text = scene->addText("100 um",font);
-    scalebar_text->setPos(scalebar0,1.4*scalebar0);
-
-    QString hourStr = "Hour " + QString::number(Global::hour);
-    QGraphicsSimpleTextItem *hour_text = scene->addSimpleText(hourStr,font);
-    hour_text->setPos(scalebar0,3*scalebar0);
-//    hour_text->setBrush(Qt::yellow);
-    view->show();
-//    return;
-
-    if (save_images) {
-        scene->clearSelection();                                                  // Selections would also render to the file
-        scene->setSceneRect(scene->itemsBoundingRect());                          // Re-shrink the scene to it's bounding contents
-        QImage image(scene->sceneRect().size().toSize(), QImage::Format_ARGB32);  // Create the image with the exact size of the shrunk scene
-        image.fill(Qt::transparent);                                              // Start all pixels transparent
-
-        QPainter painter(&image);
-        scene->render(&painter);
-        ifield++;
-        char filename[] = "image/field0000.png";
-        char numstr[5];
-        sprintf(numstr,"%04d",hour);
-        for (int i=0; i<4; i++)
-            filename[11+i] = numstr[i];
-        image.save(filename);
-    }
-}
-
-
-/*
 //-----------------------------------------------------------------------------------------
 // New version, site/cell size is fixed, the blob grows
 //-----------------------------------------------------------------------------------------
