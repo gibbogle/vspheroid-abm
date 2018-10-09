@@ -20,9 +20,18 @@ struct field_data {
 };
 typedef field_data FIELD_DATA;
 
+struct colour_scheme {
+    int ncolours;
+    QColor color[11];
+    QString category[11];
+};
+typedef colour_scheme COLOUR_SCHEME;
+
 #define X_AXIS 1
 #define Y_AXIS 2
 #define Z_AXIS 3
+
+#define N_COLOUR_SCHEMES 3
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
@@ -42,6 +51,7 @@ public:
     void setSliceChanged();
     void chooseFieldColor(double c, double cmin, double cmax, bool use_log, int rgbcol[]);
     void setCellColours(int icolschm, QColor color[]);
+    void setupColourSchemes();
     void chooseRateColor(double fr, int rgbcol[]);
     void getTitle(int iconst, QString *title);
     bool isConcPlot();
@@ -77,6 +87,7 @@ public:
     bool useOxyPlot;
     FIELD_DATA fdata;
     int icolourscheme;
+    COLOUR_SCHEME colScheme[N_COLOUR_SCHEMES];
     Plot *pGconc, *pGvol, *pGoxy;
     bool executing;
     char msg[1024];

@@ -7,7 +7,7 @@
 LOG_USE();
 
 #ifdef __DISPLAY768
-#define CANVAS_WIDTH 640
+#define CANVAS_WIDTH 630
 #else
 #define CANVAS_WIDTH 696
 #endif
@@ -41,7 +41,7 @@ Field::Field(QWidget *aParent) : QWidget(aParent)
     cell_constituent_rb_list.clear();
     field_constituent_rb_list.clear();
     icolourscheme = 0;
-//    data = NULL;
+    setupColourSchemes();
 }
 
 //-----------------------------------------------------------------------------------------
@@ -727,6 +727,63 @@ void Field::displayField(int hr, int *res)
 }
 
 //-----------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------------------
+void Field::setupColourSchemes()
+{
+    COLOUR_SCHEME *cs;
+
+    cs = &colScheme[0];
+    cs->ncolours = 4;
+    cs->color[0].setRgb(0,255,0);
+    cs->color[10].setRgb(0,255,0);
+    cs->color[1].setRgb(70,140,60);
+    cs->color[2].setRgb(255,0,0);
+    cs->color[3].setRgb(255,0,255);
+    cs->category[0] = "Growing";
+    cs->category[10] = "Growing";
+    cs->category[1] = "Non-growing";
+    cs->category[2] = "Dying";
+    cs->category[3] = "M-phase";
+
+    cs = &colScheme[1];
+    cs->ncolours = 7;
+    cs->color[0].setRgb(70,140,60);
+    cs->color[10].setRgb(70,140,60);
+    cs->color[1].setRgb(0,255,0);
+    cs->color[2].setRgb(255,0,255);
+    cs->color[3].setRgb(153,55,139);
+    cs->color[4].setRgb(57,84,247);
+    cs->color[5].setRgb(255,150,0);
+    cs->color[6].setRgb(255,0,0);
+    cs->category[0] = "Growing";
+    cs->category[1] = "S-phase";
+    cs->category[2] = "M-phase";
+    cs->category[3] = "Non-growing";
+    cs->category[4] = "Dying (ATP)";
+    cs->category[5] = "Dying (treatment)";
+    cs->category[6] = "Hypoxic";
+
+    cs = &colScheme[2];
+    cs->ncolours = 7;
+    cs->color[0].setRgb(0,110,190);
+    cs->color[10].setRgb(0,110,190);
+    cs->color[1].setRgb(0,255,0);
+    cs->color[2].setRgb(255,0,255);
+    cs->color[3].setRgb(153,55,139);
+    cs->color[4].setRgb(60,140,250);
+    cs->color[5].setRgb(255,150,0);
+    cs->color[6].setRgb(255,0,0);
+    cs->category[0] = "Growing";
+    cs->category[1] = "S-phase";
+    cs->category[2] = "M-phase";
+    cs->category[3] = "Non-growing";
+    cs->category[4] = "Dying (ATP)";
+    cs->category[5] = "Dying (treatment)";
+    cs->category[6] = "Hypoxic";
+}
+
+
+//-----------------------------------------------------------------------------------------
 // For icolourscheme > 0:
 // 0,10 = growing, not S-, M-phase
 // 1    = S-phase
@@ -738,6 +795,12 @@ void Field::displayField(int hr, int *res)
 //-----------------------------------------------------------------------------------------
 void Field::setCellColours(int icolschm, QColor color[])
 {
+    COLOUR_SCHEME *cs = &colScheme[icolschm];
+    for (int k = 0; k < cs->ncolours; k++) {
+        color[k] = cs->color[k];
+    }
+    color[10] = color[0];
+    /*
     if (icolschm == 0) {
         color[0].setRgb(0,255,0);
         color[10].setRgb(0,255,0);
@@ -763,6 +826,7 @@ void Field::setCellColours(int icolschm, QColor color[])
         color[5].setRgb(255,150,0);
         color[6].setRgb(255,0,0);
     }
+    */
 }
 
 

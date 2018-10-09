@@ -139,6 +139,7 @@ private slots:
     void onSelectCellConstituent();
     void onSelectFieldConstituent();
     void setColourScheme(int);
+    void showColours(int icset);
 
     void on_verticalSliderTransparency1_sliderMoved(int position);
     void on_verticalSliderTransparency2_sliderMoved(int position);
@@ -229,6 +230,8 @@ public slots:
 
     void drawForcePlot();
 
+    void sc_textEdited(QString);
+
 signals:
     void facs_update();
     void histo_update();
@@ -273,11 +276,9 @@ private:
     void makeHistoPlot(int numValues, double xmin, double width, QVector<double> values, QString xlabel);
     void showBool(QString, bool);
 
-	double erf(double z);
-    double pnorm(double x1, double x2, double mu, double sig);
-    double plognorm(double x1, double x2, double mu, double sig);
     void create_lognorm_dist(double p1, double p2,int n, double *x, double *prob);
-	int dist_limit(double *p, int n);
+    void create_expon_dist(double tbase, int nexp, double lambda[], int n, double *x, double *prob);
+    int dist_limit(double *p, int n);
     void create_force_function(int n, double *x, double *F, double *xmax, double *ymin, double *ymax);
 	QString parse_rbutton(QString wtag, int *rbutton_case);
 	void setBdryRadioButton(QRadioButton *w_rb, int val);
@@ -447,6 +448,11 @@ private:
     QStringList Drug_FilesList;
 
     PlotWin *plotwin;
+
+    // colourscheme variables
+    QVBoxLayout *cs_layout;
+    QGraphicsScene *cs_scene;
+    QGraphicsView *cs_view;
 
 signals:
     void pause_requested();

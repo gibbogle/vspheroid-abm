@@ -164,12 +164,15 @@ MainWindow::MainWindow(QWidget *parent)
     vtk->show_bottom = checkBox_show_bottom->isChecked();
 
     setupCellColours();
+    cs_scene = NULL;
+    setColourScheme(field->icolourscheme);
+
     QRect rect;
     rect.setX(50);
     rect.setY(30);
 #ifdef __DISPLAY768
-    rect.setHeight(642);
-    rect.setWidth(642);
+    rect.setHeight(632);
+    rect.setWidth(632);
 #else
     rect.setHeight(786);
     rect.setWidth(786);
@@ -2917,6 +2920,7 @@ int MainWindow::dist_limit(double *p, int n)
 	return 1;
 }
 
+/*
 //--------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------
 double MainWindow::erf(double z)
@@ -3005,7 +3009,7 @@ void MainWindow::create_lognorm_dist(double p1, double p2,int n, double *x, doub
         prob[ix] = plognorm(x1,x2,mu_l,sig_l)/(x2-x1);
 	}
 }
-
+*/
 
 //======================================================================================================
 //------------------------------------------------------------------------------------------------------
@@ -3182,7 +3186,7 @@ void MainWindow::setupCellColours()
     QComboBox *combo;
     int i, k;
 
-    spinBox_colourscheme->setMaximum(2);
+    spinBox_colourscheme->setMaximum(N_COLOUR_SCHEMES-1);
     for (i=0; i<2; i++) {
         if (i == 0)
             combo = comboBox_CELLCOLOUR_1;

@@ -4,6 +4,9 @@
 #include "log.h"
 #include "params.h"
 #include "global.h"
+//#include "field.h"
+#include <QPixmap>
+#include <QScrollArea>
 
 #ifdef linux
 #include <QTcpServer>
@@ -14,6 +17,38 @@
 LOG_USE();
 
 extern Params *parm;	// I don't believe this is the right way, but it works
+QPainter painter;
+
+//QMyGroupBox::QMyGroupBox(QWidget *parent) : QGroupBox(parent)
+
+//class QMyMdiArea : public QScrollArea
+//{
+//public:
+//    QMyMdiArea(QWidget *parent = 0)
+//        :
+//            QScrollArea(parent)    //, m_pixmap("logo.jpg")
+
+/*
+QMyMdiArea::QMyMdiArea(QWidget *parent) : QMdiArea(parent)
+    {}
+void QMyMdiArea::paintEvent(QPaintEvent *event)
+{
+        QMdiArea::paintEvent(event);
+
+        QPainter painter(viewport());
+
+        // Calculate the logo position - the bottom right corner of the mdi area.
+//        int x = width() - m_pixmap.width();
+//        int y = height() - m_pixmap.height();
+//        painter.drawPixmap(x, y, m_pixmap);
+        QBrush brush;
+        brush.setColor(Qt::green);
+        painter.setBrush(brush);
+        painter.drawEllipse(20,20,10,10);
+        painter.end();
+        printf("did paint\n");
+};
+*/
 
 //--------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------
@@ -491,9 +526,158 @@ void MainWindow::on_pushButton_saveFACS_clicked()
 }
 
 //--------------------------------------------------------------------------------------------------------
+// This passes the colour scheme selection to the DLL, and to field.
 //--------------------------------------------------------------------------------------------------------
 void MainWindow::setColourScheme(int icset)
 {
     set_colourscheme(icset);
     field->icolourscheme = icset;
+    showColours(icset);
 }
+
+//--------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------
+void MainWindow::showColours(int icset)
+{
+    int row, col;
+    QString valueStr;
+    QLabel *label;
+    QLineEdit *line;
+    COLOUR_SCHEME *cs;
+
+    cs = &field->colScheme[icset];
+    for (row = 0; row < 7; row++) {
+        label = (QLabel *)(gridLayout_colours->itemAtPosition(row,0)->widget());
+        label->setText("");
+        for (col=1; col <= 3; col++) {
+            line = (QLineEdit *)(gridLayout_colours->itemAtPosition(row,col)->widget());
+            line->setText("");
+        }
+    }
+    for (row = 0; row < cs->ncolours; row++) {
+        label = (QLabel *)(gridLayout_colours->itemAtPosition(row,0)->widget());
+        label->setText(cs->category[row]);
+        for (col = 1; col <= 3; col++) {
+            line = (QLineEdit *)(gridLayout_colours->itemAtPosition(row,col)->widget());
+            switch (col) {
+            case 1:
+                valueStr = QString::number(cs->color[row].red());
+                line->setText(valueStr);
+                break;
+            case 2:
+                valueStr = QString::number(cs->color[row].green());
+                line->setText(valueStr);
+                break;
+            case 3:
+                valueStr = QString::number(cs->color[row].blue());
+                line->setText(valueStr);
+                break;
+            }
+        }
+    }
+
+    if (cs_scene == NULL) {
+        cs_layout = new QVBoxLayout();
+        cs_scene = new QGraphicsScene();
+        cs_view = new QGraphicsView(cs_scene);
+        groupBox_show->setLayout(cs_layout);
+        cs_layout->addWidget(cs_view);
+        connect(lineEdit_sc_0R,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_1R,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_2R,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_3R,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_4R,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_5R,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_6R,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_0G,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_1G,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_2G,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_3G,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_4G,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_5G,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_6G,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_0B,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_1B,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_2B,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_3B,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_4B,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_5B,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+        connect(lineEdit_sc_6B,SIGNAL(textEdited(QString)), this, SLOT(sc_textEdited(QString)));
+    }
+    cs_scene->clear();
+    double dy = 27;
+    double w = 25;
+    QBrush brush;
+    brush.setStyle(Qt::SolidPattern);
+    for (row = 0; row < 7; row++) {
+        if (row < cs->ncolours) {
+            brush.setColor(cs->color[row]);
+        } else {
+            brush.setColor(QColor(255,255,255));
+        }
+        cs_scene->addEllipse(5,row*dy,w,w,Qt::NoPen,brush);
+    }
+    cs_view->show();
+}
+
+void MainWindow::sc_textEdited(QString text)
+{
+    int icset = field->icolourscheme;
+    COLOUR_SCHEME *cs = &field->colScheme[icset];
+    QObject *obj = sender();
+    QString name = obj->objectName();
+    QString numstr = name[12];
+    int num = numstr.toInt();
+    QString colstr = name[13];
+    if (colstr.compare("R") == 0) {
+        cs->color[num].setRed(text.toInt());
+    } else if (colstr.compare("G") == 0) {
+        cs->color[num].setGreen(text.toInt());
+    } else if (colstr.compare("B") == 0) {
+        cs->color[num].setBlue(text.toInt());
+    }
+    showColours(icset);
+}
+
+    /*
+    switch (row) {
+    case 0:
+        label->setText("Growing");
+        break;
+    case 1:
+        label->setText("S-phase");
+        break;
+    case 2:
+        label->setText("M-phase");
+        break;
+    case 3:
+        label->setText("Non-growing");
+        break;
+    case 4:
+        label->setText("Dying (ATP)");
+        break;
+    case 5:
+        label->setText("Dying (treatment)");
+        break;
+    case 6:
+        label->setText("Hypoxic");
+        break;
+    }
+*/
+    /*
+    brush.setColor(Qt::red);
+    cs_scene->addEllipse(5,0,w,w,Qt::NoPen,brush);
+    brush.setColor(Qt::green);
+    cs_scene->addEllipse(5,dy,w,w,Qt::NoPen,brush);
+    brush.setColor(Qt::yellow);
+    cs_scene->addEllipse(5,2*dy,w,w,Qt::NoPen,brush);
+    brush.setColor(Qt::blue);
+    cs_scene->addEllipse(5,3*dy,w,w,Qt::NoPen,brush);
+    brush.setColor(Qt::red);
+    cs_scene->addEllipse(5,4*dy,w,w,Qt::NoPen,brush);
+    brush.setColor(Qt::green);
+    cs_scene->addEllipse(5,5*dy,w,w,Qt::NoPen,brush);
+    brush.setColor(Qt::yellow);
+    cs_scene->addEllipse(5,6*dy,w,w,Qt::NoPen,brush);
+    cs_view->show();
+    */
