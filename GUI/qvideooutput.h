@@ -54,6 +54,7 @@ extern "C" {
 ////////////////////////////////////////////////////////////////////////////////
 class QVideoOutput : public QObject
 {
+    Q_OBJECT
 public:
    QVideoOutput(QObject * parent=0, int source=0, vtkRenderWindow *VTKrenWin=0, QwtPlot *qwtplot=0, MyQGraphicsView *myview=0);
    virtual ~QVideoOutput();

@@ -688,7 +688,7 @@ radiation_killed = .false.
 !		    Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
 !		endif
         if (cp%phase >= M_phase) then
-            if (prev_phase == Checkpoint2) then		! this is mitosis entry
+            if (prev_phase == G2_checkpoint) then		! this is mitosis entry
                 if (.not.cp%radiation_tag .and. cp%N_PL > 0) then		! lesions still exist, no time for repair
 					cp%radiation_tag = .true.
 				    Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
@@ -730,7 +730,8 @@ radiation_killed = .false.
             endif
             in_mitosis = .true.
         endif
-		if (cp%phase < Checkpoint2 .and. cp%phase /= Checkpoint1) then
+!		if (cp%phase < Checkpoint2 .and. cp%phase /= Checkpoint1) then
+		if (cp%phase == G1_phase .or.cp%phase == S_phase .or. cp%phase == G2_phase) then
 		    call growcell(cp,dt)
 		endif	
 	endif
@@ -1019,134 +1020,6 @@ enddo
 end subroutine
 
 !-----------------------------------------------------------------------------------------
-! A single cell is replaced by two.
-!-----------------------------------------------------------------------------------------
-subroutine old_divider(kcell1, ok)
-integer :: kcell1
-logical :: ok
-integer :: kcell2, ityp, nbrs0
-real(REAL_KIND) :: r(3), c(3), cfse0, cfse1, V0, Tdiv, gfactor
-type(cell_type), pointer :: cp1, cp2
-
-!write(*,*) 'divider:'
-!write(logmsg,*) 'divider: ',kcell1 
-!call logger(logmsg)
-ok = .true.
-tnow = istep*DELTA_T
-cp1 => cell_list(kcell1)
-if (ngaps > 0) then
-    kcell2 = gaplist(ngaps)
-    ngaps = ngaps - 1
-else
-	nlist = nlist + 1
-	if (nlist > MAX_NLIST) then
-		ok = .false.
-		call logger('Error: Maximum number of cells MAX_NLIST has been exceeded.  Increase and rebuild.')
-		return
-	endif
-	kcell2 = nlist
-endif
-ncells = ncells + 1
-ityp = cp1%celltype
-ncells_type(ityp) = ncells_type(ityp) + 1
-ncells_mphase = ncells_mphase - 1
-cp2 => cell_list(kcell2)
-cp1%state = ALIVE
-cp1%generation = cp1%generation + 1
-V0 = cp1%V/2
-cp1%V = V0
-cp1%site = cp1%centre(:,1)/DELTA_X + 1
-cp1%d = 0
-cp1%birthtime = tnow
-!cp1%divide_volume = get_divide_volume1()
-cp1%divide_volume = get_divide_volume(ityp,V0,Tdiv,gfactor)
-cp1%divide_time = Tdiv
-cp1%d_divide = (3*cp1%divide_volume/PI)**(1./3.)
-cp1%mitosis = 0
-cp1%t_divide_last = tnow
-cfse0 = cp1%CFSE
-cp1%CFSE = generate_CFSE(cfse0/2)
-cfse1 = cfse0 - cp1%CFSE
-
-cp1%drug_tag = .false.
-!cp1%anoxia_tag = .false.
-!cp1%t_anoxia = 0
-!cp1%aglucosia_tag = .false.
-!cp1%t_aglucosia = 0
-
-if (cp1%growth_delay) then
-	cp1%N_delayed_cycles_left = cp1%N_delayed_cycles_left - 1
-	cp1%growth_delay = (cp1%N_delayed_cycles_left > 0)
-!	write(*,*) 'growth_delay cell divides: ',kcell1,kcell2,cp1%N_delayed_cycles_left
-endif
-cp1%G2_M = .false.
-
-nbrs0 = cp1%nbrs
-cp1%nbrs = nbrs0 + 1
-cp1%nbrlist(cp1%nbrs)%indx = kcell2
-cp1%nbrlist(cp1%nbrs)%contact = .false.
-cp1%nbrlist(cp1%nbrs)%contact(1,1) = .true.
-
-cp2%ID = cp1%ID
-cp2%celltype = cp1%celltype
-cp2%state = ALIVE
-cp2%generation = cp1%generation
-cp2%V = V0
-cp2%radius(1) = cp1%radius(2)
-cp2%centre(:,1) = cp1%centre(:,2)
-cp2%site = cp2%centre(:,1)/DELTA_X + 1
-cp2%d = 0
-cp2%birthtime = tnow
-!cp2%divide_volume = get_divide_volume1()
-cp2%divide_volume = get_divide_volume(ityp,V0,Tdiv,gfactor)
-cp2%divide_time = Tdiv
-cp2%d_divide = (3*cp2%divide_volume/PI)**(1./3.)
-cp2%mitosis = 0
-cp2%t_divide_last = tnow
-cp2%CFSE = cfse1
-
-cp2%ID = cp1%ID
-cp2%p_rad_death = cp1%p_rad_death
-cp2%radiation_tag = cp1%radiation_tag
-if (cp2%radiation_tag) then
-	Nradiation_tag(ityp) = Nradiation_tag(ityp) + 1
-endif
-cp2%drug_tag = .false.
-!cp2%anoxia_tag = .false.
-!cp2%t_anoxia = 0
-!cp2%aglucosia_tag = .false.
-!cp2%t_aglucosia = 0
-
-cp2%growth_delay = cp1%growth_delay
-if (cp2%growth_delay) then
-	cp2%dt_delay = cp1%dt_delay
-	cp2%N_delayed_cycles_left = cp1%N_delayed_cycles_left
-endif
-cp2%G2_M = .false.
-
-cp2%Cin = cp1%Cin
-cp2%Cex = cp1%Cex
-
-!allocate(cp2%nbrlist(MAX_NBRS))
-! Need to set up neighbour lists for both cp1 and cp2 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< DO THIS
-! Use neighbour lists of neighbours
-! First simple test:
-cp2%nbrlist(1:nbrs0) = cp1%nbrlist(1:nbrs0)
-cp2%nbrs = nbrs0 + 1
-cp2%nbrlist(cp2%nbrs)%indx = kcell1
-cp2%nbrlist(cp2%nbrs)%contact = .false.
-cp2%nbrlist(cp2%nbrs)%contact(1,1) = .true.
-cp1%Iphase = .true.
-cp1%nspheres = 1
-cp2%Iphase = .true.
-cp2%nspheres = 1
-cp2%ndt = cp1%ndt
-call update_nbrlist(kcell1)
-call update_nbrlist(kcell2)
-! Note: any cell that has kcell1 in its nbrlist now needs to add kcell2 to the nbrlist.
-end subroutine
-
-!-----------------------------------------------------------------------------------------
 ! New version
 !-----------------------------------------------------------------------------------------
 subroutine divider(kcell1, ok)
@@ -1197,10 +1070,10 @@ cp1%V = V0
 cp1%site = cp1%centre(:,1)/DELTA_X + 1
 cp1%d = 0
 cp1%birthtime = tnow
-!cp1%divide_volume = get_divide_volume1()
-cp1%divide_volume = get_divide_volume(ityp,V0,Tdiv,gfactor)
-cp1%divide_time = Tdiv
-cp1%fg = gfactor
+!cp1%divide_volume = get_divide_volume(ityp,V0,Tdiv,gfactor)
+!cp1%divide_time = Tdiv
+!cp1%fg = gfactor
+call set_divide_volume(kcell1, V0)
 cp1%d_divide = (3*cp1%divide_volume/PI)**(1./3.)
 if (use_metabolism) then	! Fraction of I needed to divide = fraction of volume needed to divide
 	cp1%metab%I2Divide = get_I2Divide(cp1)
@@ -1247,9 +1120,10 @@ cp1%t_divide_last = tnow
 cp2 = cp1
 
 ! These are the variations from cp1
-cp2%divide_volume = get_divide_volume(ityp,V0,Tdiv,gfactor)
-cp2%divide_time = Tdiv
-cp2%fg = gfactor
+!cp2%divide_volume = get_divide_volume(ityp,V0,Tdiv,gfactor)
+!cp2%divide_time = Tdiv
+!cp2%fg = gfactor
+call set_divide_volume(kcell2, V0)
 if (use_metabolism) then	! Fraction of I needed to divide = fraction of volume needed to divide
 	cp2%metab%I2Divide = get_I2Divide(cp2)
 	cp2%metab%Itotal = 0

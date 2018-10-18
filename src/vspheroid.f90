@@ -70,7 +70,7 @@ end subroutine
 !-----------------------------------------------------------------------------------------
 subroutine ReadCellParams(ok)
 logical :: ok
-integer :: i, idrug, nmetab, im, ichemo
+integer :: i, idrug, nmetab, im, ichemo, ityp
 integer :: itestcase, ictype, ishow_progeny
 integer :: iuse_oxygen, iuse_glucose, iuse_tracer, iuse_drug, iuse_metab, iV_depend, iV_random, iuse_FD
 integer :: iuse_extra, iuse_relax, iuse_par_relax, iuse_gd_all
@@ -81,6 +81,7 @@ integer :: iconstant, ioxygengrowth, iglucosegrowth, ioxygendeath, iglucosedeath
 logical :: use_metabolites
 character*(12) :: drug_name
 character*(1) :: numstr
+type(cycle_parameters_type),pointer :: ccp
 
 ok = .true.
 
@@ -328,18 +329,29 @@ nsteps = days*24*3600./DELTA_T
 write(logmsg,*) 'nsteps: ',nsteps
 call logger(logmsg)
 
-divide_dist(1:2)%class = LOGNORMAL_DIST
-divide_time_median(1:2) = 60*60*divide_time_median(1:2)		! hours -> seconds
-sigma(1:2) = log(divide_time_shape(1:2))
-!divide_dist%p1 = log(divide_time_mean/exp(sigma*sigma/2))	
-divide_dist(1:2)%p1 = log(divide_time_median(1:2))	
-divide_dist(1:2)%p2 = sigma(1:2)
-divide_time_mean(1:2) = exp(divide_dist(1:2)%p1 + 0.5*divide_dist(1:2)%p2**2)	! mean = median.exp(sigma^2/2)
-write(logmsg,'(a,24e12.4)') 'shape, sigma: ',divide_time_shape(1:2),sigma(1:2)
-call logger(logmsg)
-write(logmsg,'(a,4e12.4)') 'Median, mean divide time: ',divide_time_median(1:2)/3600,divide_time_mean(1:2)/3600
-call logger(logmsg)
-call AdjustCycleTimes
+if (use_exponential_cycletime) then
+    divide_dist(1:2)%class = EXPONENTIAL_DIST
+    do ityp = 1,2
+        ccp => cc_parameters(ityp)
+        divide_time_mean(ityp) = ccp%T_G1 + ccp%G1_mean_delay + ccp%T_S + ccp%S_mean_delay &
+            + ccp%T_G2 + ccp%G2_mean_delay + ccp%T_M
+	    ccp%Pk_G1 = 1./ccp%G1_mean_delay    ! /sec
+	    ccp%Pk_S =  1./ccp%S_mean_delay     ! /sec
+	    ccp%Pk_G2 = 1./ccp%G2_mean_delay    ! /sec
+    enddo
+else
+    divide_dist(1:2)%class = LOGNORMAL_DIST
+    divide_time_median(1:2) = 60*60*divide_time_median(1:2)		! hours -> seconds
+    sigma(1:2) = log(divide_time_shape(1:2))
+    divide_dist(1:2)%p1 = log(divide_time_median(1:2))	
+    divide_dist(1:2)%p2 = sigma(1:2)
+    divide_time_mean(1:2) = exp(divide_dist(1:2)%p1 + 0.5*divide_dist(1:2)%p2**2)	! mean = median.exp(sigma^2/2)
+    write(logmsg,'(a,24e12.4)') 'shape, sigma: ',divide_time_shape(1:2),sigma(1:2)
+    call logger(logmsg)
+    write(logmsg,'(a,4e12.4)') 'Median, mean divide time: ',divide_time_median(1:2)/3600,divide_time_mean(1:2)/3600
+    call logger(logmsg)
+    call AdjustCycleTimes
+endif
 
 use_V_dependence = (iV_depend == 1)
 saveprofile%active = (isaveprofiledata == 1)
@@ -406,11 +418,16 @@ real(REAL_KIND) :: total
 do ityp = 1,2
 ccp => cc_parameters(ityp)
 
+ccp%S_mean_delay = 0
 read(nf,*) ccp%T_G1
 read(nf,*) ccp%T_S
 read(nf,*) ccp%T_G2
 read(nf,*) ccp%T_M
 read(nf,*) ccp%G1_mean_delay
+!read(nf,*) ccp%S_mean_delay    ! for now, without changing the GUI
+if (use_exponential_cycletime) then
+    ccp%S_mean_delay = ccp%G1_mean_delay
+endif
 read(nf,*) ccp%G2_mean_delay
 read(nf,*) ccp%Apoptosis_rate
 read(nf,*) ccp%arrest_threshold
@@ -427,20 +444,23 @@ read(nf,*) ccp%aTCP
 read(nf,*) ccp%bTCP
 !read(nf,*) ccp%Kcp
 
-total = ccp%T_G1 + ccp%T_S + ccp%T_G2 + ccp%T_M + ccp%G1_mean_delay + ccp%G2_mean_delay
-write(nflog,'(a,7f8.2)') 'T_G1,T_S,T_G2,T_M,G1_delay,G2_delay, total: ',ccp%T_G1,ccp%T_S,ccp%T_G2,ccp%T_M, &
-						ccp%G1_mean_delay,ccp%G2_mean_delay,total
+total = ccp%T_G1 + ccp%T_S + ccp%T_G2 + ccp%T_M + ccp%G1_mean_delay + ccp%S_mean_delay+ ccp%G2_mean_delay
+write(nflog,'(a,8f8.2)') 'T_G1,T_S,T_G2,T_M,G1_delay,S_delay,G2_delay, total: ',ccp%T_G1,ccp%T_S,ccp%T_G2,ccp%T_M, &
+						ccp%G1_mean_delay,ccp%S_mean_delay,ccp%G2_mean_delay,total
 						
 ccp%T_G1 = 3600*ccp%T_G1                    ! hours -> seconds
 ccp%T_S = 3600*ccp%T_S
 ccp%T_G2 = 3600*ccp%T_G2
 ccp%T_M = 3600*ccp%T_M
 ccp%G1_mean_delay = 3600*ccp%G1_mean_delay
+ccp%S_mean_delay = 3600*ccp%S_mean_delay
 ccp%G2_mean_delay = 3600*ccp%G2_mean_delay
 enddo
 end subroutine
 
 !-----------------------------------------------------------------------------------------
+! This ensures that in the case of lognormal divide time distribution the the cycle time 
+! computed from the phase times equals the mean divide time of the specified distribution.
 !-----------------------------------------------------------------------------------------
 subroutine AdjustCycleTimes
 integer :: ityp
@@ -450,17 +470,19 @@ type(cycle_parameters_type),pointer :: ccp
 do ityp = 1,2
 	ccp => cc_parameters(ityp)
 	tmean = divide_time_mean(ityp)
-	tsum = ccp%T_G1 + ccp%T_S + ccp%T_G2 + ccp%T_M + ccp%G1_mean_delay + ccp%G2_mean_delay
+	tsum = ccp%T_G1 + ccp%T_S + ccp%T_G2 + ccp%T_M + ccp%G1_mean_delay + ccp%S_mean_delay + ccp%G2_mean_delay
 	tfactor = tmean/tsum
 	ccp%T_G1 = tfactor*ccp%T_G1
 	ccp%T_S = tfactor*ccp%T_S
 	ccp%T_G2 = tfactor*ccp%T_G2
 	ccp%T_M = tfactor*ccp%T_M
 	ccp%G1_mean_delay = tfactor*ccp%G1_mean_delay
+	ccp%S_mean_delay = tfactor*ccp%S_mean_delay
 	ccp%G2_mean_delay= tfactor*ccp%G2_mean_delay
 	ccp%Pk_G1 = 1./ccp%G1_mean_delay    ! /sec
+	ccp%Pk_S = 0    ! 1./ccp%S_mean_delay    ! this is not used currently
 	ccp%Pk_G2 = 1./ccp%G2_mean_delay    ! /sec
-	write(nflog,'(a,i4,2e12.3)') 'ityp, Pk_G1, Pk_G2: ',ityp,ccp%Pk_G1,ccp%Pk_G2
+!	write(nflog,'(a,i4,3e12.3)') 'ityp, Pk_G1, Pk_S, Pk_G2: ',ityp,ccp%Pk_G1, ccp%Pk_S, ccp%Pk_G2
 enddo
 end subroutine
 
@@ -1126,9 +1148,10 @@ cp%Iphase = .true.
 cp%nspheres = 1
 
 V0 = Vdivide0/2
-cp%divide_volume = get_divide_volume(ityp, V0, Tdiv, gfactor)
-cp%divide_time = Tdiv
-cp%fg = gfactor
+!cp%divide_volume = get_divide_volume(ityp, V0, Tdiv, gfactor)
+!cp%divide_time = Tdiv
+!cp%fg = gfactor
+call set_divide_volume(kcell, V0)
 cp%dVdt = max_growthrate(ityp)
 if (use_volume_method) then
     !cp%divide_volume = Vdivide0
@@ -1221,14 +1244,17 @@ end subroutine
 !	%V
 !	%t_divide_last
 ! Note: no cells start in mitosis - set all phase=6 cells at the end of G2 checkpoint
+!
+!================THIS NEEDS TO BE CHANGED FOR EXPONENTIAL CYCLE TIME==============================================
+!
 !--------------------------------------------------------------------------------
 subroutine SetInitialCellCycleStatus(kcell,cp)
 integer :: kcell
 type(cell_type), pointer :: cp
 type(cycle_parameters_type),pointer :: ccp
-integer :: ityp, iphase
+integer :: ityp, iphase, nphases
 integer :: kpar = 0
-real(REAL_KIND) :: Tdiv, Tmean, V0, fg, rVmax, fsum, R, x, y, z, phase_fraction(6), phase_time(6)
+real(REAL_KIND) :: Tdiv, Tmean, V0, fg, rVmax, fsum, R, x, y, z, phase_fraction(7), phase_time(7)
 
 ityp = cp%celltype
 ccp => cc_parameters(ityp)
@@ -1236,71 +1262,148 @@ Tdiv = cp%divide_time
 V0 = Vdivide0/2
 Tmean = divide_time_mean(ityp)
 rVmax = max_growthrate(ityp)
-fg = cp%fg
 R = par_uni(kpar)
 x = (4 - sqrt(16 - 12*R))/2	
 ! This is the level of progress through the cell cycle,  0 -> 1, for prob. density f(x) = 1 - 2(x-0.5)/3
 ! Cumulative prob. function F(x) = -x^2/3 + 4x/3, then from R U(0,1): (-x^2 + 4x)/3 = R, x^2 - 4x + 3R = 0
-phase_time(1) = fg*ccp%T_G1
-phase_time(2) = ccp%G1_mean_delay
-phase_time(3) = fg*ccp%T_S
-phase_time(4) = fg*ccp%T_G2
-phase_time(5) = ccp%G2_mean_delay + ccp%T_M
-phase_time(6) = ccp%T_M
+
+nphases = 7
+if (use_exponential_cycletime) then
+    phase_time(G1_phase)        = ccp%T_G1
+    phase_time(G1_checkpoint)   = cp%G1ch_time
+    phase_time(S_phase)         = ccp%T_S
+    phase_time(S_checkpoint)    = cp%Sch_time
+    phase_time(G2_phase)        = ccp%T_G2
+    phase_time(G2_checkpoint)   = cp%G2ch_time
+    phase_time(M_phase)         = ccp%T_M
+else
+    fg = cp%fg
+    phase_time(G1_phase)        = fg*ccp%T_G1
+    phase_time(G1_checkpoint)   = ccp%G1_mean_delay
+    phase_time(S_phase)         = fg*ccp%T_S
+    phase_time(S_checkpoint)    = 0
+    phase_time(G2_phase)        = fg*ccp%T_G2
+    phase_time(G2_checkpoint)   = ccp%G2_mean_delay ! + ccp%T_M
+    phase_time(M_phase)         = ccp%T_M
+endif
 phase_fraction = phase_time/Tdiv
 ! These fractions must sum to 1 because of get_divide_volume (check)
-fsum = 0
-do iphase = 1,6
-	if (fsum + phase_fraction(iphase) > x) then	! this is the phase
-		y = (x - fsum)/phase_fraction(iphase)	! this is fractional progress through the phase
-		z = 1 - y								! this is fraction phase left to complete, => time until phase transition
-		if (iphase == G1_phase) then
-			cp%phase = G1_phase
-			cp%G1_time = z*phase_time(1)
-			cp%V = V0 + y*phase_time(1)*rVmax
-			cp%t_divide_last = -y*phase_time(1)
-		elseif (iphase == Checkpoint1) then
-			cp%phase = Checkpoint1
-			cp%G1S_time = z*phase_time(2)
-			cp%G1_flag = .false.
-			cp%V = V0 + phase_time(1)*rVmax
-			cp%t_divide_last = -(phase_time(1) + y*phase_time(2))
-		elseif (iphase == S_phase) then
-			cp%phase = S_phase
-!			cp%S_start_time = -y*phase_time(3)
-!			cp%S_time = z*phase_time(3)
-			cp%S_time = y*phase_time(3)     ! for S phase this is progress, not end time
-			cp%S_duration = phase_time(3)
-			cp%V = V0 + (phase_time(1) + y*phase_time(3))*rVmax 
-			cp%t_divide_last = -(phase_time(1) + phase_time(2) + y*phase_time(3))
-		elseif (iphase == G2_phase) then
-			cp%phase = G2_phase
-			cp%G2_time = z*phase_time(4)
-			cp%V = V0 + (phase_time(1) + phase_time(3) + y*phase_time(4))*rVmax 
-			cp%t_divide_last = -(phase_time(1) + phase_time(2) + phase_time(3) + y*phase_time(4))
-		elseif (iphase == Checkpoint2) then
-			cp%phase = Checkpoint2
-			cp%G2M_time = z*phase_time(5)
-			cp%G2_flag = .false.
-			cp%V = V0 + (phase_time(1) + phase_time(3) + phase_time(4))*rVmax 
-			cp%t_divide_last = -(phase_time(1) + phase_time(2) + phase_time(3) + phase_time(4) + y*phase_time(5))
-		elseif (iphase == M_phase) then
-!			cp%phase = M_phase
-!			cp%M_time = z*phase_time(6)
-			cp%V = V0 + (phase_time(1) + phase_time(3) + phase_time(4))*rVmax 
-!			cp%t_divide_last = -(phase_time(1) + phase_time(2) + phase_time(3) + phase_time(4) + phase_time(5) + y*phase_time(6))
-			cp%phase = Checkpoint2
-			cp%G2M_time = 0
-			cp%G2_flag = .false.
-			cp%t_divide_last = -(phase_time(1) + phase_time(2) + phase_time(3) + phase_time(4) + phase_time(5))
-		else
-			write(*,*) 'Error in SetInitialCellCycleStatus' 
-			stop
-		endif
-		exit
-	endif
-	fsum = fsum + phase_fraction(iphase)
-enddo
+if (use_exponential_cycletime) then
+    fsum = 0
+    do iphase = 1,nphases
+        if (iphase == S_checkpoint) cycle
+	    if (fsum + phase_fraction(iphase) > x) then	! this is the phase
+		    y = (x - fsum)/phase_fraction(iphase)	! this is fractional progress through the phase
+		    z = 1 - y								! this is fraction phase left to complete, => time until phase transition
+		    if (iphase == G1_phase) then
+			    cp%phase = G1_phase
+			    cp%G1_time = z*phase_time(1)
+			    cp%V = V0 + y*phase_time(1)*rVmax
+			    cp%t_divide_last = -y*phase_time(1)
+		    elseif (iphase == G1_checkpoint) then
+			    cp%phase = G1_checkpoint
+                cp%G1ch_max_delay = cp%G1ch_time
+			    cp%G1ch_entry_time = -y*phase_time(2)
+			    cp%V = V0 + phase_time(1)*rVmax
+			    cp%t_divide_last = -(phase_time(1) + y*phase_time(2))
+		    elseif (iphase == S_phase) then
+			    cp%phase = S_phase
+   			    cp%S_time = z*phase_time(3)
+			    cp%V = V0 + (phase_time(1) + y*phase_time(3))*rVmax 
+			    cp%t_divide_last = -(phase_time(1) + phase_time(2) + y*phase_time(3))
+		    elseif (iphase == S_checkpoint) then
+			    cp%phase = S_checkpoint
+                cp%Sch_max_delay = cp%G1ch_time
+			    cp%Sch_entry_time = -y*phase_time(4)
+			    cp%V = V0 + (phase_time(1) + phase_time(3))*rVmax
+			    cp%t_divide_last = -(phase_time(1) + phase_time(2) + phase_time(3) + y*phase_time(4))		
+		    elseif (iphase == G2_phase) then
+			    cp%phase = G2_phase
+			    cp%G2_time = z*phase_time(5)
+			    cp%V = V0 + (phase_time(1) + phase_time(3) + y*phase_time(5))*rVmax 
+			    cp%t_divide_last = -(phase_time(1) + phase_time(2) + phase_time(3) + phase_time(4) &
+			        + y*phase_time(5))
+		    elseif (iphase == G2_checkpoint) then
+			    cp%phase = G2_checkpoint
+                cp%G2ch_max_delay = cp%G2ch_time
+			    cp%G2ch_entry_time = -y*phase_time(6)
+			    cp%G2M_time = z*phase_time(6)
+			    cp%V = V0 + (phase_time(1) + phase_time(3) + phase_time(5))*rVmax 
+			    cp%t_divide_last = -(phase_time(1) + phase_time(2) + phase_time(3) + phase_time(4) &
+			        + phase_time(5) + y*phase_time(6))
+		    elseif (iphase == M_phase) then
+			    cp%V = V0 + (phase_time(1) + phase_time(3) + phase_time(5))*rVmax 
+			    cp%phase = G2_checkpoint
+			    cp%G2M_time = 0
+			    cp%G2_flag = .false.
+			    cp%t_divide_last = -(phase_time(1) + phase_time(2) + phase_time(3) + phase_time(4) &
+			        + phase_time(5) + phase_time(6))
+		    else
+			    write(*,*) 'Error in SetInitialCellCycleStatus' 
+			    stop
+		    endif
+		    exit
+	    endif
+	    fsum = fsum + phase_fraction(iphase)
+    enddo
+else
+    fsum = 0
+    do iphase = 1,nphases
+        if (iphase == S_checkpoint) cycle
+	    if (fsum + phase_fraction(iphase) > x) then	! this is the phase
+		    y = (x - fsum)/phase_fraction(iphase)	! this is fractional progress through the phase
+		    z = 1 - y								! this is fraction phase left to complete, => time until phase transition
+		    if (iphase == G1_phase) then
+			    cp%phase = G1_phase
+			    cp%G1_time = z*phase_time(1)
+			    cp%V = V0 + y*phase_time(1)*rVmax
+			    cp%t_divide_last = -y*phase_time(1)
+		    elseif (iphase == G1_checkpoint) then
+			    cp%phase = G1_checkpoint
+			    cp%G1S_time = z*phase_time(2)
+			    cp%G1_flag = .false.
+			    cp%V = V0 + phase_time(1)*rVmax
+			    cp%t_divide_last = -(phase_time(1) + y*phase_time(2))
+		    elseif (iphase == S_phase) then
+			    cp%phase = S_phase
+			    if (use_exponential_cycletime) then
+    			    cp%S_time = z*phase_time(3)
+    		    else
+			        cp%S_time = y*phase_time(3)     ! for S phase this is progress, not end time
+			        cp%S_duration = phase_time(3)
+			    endif
+			    cp%V = V0 + (phase_time(1) + y*phase_time(3))*rVmax 
+			    cp%t_divide_last = -(phase_time(1) + phase_time(2) + y*phase_time(3))
+		    elseif (iphase == G2_phase) then
+			    cp%phase = G2_phase
+			    cp%G2_time = z*phase_time(5)
+			    cp%V = V0 + (phase_time(1) + phase_time(3) + y*phase_time(5))*rVmax 
+			    cp%t_divide_last = -(phase_time(1) + phase_time(2) + phase_time(3) + y*phase_time(5))
+		    elseif (iphase == G2_checkpoint) then
+			    cp%phase = G2_checkpoint
+			    cp%G2M_time = z*phase_time(6)
+			    cp%G2_flag = .false.
+			    cp%V = V0 + (phase_time(1) + phase_time(3) + phase_time(5))*rVmax 
+			    cp%t_divide_last = -(phase_time(1) + phase_time(2) + phase_time(3) + phase_time(5) + y*phase_time(6))
+		    elseif (iphase == M_phase) then
+    !			cp%phase = M_phase
+    !			cp%M_time = z*phase_time(6)
+			    cp%V = V0 + (phase_time(1) + phase_time(3) + phase_time(5))*rVmax 
+    !			cp%t_divide_last = -(phase_time(1) + phase_time(2) + phase_time(3) + phase_time(4) + phase_time(5) + y*phase_time(6))
+			    cp%phase = G2_checkpoint
+			    cp%G2M_time = 0
+			    cp%G2_flag = .false.
+			    cp%t_divide_last = -(phase_time(1) + phase_time(2) + phase_time(3) + phase_time(5) + phase_time(6))
+		    else
+			    write(*,*) 'Error in SetInitialCellCycleStatus' 
+			    stop
+		    endif
+		    exit
+	    endif
+	    fsum = fsum + phase_fraction(iphase)
+    enddo
+endif
+write(nflog,'(2i4,4f8.3,f8.0)') kcell,cp%phase,R,x,y,cp%V/V0,cp%t_divide_last
 cp%metab = metabolic
 !write(*,*)
 !write(*,'(a,3f8.3)') 'Tdiv, Tmean, fg: ',Tdiv/3600,Tmean/3600,fg
@@ -1328,7 +1431,7 @@ Tdiv = divide_time_mean(ityp)
 cp%divide_time = Tdiv
 rVmax = max_growthrate(ityp)
 Tgrowth0 = ccp%T_G1 + ccp%T_S + ccp%T_G2
-Tfixed = ccp%T_M + ccp%G1_mean_delay + ccp%G2_mean_delay
+Tfixed = ccp%T_M + ccp%G1_mean_delay + ccp%S_mean_delay + ccp%G2_mean_delay
 Tgrowth = Tdiv - Tfixed
 cp%fg = Tgrowth/Tgrowth0
 cp%divide_volume = V0 + Tgrowth*rVmax
@@ -1439,15 +1542,15 @@ type(cycle_parameters_type),pointer :: ccp
 ityp = 1
 ccp => cc_parameters(ityp)
 write(nflog,*) 'phase durations:'
-write(nflog,'(6f8.0)') ccp%T_G1,ccp%G1_mean_delay,ccp%T_S,ccp%T_G2,ccp%G2_mean_delay,ccp%T_M
-tsum = ccp%T_G1 + ccp%T_S + ccp%T_G2 + ccp%T_M + ccp%G1_mean_delay + ccp%G2_mean_delay
+write(nflog,'(7f8.0)') ccp%T_G1,ccp%G1_mean_delay,ccp%T_S,ccp%S_mean_delay,ccp%T_G2,ccp%G2_mean_delay,ccp%T_M
+tsum = ccp%T_G1 + ccp%T_S + ccp%T_G2 + ccp%T_M + ccp%G1_mean_delay + ccp%S_mean_delay + ccp%G2_mean_delay
 write(nflog,'(a,f8.0,f8.3)') 'average divide time (sec, hr): ',tsum,tsum/3600
-f(1) = ccp%T_G1/tsum
-f(3) = ccp%T_S/tsum
-f(4) = ccp%T_G2/tsum
-f(6) = ccp%T_M/tsum
-f(2) = ccp%G1_mean_delay/tsum
-f(5) = ccp%G2_mean_delay/tsum
+!f(1) = ccp%T_G1/tsum
+!f(3) = ccp%T_S/tsum
+!f(4) = ccp%T_G2/tsum
+!f(6) = ccp%T_M/tsum
+!f(2) = ccp%G1_mean_delay/tsum
+!f(5) = ccp%G2_mean_delay/tsum
 cnt = 0
 do kcell = 1,ncells
 	cp => cell_list(kcell)
@@ -1455,7 +1558,7 @@ do kcell = 1,ncells
 	cnt(cp%phase) = cnt(cp%phase) + 1
 enddo
 tsum = sum(cnt)
-write(nflog,'(6f8.3)') f
+!write(nflog,'(6f8.3)') f
 write(nflog,'(6f8.3)') cnt/tsum
 !stop
 end subroutine
@@ -2249,6 +2352,7 @@ real(c_double) :: centre(*)
 character*(128) :: infile, outfile
 integer :: i, res
 logical :: ok, isopen
+logical, save :: first = .true.
 
 !call test_seq
 !stop
@@ -2266,7 +2370,17 @@ awp_0%is_open = .false.
 awp_1%is_open = .false.
 par_zig_init = .false.
 inquire(unit=nflog,OPENED=isopen)
+if (isopen) then
+!    write(*,*) 'nflog is open'
+    if (first) then
+!        write(*,*) 'closing nflog'
+        close(nflog)
+        isopen = .false.
+    endif
+endif
+first = .false.
 if (.not.isopen) then
+!    write(*,*) 'opening nflog'
     open(nflog,file='vspheroid.log',status='replace')
 endif
 #if defined(OPENMP) || defined(_OPENMP)

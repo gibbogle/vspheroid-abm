@@ -192,6 +192,11 @@ type cell_type
     integer :: N_PL, N_IRL, N_Ch1, N_Ch2
     logical :: irrepairable
     
+    ! exponential cycle time
+    real(REAL_KIND) :: G1ch_entry_time, G1ch_time, G1ch_max_delay
+    real(REAL_KIND) :: Sch_entry_time, Sch_time, Sch_max_delay
+    real(REAL_KIND) :: G2ch_entry_time, G2ch_time, G2ch_max_delay
+    
 	type(metabolism_type) :: metab
 	
 	integer :: ndt
@@ -199,8 +204,8 @@ end type
 
 type cycle_parameters_type
     real(REAL_KIND) :: T_G1, T_S, T_G2, T_M
-    real(REAL_KIND) :: G1_mean_delay, G2_mean_delay
-    real(REAL_KIND) :: Pk_G1, Pk_G2
+    real(REAL_KIND) :: G1_mean_delay, S_mean_delay, G2_mean_delay
+    real(REAL_KIND) :: Pk_G1, Pk_S, Pk_G2
     real(REAL_KIND) :: apoptosis_rate
     real(REAL_KIND) :: arrest_threshold
     ! Radiation damage/repair
@@ -431,6 +436,7 @@ logical :: use_death = .true.
 logical :: use_extracellular_O2 = .false.
 logical :: use_migration = .false.
 logical :: use_divide_time_distribution = .true.
+logical :: use_exponential_cycletime = .false.
 logical :: use_constant_divide_volume = .true.
 logical :: use_new_drugdata = .true.
 logical :: suppress_growth = .false.
@@ -709,6 +715,17 @@ z = p1 + R*p2
 rv_lognormal = exp(z)
 end function
 
+!--------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------
+real(REAL_KIND) function rv_exponential(lambda,kpar)
+real(REAL_KIND) :: lambda
+integer :: kpar
+real(REAL_KIND) :: R
+
+R = par_uni(kpar)
+rv_exponential = -log(1-R)/lambda
+end function
+
 !-----------------------------------------------------------------------------------------
 !-----------------------------------------------------------------------------------------
 !subroutine get_random_drot(axis,drot)
@@ -790,7 +807,7 @@ end function
 ! V0 = cell starting volume (after division) = %volume
 ! Two approaches:
 ! 1. Use Vdivide0 and dVdivide to generate a volume
-! 2. Use the divide time log-normal distribution 
+! 2. Use the divide time distribution (log-normal or exponential)
 !    (use_V_dependence = false)
 !-----------------------------------------------------------------------------------------
 function get_divide_volume(ityp,V0,Tdiv,fg) result(Vdiv)
@@ -805,7 +822,7 @@ ccp => cc_parameters(ityp)
 
 rVmax = max_growthrate(ityp)
 Tgrowth0 = ccp%T_G1 + ccp%T_S + ccp%T_G2
-Tfixed = ccp%T_M + ccp%G1_mean_delay + ccp%G2_mean_delay
+Tfixed = ccp%T_M + ccp%G1_mean_delay + ccp%S_mean_delay + ccp%G2_mean_delay
 if (use_divide_time_distribution) then
 	Tdiv = DivideTime(ityp)
 	Tgrowth = Tdiv - Tfixed
@@ -828,14 +845,49 @@ endif
 
 end function	
 
+!-----------------------------------------------------------------------------------------
+subroutine set_divide_volume(kcell,V0)
+integer :: kcell
+real(REAL_KIND) :: V0
+real(REAL_KIND) :: Tdiv, fg, Tfixed, Tgrowth0, Tgrowth, rVmax
+integer :: ityp, kpar=0
+type(cell_type), pointer :: cp
+type(cycle_parameters_type), pointer :: ccp
+
+cp => cell_list(kcell)
+ityp = cp%celltype
+ccp => cc_parameters(ityp)
+
+rVmax = max_growthrate(ityp)
+if (use_exponential_cycletime) then
+    cp%G1ch_time = rv_exponential(ccp%Pk_G1,kpar)
+    cp%Sch_time = rv_exponential(ccp%Pk_S,kpar)
+    cp%G2ch_time = rv_exponential(ccp%Pk_G2,kpar)
+    Tgrowth = ccp%T_G1 + ccp%T_S + ccp%T_G2
+    Tfixed = cp%G1ch_time + cp%Sch_time + cp%G2ch_time + ccp%T_M
+    Tdiv = Tgrowth + Tfixed
+    fg = 1
+else
+    Tgrowth0 = ccp%T_G1 + ccp%T_S + ccp%T_G2
+    Tfixed = ccp%T_M + ccp%G1_mean_delay + ccp%S_mean_delay + ccp%G2_mean_delay
+	Tdiv = DivideTime(ityp)
+	Tgrowth = Tdiv - Tfixed
+	fg = Tgrowth/Tgrowth0
+endif
+cp%divide_volume = V0 + Tgrowth*rVmax
+cp%divide_time = Tdiv
+cp%fg = fg
+end subroutine	
+
+
 !--------------------------------------------------------------------------------------
 !--------------------------------------------------------------------------------------
 real(REAL_KIND) function DivideTime(ityp)
 integer :: ityp
 real(REAL_KIND) :: p1, p2
 integer :: kpar = 0
+type(cycle_parameters_type),pointer :: ccp
 
-dividetime = 0
 p1 = divide_dist(ityp)%p1
 p2 = divide_dist(ityp)%p2
 select case (divide_dist(ityp)%class)

@@ -35,6 +35,7 @@ Params *parm;	// I don't believe this is the right way, but it works
 Graphs *grph;
 
 bool ON_LATTICE = false;
+bool first_plot;
 
 //--------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------
@@ -144,8 +145,6 @@ MainWindow::MainWindow(QWidget *parent)
     LOG_QMSG("did createLists");
     createActions();
     LOG_QMSG("did createActions");
-    drawDistPlots();
-    LOG_QMSG("did drawDistPlots");
 //    initFACSPlot();
 //    LOG_QMSG("did initFACSPlot");
 //    initHistoPlot();
@@ -153,6 +152,9 @@ MainWindow::MainWindow(QWidget *parent)
     loadParams();
     LOG_QMSG("Did loadparams");
     paramSaved = true;
+    first_plot = true;
+    drawDistPlots(0);
+    LOG_QMSG("did drawDistPlots");
 
     SetupProtocol();
 
@@ -292,6 +294,8 @@ void MainWindow::createActions()
     connect(buttonGroup_farfield, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(radioButtonChanged(QAbstractButton*)));
     connect(buttonGroup_hypoxia, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(radioButtonChanged(QAbstractButton*)));
     connect(buttonGroup_profileaxis, SIGNAL(buttonClicked(QAbstractButton*)), this, SLOT(radioButtonChanged(QAbstractButton*)));
+    connect(pushButton_redraw_dist_plots, SIGNAL(clicked(bool)), this, SLOT(drawDistPlots(bool)));
+    connect(cbox_USE_LOGNORMAL_DIST, SIGNAL(toggled(bool)), this, SLOT(drawDistPlots(bool)));
     connectKillParameterSignals();
     connectForceParameterSignals();
 }
@@ -334,7 +338,7 @@ void MainWindow::createLists()
         QString wname = w->objectName();
 		if (wname.startsWith("line_")) {
 			connect(w, SIGNAL(textChanged(QString)), this, SLOT(changeParam()));
-			connect(w, SIGNAL(textChanged(QString)), this, SLOT(redrawDistPlot()));
+//			connect(w, SIGNAL(textChanged(QString)), this, SLOT(redrawDistPlot()));
 		}
 		if (wname.startsWith("text_")) {
 			connect(w, SIGNAL(textChanged(QString)), this, SLOT(changeParam()));
@@ -495,49 +499,78 @@ void MainWindow:: stopRecorderField()
 
 //--------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------
-void MainWindow:: drawDistPlots()
+void MainWindow:: drawDistPlots(bool dummy)
 {
 	double *x, *prob;
 	x = new double[nDistPts];
 	prob = new double[nDistPts];
 	QwtPlot *qp;
-	string name_str;
 	QString median_qstr, shape_qstr;
 	double median, shape;
+    int nexp;
+    double expLambda[3];
+    double expTbase;
+    bool use_lognormal = cbox_USE_LOGNORMAL_DIST->isChecked();
 
     for (int j=0; j<ndistplots; j++) {
 		qp = distplot_list[j];
-        QString name = qp->objectName();
         if (j == 0) {
             qp->setTitle("Type 1 division time (hrs)");
-            median_qstr = line_DIVIDE_TIME_1_MEDIAN->text();
-            shape_qstr = line_DIVIDE_TIME_1_SHAPE->text();
+            if (use_lognormal) {
+                median_qstr = line_DIVIDE_TIME_1_MEDIAN->text();
+                shape_qstr = line_DIVIDE_TIME_1_SHAPE->text();
+            } else {
+                nexp = 3;
+                expTbase = line_T_G1_1->text().toDouble() + line_T_S_1->text().toDouble() + line_T_G2_1->text().toDouble();
+                expLambda[0] = 1/line_G1_MEAN_DELAY_1->text().toDouble();
+                expLambda[1] = expLambda[0];
+                expLambda[2] = 1/line_G2_MEAN_DELAY_1->text().toDouble();
+            }
         } else if (j == 1) {
-            qp->setTitle("Type 2 division time (hrs)");
-            median_qstr = line_DIVIDE_TIME_2_MEDIAN->text();
-            shape_qstr = line_DIVIDE_TIME_2_SHAPE->text();
+            if (use_lognormal) {
+                qp->setTitle("Type 2 division time (hrs)");
+                median_qstr = line_DIVIDE_TIME_2_MEDIAN->text();
+                shape_qstr = line_DIVIDE_TIME_2_SHAPE->text();
+            } else {
+                nexp = 3;
+                expTbase = line_T_G1_2->text().toDouble() + line_T_S_2->text().toDouble() + line_T_G2_2->text().toDouble();
+                expLambda[0] = 1/line_G1_MEAN_DELAY_2->text().toDouble();
+                expLambda[1] = expLambda[0];
+                expLambda[2] = 1/line_G2_MEAN_DELAY_2->text().toDouble();
+            }
         }
-        median = median_qstr.toDouble();
-		shape = shape_qstr.toDouble();
-        create_lognorm_dist(median,shape,nDistPts,x,prob);
+        if (use_lognormal) {
+            median = median_qstr.toDouble();
+            shape = shape_qstr.toDouble();
+            create_lognorm_dist(median, shape, nDistPts, x, prob);
+        } else {
+            create_expon_dist(expTbase, nexp, expLambda, nDistPts, x, prob);
+        }
 
         int n = dist_limit(prob,nDistPts);
         double xmax = x[n];
-		sprintf(msg,"%f %f %d",median,shape,n);
-		for (int i=0;i<40;i++) {
-			sprintf(msg,"%d %f %f",i,x[i],prob[i]);
-		}
+//		sprintf(msg,"%f %f %d",median,shape,n);
+//		for (int i=0;i<40;i++) {
+//			sprintf(msg,"%d %f %f",i,x[i],prob[i]);
+//		}
         qp->setAxisScale(QwtPlot::xBottom, 0.0, xmax, 0.0);
-        QwtPlotCurve *curve = new QwtPlotCurve("title");
-        curve->attach(qp);
-        curve->setSamples(x, prob, n);
-        curve_list[j] = curve;
+
+        if (first_plot) {
+            QwtPlotCurve *curve = new QwtPlotCurve("title");
+            curve->attach(qp);
+            curve->setSamples(x, prob, n);
+            curve_list[j] = curve;
+        } else {
+            curve_list[j]->setSamples(x, prob, n);
+        }
 		qp->replot();
-	}
+
+    }
 	delete [] x;
 	x = NULL;
 	delete [] prob;
 	prob = NULL;
+    first_plot = false;
 }
 
 //--------------------------------------------------------------------------------------------------------
@@ -2907,7 +2940,7 @@ int MainWindow::dist_limit(double *p, int n)
 	imax = n-1;
 	for (i=0; i<n; i++) {
 		if (p[i] > pmax) {
-			pmax = p[i];
+            pmax = p[i];
 			imax = i;
 		}
 	}

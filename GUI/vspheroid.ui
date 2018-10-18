@@ -79,7 +79,7 @@ padding: 8px
            <enum>QTabWidget::West</enum>
           </property>
           <property name="currentIndex">
-           <number>3</number>
+           <number>2</number>
           </property>
           <property name="elideMode">
            <enum>Qt::ElideNone</enum>
@@ -646,7 +646,7 @@ padding: 8px
                </widget>
               </item>
               <item row="8" column="0">
-               <widget class="QLabel" name="label_ARREST_THRESHOLD_1">
+               <widget class="QMyLabel" name="label_ARREST_THRESHOLD_1">
                 <property name="text">
                  <string>Arrest threshold</string>
                 </property>
@@ -837,23 +837,36 @@ padding: 8px
              <bool>true</bool>
             </property>
            </widget>
-           <widget class="QMyCheckBox" name="cbox_USE_DIVIDE_TIME_DIST">
+           <widget class="QMyCheckBox" name="cbox_USE_LOGNORMAL_DIST">
             <property name="enabled">
-             <bool>false</bool>
+             <bool>true</bool>
             </property>
             <property name="geometry">
              <rect>
               <x>690</x>
               <y>260</y>
-              <width>171</width>
+              <width>211</width>
               <height>18</height>
              </rect>
             </property>
             <property name="text">
-             <string>Use divide time distribution?</string>
+             <string>Use lognormal divide time distribution?</string>
             </property>
             <property name="checked">
              <bool>true</bool>
+            </property>
+           </widget>
+           <widget class="QPushButton" name="pushButton_redraw_dist_plots">
+            <property name="geometry">
+             <rect>
+              <x>484</x>
+              <y>260</y>
+              <width>51</width>
+              <height>23</height>
+             </rect>
+            </property>
+            <property name="text">
+             <string>Redraw</string>
             </property>
            </widget>
           </widget>
@@ -2056,7 +2069,7 @@ padding: 8px
                <x>10</x>
                <y>10</y>
                <width>401</width>
-               <height>561</height>
+               <height>519</height>
               </rect>
              </property>
              <layout class="QGridLayout" name="gridLayout_4">
@@ -2065,7 +2078,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2098,7 +2111,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2111,7 +2124,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2124,7 +2137,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2137,7 +2150,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2178,7 +2191,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2191,7 +2204,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2204,7 +2217,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2238,7 +2251,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2251,7 +2264,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2264,7 +2277,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2305,7 +2318,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2331,7 +2344,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2351,7 +2364,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2367,7 +2380,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2393,7 +2406,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2419,7 +2432,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2442,7 +2455,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2462,7 +2475,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2482,7 +2495,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2495,7 +2508,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>60</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -2504,14 +2517,14 @@ padding: 8px
                </widget>
               </item>
               <item row="1" column="0">
-               <widget class="QLabel" name="label_F_GNORM_1">
+               <widget class="QMyLabel" name="label_F_GNORM_1">
                 <property name="text">
                  <string>Normal fraction of glycolysis -&gt; intermediates</string>
                 </property>
                </widget>
               </item>
               <item row="2" column="0">
-               <widget class="QLabel" name="label_F_PNORM_1">
+               <widget class="QMyLabel" name="label_F_PNORM_1">
                 <property name="text">
                  <string>Normal fraction of pyruvate -&gt; intermediates</string>
                 </property>
@@ -3193,10 +3206,10 @@ padding: 8px
            <widget class="QGroupBox" name="groupBox_radiation_RMR">
             <property name="geometry">
              <rect>
-              <x>410</x>
+              <x>420</x>
               <y>190</y>
-              <width>361</width>
-              <height>321</height>
+              <width>351</width>
+              <height>351</height>
              </rect>
             </property>
             <property name="title">
@@ -3228,6 +3241,12 @@ padding: 8px
               </item>
               <item row="4" column="0">
                <widget class="QMyLabel" name="label_RMR_KREP_BASE_1">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>18</height>
+                 </size>
+                </property>
                 <property name="text">
                  <string>Krepair_base</string>
                 </property>
@@ -3238,7 +3257,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3248,6 +3267,12 @@ padding: 8px
               </item>
               <item row="6" column="0">
                <widget class="QMyLabel" name="label_RMR_KMIS_1">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>18</height>
+                 </size>
+                </property>
                 <property name="text">
                  <string>Kmisrepair</string>
                 </property>
@@ -3258,7 +3283,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3268,6 +3293,12 @@ padding: 8px
               </item>
               <item row="9" column="0">
                <widget class="QMyLabel" name="label_RMR_PSURVIVE1_1">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>18</height>
+                 </size>
+                </property>
                 <property name="text">
                  <string>psurvive_Ch1</string>
                 </property>
@@ -3281,7 +3312,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3297,7 +3328,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3313,7 +3344,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3330,6 +3361,12 @@ padding: 8px
               </item>
               <item row="1" column="0">
                <widget class="QMyLabel" name="label_RMR_ETA_PL_1">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>18</height>
+                 </size>
+                </property>
                 <property name="text">
                  <string>eta_PL</string>
                 </property>
@@ -3340,7 +3377,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3356,7 +3393,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3366,6 +3403,12 @@ padding: 8px
               </item>
               <item row="5" column="0">
                <widget class="QMyLabel" name="label_RMR_KREP_MAX_1">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>18</height>
+                 </size>
+                </property>
                 <property name="text">
                  <string>Krepair_max</string>
                 </property>
@@ -3376,7 +3419,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3392,7 +3435,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3405,7 +3448,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3415,6 +3458,12 @@ padding: 8px
               </item>
               <item row="3" column="0">
                <widget class="QMyLabel" name="label_RMR_ETA_IRL_1">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>18</height>
+                 </size>
+                </property>
                 <property name="text">
                  <string>eta_IRL</string>
                 </property>
@@ -3428,7 +3477,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3438,6 +3487,12 @@ padding: 8px
               </item>
               <item row="8" column="0">
                <widget class="QMyLabel" name="label_RMR_F_CH1_1">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>18</height>
+                 </size>
+                </property>
                 <property name="text">
                  <string>fraction_Ch1</string>
                 </property>
@@ -3448,7 +3503,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3464,7 +3519,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3480,7 +3535,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3496,7 +3551,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3506,6 +3561,12 @@ padding: 8px
               </item>
               <item row="10" column="0">
                <widget class="QMyLabel" name="label_RMR_PSURVIVE2_1">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>18</height>
+                 </size>
+                </property>
                 <property name="text">
                  <string>psurvive_Ch1</string>
                 </property>
@@ -3519,7 +3580,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3532,7 +3593,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3542,6 +3603,12 @@ padding: 8px
               </item>
               <item row="7" column="0">
                <widget class="QMyLabel" name="label_RMR_F_MITOSIS_1">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>18</height>
+                 </size>
+                </property>
                 <property name="text">
                  <string>mitosis_factor</string>
                 </property>
@@ -3555,7 +3622,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3568,7 +3635,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3578,6 +3645,12 @@ padding: 8px
               </item>
               <item row="11" column="0">
                <widget class="QMyLabel" name="label_RMR_ATCP_1">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>18</height>
+                 </size>
+                </property>
                 <property name="text">
                  <string>Tcp Hill a</string>
                 </property>
@@ -3591,7 +3664,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3604,7 +3677,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3614,6 +3687,12 @@ padding: 8px
               </item>
               <item row="12" column="0">
                <widget class="QMyLabel" name="label_RMR_BTCP_1">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>18</height>
+                 </size>
+                </property>
                 <property name="text">
                  <string>Tcp Hill b</string>
                 </property>
@@ -3627,7 +3706,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>51</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="alignment">
@@ -3643,7 +3722,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="text">
@@ -3659,7 +3738,7 @@ padding: 8px
                 <property name="maximumSize">
                  <size>
                   <width>50</width>
-                  <height>16777215</height>
+                  <height>18</height>
                  </size>
                 </property>
                 <property name="text">
@@ -10854,7 +10933,7 @@ padding: 8px
            </widget>
           </item>
           <item row="0" column="0">
-           <widget class="QLabel" name="label">
+           <widget class="QLabel" name="clabel_1">
             <property name="minimumSize">
              <size>
               <width>100</width>
@@ -10912,7 +10991,7 @@ padding: 8px
            </widget>
           </item>
           <item row="1" column="0">
-           <widget class="QLabel" name="label_2">
+           <widget class="QLabel" name="clabel_2">
             <property name="minimumSize">
              <size>
               <width>100</width>
@@ -11126,7 +11205,7 @@ padding: 8px
            </widget>
           </item>
           <item row="2" column="0">
-           <widget class="QLabel" name="label_8">
+           <widget class="QLabel" name="clabel_8">
             <property name="minimumSize">
              <size>
               <width>100</width>
@@ -11145,7 +11224,7 @@ padding: 8px
            </widget>
           </item>
           <item row="3" column="0">
-           <widget class="QLabel" name="label_7">
+           <widget class="QLabel" name="clabel_7">
             <property name="minimumSize">
              <size>
               <width>100</width>
@@ -11164,7 +11243,7 @@ padding: 8px
            </widget>
           </item>
           <item row="4" column="0">
-           <widget class="QLabel" name="label_6">
+           <widget class="QLabel" name="clabel_6">
             <property name="minimumSize">
              <size>
               <width>100</width>
@@ -11183,7 +11262,7 @@ padding: 8px
            </widget>
           </item>
           <item row="5" column="0">
-           <widget class="QLabel" name="label_5">
+           <widget class="QLabel" name="clabel_5">
             <property name="minimumSize">
              <size>
               <width>100</width>
@@ -11202,7 +11281,7 @@ padding: 8px
            </widget>
           </item>
           <item row="6" column="0">
-           <widget class="QLabel" name="label_4">
+           <widget class="QLabel" name="clabel_4">
             <property name="minimumSize">
              <size>
               <width>100</width>
@@ -11222,7 +11301,7 @@ padding: 8px
           </item>
          </layout>
         </widget>
-        <widget class="QLabel" name="label_3">
+        <widget class="QLabel" name="clabel_3">
          <property name="geometry">
           <rect>
            <x>170</x>

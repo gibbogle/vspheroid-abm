@@ -58,7 +58,8 @@ do kcell = 1,nlist
 		nogrow(ityp) = nogrow(ityp) + 1
 	endif
 	do i = 1,3
-		if (cp%dVdt < growthcutoff(i)*r_mean(ityp) .or. cp%phase == Checkpoint1 .or. cp%phase == Checkpoint2) then
+		if (cp%dVdt < growthcutoff(i)*r_mean(ityp) .or. &
+		    cp%phase == G1_checkpoint .or. cp%phase == S_checkpoint .or. cp%phase == G2_checkpoint) then
 		    ngrowth(i) = ngrowth(i) + 1
 !		    write(*,'(a,3i6,3e12.3)') 'getGrowthCount: ',kcell,ityp,i,cell_list(kcell)%dVdt,growthcutoff(i),r_mean(ityp)
 		endif
@@ -2605,7 +2606,6 @@ use, intrinsic :: iso_c_binding
 integer(c_int),value :: icset
 
 icolourscheme = icset
-write(nflog,*) 'icolourscheme: ',icset
 end subroutine
 
 end module

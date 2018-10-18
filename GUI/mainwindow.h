@@ -154,7 +154,7 @@ private slots:
     void on_cbox_SAVE_PROFILE_DATA_toggled(bool checked);
     void on_cbox_SAVE_SLICE_DATA_toggled(bool checked);
     void on_cbox_SAVE_FACS_DATA_toggled(bool checked);
-    void on_cbox_USE_DIVIDE_TIME_DIST_toggled(bool checked);
+//    void on_cbox_USE_DIVIDE_TIME_DIST_toggled(bool checked);
     void on_pushButton_update_FACS_Histo_clicked();
     void on_pushButton_saveHisto_clicked();
     void on_pushButton_saveFACS_clicked();
@@ -232,6 +232,8 @@ public slots:
 
     void sc_textEdited(QString);
 
+    void drawDistPlots(bool);
+
 signals:
     void facs_update();
     void histo_update();
@@ -239,7 +241,6 @@ signals:
 private:
     void createActions();
 	void createLists();
-	void drawDistPlots();
     void createFACSPage();
 //    void initFACSPlot();
 //    void initHistoPlot();

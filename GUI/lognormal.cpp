@@ -103,9 +103,9 @@ double plognorm(double x1, double x2, double mu, double sig)
 //-----------------------------------------------------------------------------------------
 void MainWindow::create_lognorm_dist(double p1, double p2, int n, double *x, double *prob)
 {
-    bool use_exp = false;
+//    bool use_exp = false;
 
-    if (!use_exp) {
+//    if (!use_exp) {
     double xmax, dx, mu_l, sig_l, x1, x2;
 
     if (p1 >= 0.5)
@@ -123,15 +123,15 @@ void MainWindow::create_lognorm_dist(double p1, double p2, int n, double *x, dou
         x[ix] = (x1+x2)/2;
         prob[ix] = plognorm(x1,x2,mu_l,sig_l)/(x2-x1);
     }
-    } else {
-    int nexp = 3;
-    double lambda[3];
-    double tbase = 20;
-    lambda[0] = 1.1;
-    lambda[1] = 1.05;
-    lambda[2] = 1.1;
-    create_expon_dist(tbase,nexp,lambda, n, x, prob);
-    }
+//    } else {
+//    int nexp = 3;
+//    double lambda[3];
+//    double tbase = 20;
+//    lambda[0] = 1.1;
+//    lambda[1] = 1.05;
+//    lambda[2] = 1.1;
+//    create_expon_dist(tbase,nexp,lambda, n, x, prob);
+//    }
 }
 
 //------------------------------------------------------------------------------------------------------

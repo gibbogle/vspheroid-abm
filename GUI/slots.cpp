@@ -504,12 +504,13 @@ void MainWindow::on_checkBox_volume_scaling_toggled(bool checked)
 
 //--------------------------------------------------------------------------------------------------------
 // For vspheroid this is always true, disabled in the GUI
+// Now using signals from Redraw button and checkbox
 //--------------------------------------------------------------------------------------------------------
-void MainWindow::on_cbox_USE_DIVIDE_TIME_DIST_toggled(bool checked)
-{
-    groupBox_divisiondistributions->setEnabled(checked);
-    line_DVDIVIDE->setEnabled(!checked);
-}
+//void MainWindow::on_cbox_USE_DIVIDE_TIME_DIST_toggled(bool checked)
+//{
+//    groupBox_divisiondistributions->setEnabled(checked);
+//    line_DVDIVIDE->setEnabled(!checked);
+//}
 
 //--------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------
