@@ -65,10 +65,10 @@ Off-lattice model: Dimension of the fine grid (number of grid pts in X,Y and Z d
 "Initial number of tumour cells",
 "Initial number of tumour cells"},
 
-//{"USE_LOGNORMAL_DIST", 1, 0, 1,
-//"Use lognormal divide time distribution",
-//"If ticked, the divide time will be a random variate from a log-normal distribution, \n\
-//otherwise times for phases G1, S, G2 will be fixed and exponential times for checkpoints generated at cell creation."},
+{"USE_LOGNORMAL_DIST", 1, 0, 1,
+"Use lognormal cycle time distribution",
+"If ticked, the cycle time will be a random variate from a log-normal distribution, \n\
+otherwise times for phases G1, S, G2 will be fixed and exponential times for checkpoints generated at cell creation."},
 
 {"DIVIDE_TIME_1_MEDIAN", 18, 0, 0,
 "Median (h)",
@@ -535,6 +535,10 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "G1 mean delay (h)",
      "Mean of the random component of time spent in phase G1 (exponentially distributed)"},
 
+     {"S_MEAN_DELAY_1", 1, 0, 0,
+     "S mean delay (h)",
+     "Mean of the random component of time spent in phase S (exponentially distributed)"},
+
      {"G2_MEAN_DELAY_1", 1, 0, 0,
      "G2 mean delay (h)",
      "Mean of the random component of time spent in phase G2 (exponentially distributed)"},
@@ -615,6 +619,10 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
       {"G1_MEAN_DELAY_2", 1.5, 0, 0,
       "G1 mean delay (h)",
       "Mean of the random component of time spent in phase G1 (exponentially distributed)"},
+
+       {"S_MEAN_DELAY_2", 1, 0, 0,
+       "S mean delay (h)",
+       "Mean of the random component of time spent in phase S (exponentially distributed)"},
 
       {"G2_MEAN_DELAY_2", 1, 0, 0,
       "G2 mean delay (h)",

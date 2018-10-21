@@ -278,7 +278,7 @@ private:
     void showBool(QString, bool);
 
     void create_lognorm_dist(double p1, double p2,int n, double *x, double *prob);
-    void create_expon_dist(double tbase, int nexp, double lambda[], int n, double *x, double *prob);
+    void create_expon_dist(double tbase, double mean[], int n, double *x, double *prob);
     int dist_limit(double *p, int n);
     void create_force_function(int n, double *x, double *F, double *xmax, double *ymin, double *ymax);
 	QString parse_rbutton(QString wtag, int *rbutton_case);
@@ -370,6 +370,7 @@ private:
 	bool DCmotion;
 	bool done;
 	bool first;
+    bool first_plot;
     bool firstDisplay;
 	bool started;
 	bool firstVTK;

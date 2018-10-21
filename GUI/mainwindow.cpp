@@ -35,7 +35,6 @@ Params *parm;	// I don't believe this is the right way, but it works
 Graphs *grph;
 
 bool ON_LATTICE = false;
-bool first_plot;
 
 //--------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------
@@ -497,81 +496,6 @@ void MainWindow:: stopRecorderField()
     LOG_QMSG("stopRecorderField");
 }
 
-//--------------------------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------------------------
-void MainWindow:: drawDistPlots(bool dummy)
-{
-	double *x, *prob;
-	x = new double[nDistPts];
-	prob = new double[nDistPts];
-	QwtPlot *qp;
-	QString median_qstr, shape_qstr;
-	double median, shape;
-    int nexp;
-    double expLambda[3];
-    double expTbase;
-    bool use_lognormal = cbox_USE_LOGNORMAL_DIST->isChecked();
-
-    for (int j=0; j<ndistplots; j++) {
-		qp = distplot_list[j];
-        if (j == 0) {
-            qp->setTitle("Type 1 division time (hrs)");
-            if (use_lognormal) {
-                median_qstr = line_DIVIDE_TIME_1_MEDIAN->text();
-                shape_qstr = line_DIVIDE_TIME_1_SHAPE->text();
-            } else {
-                nexp = 3;
-                expTbase = line_T_G1_1->text().toDouble() + line_T_S_1->text().toDouble() + line_T_G2_1->text().toDouble();
-                expLambda[0] = 1/line_G1_MEAN_DELAY_1->text().toDouble();
-                expLambda[1] = expLambda[0];
-                expLambda[2] = 1/line_G2_MEAN_DELAY_1->text().toDouble();
-            }
-        } else if (j == 1) {
-            if (use_lognormal) {
-                qp->setTitle("Type 2 division time (hrs)");
-                median_qstr = line_DIVIDE_TIME_2_MEDIAN->text();
-                shape_qstr = line_DIVIDE_TIME_2_SHAPE->text();
-            } else {
-                nexp = 3;
-                expTbase = line_T_G1_2->text().toDouble() + line_T_S_2->text().toDouble() + line_T_G2_2->text().toDouble();
-                expLambda[0] = 1/line_G1_MEAN_DELAY_2->text().toDouble();
-                expLambda[1] = expLambda[0];
-                expLambda[2] = 1/line_G2_MEAN_DELAY_2->text().toDouble();
-            }
-        }
-        if (use_lognormal) {
-            median = median_qstr.toDouble();
-            shape = shape_qstr.toDouble();
-            create_lognorm_dist(median, shape, nDistPts, x, prob);
-        } else {
-            create_expon_dist(expTbase, nexp, expLambda, nDistPts, x, prob);
-        }
-
-        int n = dist_limit(prob,nDistPts);
-        double xmax = x[n];
-//		sprintf(msg,"%f %f %d",median,shape,n);
-//		for (int i=0;i<40;i++) {
-//			sprintf(msg,"%d %f %f",i,x[i],prob[i]);
-//		}
-        qp->setAxisScale(QwtPlot::xBottom, 0.0, xmax, 0.0);
-
-        if (first_plot) {
-            QwtPlotCurve *curve = new QwtPlotCurve("title");
-            curve->attach(qp);
-            curve->setSamples(x, prob, n);
-            curve_list[j] = curve;
-        } else {
-            curve_list[j]->setSamples(x, prob, n);
-        }
-		qp->replot();
-
-    }
-	delete [] x;
-	x = NULL;
-	delete [] prob;
-	prob = NULL;
-    first_plot = false;
-}
 
 //--------------------------------------------------------------------------------------------------------
 //--------------------------------------------------------------------------------------------------------

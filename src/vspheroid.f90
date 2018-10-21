@@ -77,7 +77,7 @@ integer :: iuse_extra, iuse_relax, iuse_par_relax, iuse_gd_all
 real(REAL_KIND) :: days, percent, fluid_fraction, d_layer, sigma(MAX_CELLTYPES), Vsite_cm3, bdry_conc, spcrad_value, d_n_limit
 real(REAL_KIND) :: anoxia_tag_hours, anoxia_death_hours, aglucosia_tag_hours, aglucosia_death_hours
 integer :: iuse_drop, isaveprofiledata, isaveslicedata, isaveFACSdata, iusecellcycle, iusemetabolism, iclosepack
-integer :: iconstant, ioxygengrowth, iglucosegrowth, ioxygendeath, iglucosedeath
+integer :: iconstant, ioxygengrowth, iglucosegrowth, ioxygendeath, iglucosedeath, iuse_lognormal
 logical :: use_metabolites
 character*(12) :: drug_name
 character*(1) :: numstr
@@ -98,6 +98,8 @@ read(nfcell,*) dll_run_version				! DLL run version number
 read(nfcell,*) NX							! size of fine grid
 NX = 33
 read(nfcell,*) initial_count				! initial number of tumour cells
+read(nfcell,*) iuse_lognormal
+use_exponential_cycletime = (iuse_lognormal /= 1)
 read(nfcell,*) divide_time_median(1)
 read(nfcell,*) divide_time_shape(1)
 read(nfcell,*) divide_time_median(2)
@@ -335,9 +337,6 @@ if (use_exponential_cycletime) then
         ccp => cc_parameters(ityp)
         divide_time_mean(ityp) = ccp%T_G1 + ccp%G1_mean_delay + ccp%T_S + ccp%S_mean_delay &
             + ccp%T_G2 + ccp%G2_mean_delay + ccp%T_M
-	    ccp%Pk_G1 = 1./ccp%G1_mean_delay    ! /sec
-	    ccp%Pk_S =  1./ccp%S_mean_delay     ! /sec
-	    ccp%Pk_G2 = 1./ccp%G2_mean_delay    ! /sec
     enddo
 else
     divide_dist(1:2)%class = LOGNORMAL_DIST
@@ -352,6 +351,24 @@ else
     call logger(logmsg)
     call AdjustCycleTimes
 endif
+do ityp = 1,2
+    ccp => cc_parameters(ityp)
+    if (ccp%G1_mean_delay > 0) then
+	    ccp%Pk_G1 = 1./ccp%G1_mean_delay    ! /sec
+	else
+	    ccp%Pk_G1 = 0
+	endif
+    if (ccp%S_mean_delay > 0) then
+	    ccp%Pk_S = 1./ccp%S_mean_delay    ! /sec
+	else
+	    ccp%Pk_S = 0
+	endif
+    if (ccp%G2_mean_delay > 0) then
+	    ccp%Pk_G2 = 1./ccp%G2_mean_delay    ! /sec
+	else
+	    ccp%Pk_G2 = 0
+	endif
+enddo
 
 use_V_dependence = (iV_depend == 1)
 saveprofile%active = (isaveprofiledata == 1)
@@ -424,10 +441,10 @@ read(nf,*) ccp%T_S
 read(nf,*) ccp%T_G2
 read(nf,*) ccp%T_M
 read(nf,*) ccp%G1_mean_delay
-!read(nf,*) ccp%S_mean_delay    ! for now, without changing the GUI
-if (use_exponential_cycletime) then
-    ccp%S_mean_delay = ccp%G1_mean_delay
-endif
+read(nf,*) ccp%S_mean_delay
+!if (use_exponential_cycletime) then
+!    ccp%S_mean_delay = ccp%G1_mean_delay
+!endif
 read(nf,*) ccp%G2_mean_delay
 read(nf,*) ccp%Apoptosis_rate
 read(nf,*) ccp%arrest_threshold
@@ -479,9 +496,6 @@ do ityp = 1,2
 	ccp%G1_mean_delay = tfactor*ccp%G1_mean_delay
 	ccp%S_mean_delay = tfactor*ccp%S_mean_delay
 	ccp%G2_mean_delay= tfactor*ccp%G2_mean_delay
-	ccp%Pk_G1 = 1./ccp%G1_mean_delay    ! /sec
-	ccp%Pk_S = 0    ! 1./ccp%S_mean_delay    ! this is not used currently
-	ccp%Pk_G2 = 1./ccp%G2_mean_delay    ! /sec
 !	write(nflog,'(a,i4,3e12.3)') 'ityp, Pk_G1, Pk_S, Pk_G2: ',ityp,ccp%Pk_G1, ccp%Pk_S, ccp%Pk_G2
 enddo
 end subroutine

@@ -123,27 +123,27 @@ void MainWindow::create_lognorm_dist(double p1, double p2, int n, double *x, dou
         x[ix] = (x1+x2)/2;
         prob[ix] = plognorm(x1,x2,mu_l,sig_l)/(x2-x1);
     }
-//    } else {
-//    int nexp = 3;
-//    double lambda[3];
-//    double tbase = 20;
-//    lambda[0] = 1.1;
-//    lambda[1] = 1.05;
-//    lambda[2] = 1.1;
-//    create_expon_dist(tbase,nexp,lambda, n, x, prob);
-//    }
 }
 
 //------------------------------------------------------------------------------------------------------
 // Distribution of sum of nexp exponentially distributed RVs, with rate constants lambda[].
 // Note: lambda = 1/mean
 //------------------------------------------------------------------------------------------------------
-void MainWindow::create_expon_dist(double tbase, int nexp, double lambda[], int n, double *x, double *prob)
+void MainWindow::create_expon_dist(double tbase, double mean[], int n, double *x, double *prob)
 {
-    int i, j, k;
-    int nv = 100000;
-    double a1, a2, a3, z, dR, U, R;
-    if (nexp == 2) {
+    int i, j, nexp;
+    double lambda[3], a1, a2, a3, z, dR;
+
+    nexp = 0;
+    for (i=0; i<3; i++) {
+        if (mean[i] > 0) {
+            lambda[nexp] = 1/mean[i];
+            nexp++;
+        }
+    }
+    if (nexp == 1) {
+        dR = (1/lambda[0])/20;
+    } else if (nexp == 2) {
         dR = (1/lambda[0] + 1/lambda[1])/40;
     } else if (nexp == 3) {
         dR = (1/lambda[0] + 1/lambda[1] + 1/lambda[2])/60;
@@ -154,7 +154,13 @@ void MainWindow::create_expon_dist(double tbase, int nexp, double lambda[], int 
     }
     prob[0] = 0;
     // Analytical
-    if (nexp == 2) {
+    if (nexp == 1) {
+        a1 = lambda[0];
+        for (j=1; j<n; j++) {
+            z = x[j] - tbase;
+            prob[j] = a1*exp(-a1*z);
+        }
+    } else if (nexp == 2) {
         // two cases
         if (lambda[0] == lambda[1]) {
             a1 = lambda[0];
@@ -204,31 +210,79 @@ void MainWindow::create_expon_dist(double tbase, int nexp, double lambda[], int 
                 prob[j] = (a1*a1*a3/((a3-a1)*(a3-a1)))*((z*(a3-a1)-1)*exp(-a1*z) + exp(-a3*z));
             }
         }
-
     }
+}
 
-/*
-    // Numerical
-    for (j=1; j<n; j++) {
-        prob[j] = 0;
-        x[j] = tbase + (j+0.5)*dR;
-    }
-    x[0] = tbase;
-    double psum = 0;
-    for (k=0; k<nv; k++) {
-        R = 0;
-        for (i=0; i<nexp; i++) {
-            U = random_uni();
-            R += (-log(1-U))*lambda[i];
+//--------------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------------
+void MainWindow:: drawDistPlots(bool dummy)
+{
+    double *x, *prob;
+    x = new double[nDistPts];
+    prob = new double[nDistPts];
+    QwtPlot *qp;
+    QString median_qstr, shape_qstr;
+    double median, shape;
+    double expMean[3];
+    double expTbase;
+    bool use_lognormal = cbox_USE_LOGNORMAL_DIST->isChecked();
+
+    groupBox_divisiondistributions->setEnabled(use_lognormal);
+    for (int j=0; j<ndistplots; j++) {
+        qp = distplot_list[j];
+        if (j == 0) {
+            qp->setTitle("Type 1 division time (hrs)");
+            if (use_lognormal) {
+                median_qstr = line_DIVIDE_TIME_1_MEDIAN->text();
+                shape_qstr = line_DIVIDE_TIME_1_SHAPE->text();
+            } else {
+                expTbase = line_T_G1_1->text().toDouble() + line_T_S_1->text().toDouble() + line_T_G2_1->text().toDouble();
+                expMean[0] = line_G1_MEAN_DELAY_1->text().toDouble();
+                expMean[1] = line_S_MEAN_DELAY_1->text().toDouble();
+                expMean[2] = line_G2_MEAN_DELAY_1->text().toDouble();
+            }
+        } else if (j == 1) {
+            if (use_lognormal) {
+                qp->setTitle("Type 2 division time (hrs)");
+                median_qstr = line_DIVIDE_TIME_2_MEDIAN->text();
+                shape_qstr = line_DIVIDE_TIME_2_SHAPE->text();
+            } else {
+                expTbase = line_T_G1_2->text().toDouble() + line_T_S_2->text().toDouble() + line_T_G2_2->text().toDouble();
+                expMean[0] = line_G1_MEAN_DELAY_2->text().toDouble();
+                expMean[1] = line_S_MEAN_DELAY_2->text().toDouble();
+                expMean[2] = line_G2_MEAN_DELAY_2->text().toDouble();
+            }
         }
-        j = R/dR;
-        j = min(j,n-2);
-        prob[j+1] += 1;
-        psum += 1;
+        if (use_lognormal) {
+            median = median_qstr.toDouble();
+            shape = shape_qstr.toDouble();
+            create_lognorm_dist(median, shape, nDistPts, x, prob);
+        } else {
+            create_expon_dist(expTbase, expMean, nDistPts, x, prob);
+        }
+
+        int n = dist_limit(prob,nDistPts);
+        double xmax = x[n];
+//		sprintf(msg,"%f %f %d",median,shape,n);
+//		for (int i=0;i<40;i++) {
+//			sprintf(msg,"%d %f %f",i,x[i],prob[i]);
+//		}
+        qp->setAxisScale(QwtPlot::xBottom, 0.0, xmax, 0.0);
+
+        if (first_plot) {
+            QwtPlotCurve *curve = new QwtPlotCurve("title");
+            curve->attach(qp);
+            curve->setSamples(x, prob, n);
+            curve_list[j] = curve;
+        } else {
+            curve_list[j]->setSamples(x, prob, n);
+        }
+        qp->replot();
+
     }
-    for (j=1; j<n; j++) {
-        prob[j] /= psum;
-    }
-    prob[0] = 0;
-*/
+    delete [] x;
+    x = NULL;
+    delete [] prob;
+    prob = NULL;
+    first_plot = false;
 }

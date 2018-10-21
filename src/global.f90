@@ -436,7 +436,7 @@ logical :: use_death = .true.
 logical :: use_extracellular_O2 = .false.
 logical :: use_migration = .false.
 logical :: use_divide_time_distribution = .true.
-logical :: use_exponential_cycletime = .false.
+logical :: use_exponential_cycletime
 logical :: use_constant_divide_volume = .true.
 logical :: use_new_drugdata = .true.
 logical :: suppress_growth = .false.
@@ -860,9 +860,21 @@ ccp => cc_parameters(ityp)
 
 rVmax = max_growthrate(ityp)
 if (use_exponential_cycletime) then
-    cp%G1ch_time = rv_exponential(ccp%Pk_G1,kpar)
-    cp%Sch_time = rv_exponential(ccp%Pk_S,kpar)
-    cp%G2ch_time = rv_exponential(ccp%Pk_G2,kpar)
+    if (ccp%Pk_G1 > 0) then
+        cp%G1ch_time = rv_exponential(ccp%Pk_G1,kpar)
+    else
+        cp%G1ch_time = 1.0e10
+    endif
+    if (ccp%Pk_S > 0) then
+        cp%Sch_time = rv_exponential(ccp%Pk_S,kpar)
+    else
+        cp%Sch_time = 1.0e10
+    endif
+    if (ccp%Pk_G2 > 0) then
+        cp%G2ch_time = rv_exponential(ccp%Pk_G2,kpar)
+    else
+        cp%G2ch_time = 1.0e10
+    endif
     Tgrowth = ccp%T_G1 + ccp%T_S + ccp%T_G2
     Tfixed = cp%G1ch_time + cp%Sch_time + cp%G2ch_time + ccp%T_M
     Tdiv = Tgrowth + Tfixed
