@@ -400,7 +400,7 @@ subroutine make_sparse_emap(mapfile,is_fine,ok)
 character*(*) :: mapfile
 logical :: is_fine, ok
 integer :: ix, iy, iz, k, i, nnz_t, nrow_t, nx_t, ny_t, nz_t, krow, kcol
-integer :: idx, idy, idz, ixx, iyy, izz, chk(7), knt, asum
+integer :: idx, idy, idz, ixx, iyy, izz, chk(7), knt, asum, dxyz(7,3)
 real(REAL_KIND) :: Kd, Kr, aval(7)
 integer, allocatable :: arow(:)
 logical :: file_exists = .false., upper_bdry
@@ -423,6 +423,13 @@ else
 	return
 endif
 allocate(arow(nrow_t))
+dxyz(1,:) = [-1,0,0]
+dxyz(2,:) = [0,-1,0]
+dxyz(3,:) = [0,0,-1]
+dxyz(4,:) = [0,0,0]
+dxyz(5,:) = [0,0,1]
+dxyz(6,:) = [0,1,0]
+dxyz(7,:) = [1,0,0]
 nnz_t = 0
 do ix = 2,NX-1
 !	write(*,*) 'make_sparse_emap: ix: ',ix
@@ -459,7 +466,7 @@ do ix = 2,NX-1
 			endif
 			
 			izz = iz - 1
-			if (izz < 1) then
+			if (izz < 1) then   ! reflection
 				izz = izz + 2
 			endif
 			kcol = krow + (izz-iz)
@@ -495,7 +502,6 @@ do ix = 2,NX-1
 				chk(7) = kcol
 			endif
 			
-!			write(*,'(7i8)') chk
 			ia(krow) = nnz_t + 1
 			asum = 0
 			do i = 1,7
@@ -503,10 +509,12 @@ do ix = 2,NX-1
 					nnz_t = nnz_t + 1
 					ja(nnz_t) = chk(i)
 					amap(nnz_t,0) = aval(i)
-					amap(nnz_t,1:3) = [ix,iy,iz]
+					amap(nnz_t,1:3) = [ix,iy,iz] + dxyz(i,:)
+					if (amap(nnz_t,3) == 0) amap(nnz_t,3) = 2   ! reflection
 					asum = asum + aval(i)
 				endif
 			enddo
+!			write(*,'(3i4,4x,7i8,4x,7f4.1)') ix,iy,iz,chk,aval
 !			if (asum /= 0) then
 !				write(*,'(7e11.3)') aval
 !				write(*,*) 'bad asum: ',asum

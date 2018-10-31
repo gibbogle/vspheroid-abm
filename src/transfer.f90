@@ -342,7 +342,9 @@ integer :: status
 
 A_rate = cp%metab%A_rate
 if (icolourscheme == 0) then
-    if (A_rate >= ATPg) then    ! happy growing cell
+    if (cp%phase >= M_phase) then
+        status = 3
+    elseif (A_rate >= ATPg) then    ! happy growing cell
 	    if (cp%celltype == 1) then
 		    status = 0
 	    else
@@ -350,8 +352,6 @@ if (icolourscheme == 0) then
 	    endif
     elseif (cp%state == DYING) then
         status = 2
-    elseif (cp%phase >= M_phase) then
-        status = 3
     elseif (A_rate < ATPg) then
         status = 1
     endif

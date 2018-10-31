@@ -215,8 +215,152 @@ end subroutine
 ! This version is for the embedded grid.
 ! Given boundary concentrations and grid point fluxes, we need to solve for the 
 ! steady-state concentration field.
+! Note that for a given krow, corresponding to (ix,iy,iz), the 7 template points are:
+! 1 ix-1, iy,   iz
+! 2 ix,   iy-1, iz
+! 3 ix,   iy,   iz-1
+! 4 ix,   iy,   iz      <-- centre point
+! 5 ix,   iy,   iz+1
+! 6 ix,   iy+1, iz
+! 7 ix+1, iy,   iz
+!
+! and their template weights (-1, -1, -1, 6, -1, -1, -1) are successive values in amap(:,0) 
+!
+! This assumes that the number of cells associated with each grid point has already been computed.
 !-------------------------------------------------------------------------------------------
 subroutine make_csr_SS(a, ichemo, Cave, Fcurr, rhs)
+integer :: ichemo
+real(REAL_KIND) :: a(:), Cave(:,:,:), Fcurr(:,:,:), rhs(:)
+integer :: k, ix, iy, iz, krow, kcol, nc, idx, idy, idz, ixx, iyy, izz, n, ncsum
+integer :: nc_max = 10	! just a wild guess but not a bad one
+real(REAL_KIND) :: Ktissue, Kmedium, Kdiff, alfa, Kr, Vex, Cbdry, Kdiff_sum
+integer :: i, k0, ip, np, ip0, kk, xyz(7,3), ncells(7)
+real(REAL_KIND) :: Vc   ! average cell volume
+real(REAL_KIND) :: V(7), Kd(7), Kdsum, Afsum, Esum, Af(7), E(7)   ! Af(i) = area/dxf^2 = fractional area
+logical :: cells_present
+
+Vc = 0.75*Vdivide0
+Ktissue = chemo(ichemo)%diff_coef
+Kmedium = chemo(ichemo)%medium_diff_coef
+
+cells_present = .false.
+krow = 0
+do k = 1,nnz
+	if (k == ia(krow+1)) then
+	    krow = krow+1
+    	np = ia(krow+1) - ia(krow)
+    	k0 = k
+        ip = 0
+        cells_present = .false.
+	endif
+	kcol = ja(k)
+    ip = ip+1
+    xyz(ip,:) = amap(k,1:3)
+!	a(k) = amap(k,0)
+    if (amap(k,0) == 6.0) then
+        ip0 = ip     ! centre point
+    endif
+    ncells(ip) = nGridCells(xyz(ip,1),xyz(ip,2),xyz(ip,3))
+    if (ncells(ip) > 0) then
+        cells_present = .true.
+    endif
+    if (ip == np) then  ! all relevant grid points are known
+        if (cells_present) then
+            ! For now, using a single diffusivity value Kdiff
+            do i = 1,np
+                V(i) = dx3 - Vc*ncells(i)
+            enddo
+            Afsum = 0
+            Kdsum = 0
+            do i = 1,np
+                if (i == ip0) cycle
+                Af(i) = (V(i) + V(ip0))/(2*dx3)
+                Afsum = Afsum + Af(i)
+                ! Af(i) = 1 ==> alfa = 1, Af(i) <= 0.5 ==> alfa = 0
+                alfa = max(0.0,(Af(i) - 0.6)/(1 - 0.6))
+                alfa = min(1.0,alfa)
+                Kd(i) = alfa*Kmedium + (1-alfa)*Ktissue
+                Kdsum = Kdsum + Kd(i)
+            enddo
+            Kdiff = Kdsum/(np-1)
+            Esum = 0
+            do i = 1,np
+                if (i == ip0) cycle
+                E(i) = Af(i)*Kd(i)/Kdiff
+                Esum = Esum + E(i)
+            enddo
+            do i = 1,np
+                kk = k0 + i - 1
+                if (i == ip0) then
+!                    a(kk) = Esum
+                    a(kk) = Afsum
+                else
+!                    a(kk) = -E(i)
+                    a(kk) = -Af(i)
+                endif
+            enddo
+        else
+            do i = 1,np
+                kk = k0 + i - 1
+                a(kk) = amap(kk,0)
+            enddo
+            Kdiff = Kmedium
+        endif
+        ix = xyz(ip0,1)
+        iy = xyz(ip0,2)
+        iz = xyz(ip0,3)
+		rhs(krow) = -Fcurr(ix,iy,iz)/(dxf*Kdiff)
+!        write(*,'(a,i8,8e12.3)') 'krow,a,rhs: ',krow,a(k0:k0+np-1),rhs(krow)
+    endif
+!	write(*,'(3i8,2x,i4,2x,4i4)') k,krow,kcol,np,int(amap(k,1:3)),amap(k,0)
+enddo
+!stop
+ix = 2
+do iy = 2,NY-1
+	do iz = 1,NZ-1
+		krow = (ix-2)*(NY-2)*(NZ-1) + (iy-2)*(NZ-1) + iz
+		Cbdry = Cave(1,iy,iz)
+		rhs(krow) = rhs(krow) + Cbdry
+	enddo
+enddo
+ix = NX-1
+do iy = 2,NY-1
+	do iz = 1,NZ-1
+		krow = (ix-2)*(NY-2)*(NZ-1) + (iy-2)*(NZ-1) + iz
+		Cbdry = Cave(NX,iy,iz)
+		rhs(krow) = rhs(krow) + Cbdry		
+	enddo
+enddo
+iy = 2
+do ix = 2,NX-1
+	do iz = 1,NZ-1
+		krow = (ix-2)*(NY-2)*(NZ-1) + (iy-2)*(NZ-1) + iz
+		Cbdry = Cave(ix,1,iz)
+		rhs(krow) = rhs(krow) + Cbdry
+	enddo
+enddo
+iy = NY-1
+do ix = 2,NX-1
+	do iz = 1,NZ-1
+		krow = (ix-2)*(NY-2)*(NZ-1) + (iy-2)*(NZ-1) + iz
+		Cbdry = Cave(ix,NY,iz)
+		rhs(krow) = rhs(krow) + Cbdry
+	enddo
+enddo
+iz = NZ-1
+do ix = 2,NX-1
+	do iy = 2,NY-1
+		krow = (ix-2)*(NY-2)*(NZ-1) + (iy-2)*(NZ-1) + iz
+		Cbdry = Cave(ix,iy,NZ)
+		rhs(krow) = rhs(krow) + Cbdry
+	enddo
+enddo
+
+end subroutine
+
+!-------------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------------
+subroutine old_make_csr_SS(a, ichemo, Cave, Fcurr, rhs)
 integer :: ichemo
 real(REAL_KIND) :: a(:), Cave(:,:,:), Fcurr(:,:,:), rhs(:)
 integer :: k, ix, iy, iz, krow, kcol, nc, idx, idy, idz, ixx, iyy, izz, n, ncsum
@@ -229,9 +373,13 @@ Kmedium = chemo(ichemo)%medium_diff_coef
 
 krow = 0
 do k = 1,nnz
-	if (k == ia(krow+1)) krow = krow+1
-	kcol = ja(k)
 	a(k) = amap(k,0)
+	kcol = ja(k)
+	if (k == ia(krow+1)) then
+	    krow = krow+1
+	endif
+	n = ia(krow+1) - ia(krow)
+!	write(*,'(3i8,2x,i4,2x,3i4,f6.2)') k,krow,kcol,n,int(amap(k,1:3)),a(k)
 enddo
 
 Kdiff_sum = 0
@@ -416,7 +564,8 @@ Kin = chemo(ichemo)%membrane_diff_in
 Kout = chemo(ichemo)%membrane_diff_out
 do kcell = 1,nlist
 	cp => cell_list(kcell)
-	if (cp%state == DEAD .or. cp%state == DYING) cycle
+!	if (cp%state == DEAD .or. cp%state == DYING) cycle
+	if (cp%state == DEAD) cycle
 	call extra_concs_const(kcell, Cextra, cp%Cex(ichemo))
 	cp%Cin(ichemo) = getCin_SS(kcell,ichemo,cp%V,cp%Cex(ichemo))
 enddo
@@ -444,7 +593,8 @@ Kout = chemo(ichemo)%membrane_diff_out
 !$omp parallel do private(cp, ix, iy, iz, alfa, Clast, dCexdt)
 do kcell = 1,nlist
 	cp => cell_list(kcell)
-	if (cp%state == DEAD .or. cp%state == DYING) cycle
+!	if (cp%state == DEAD .or. cp%state == DYING) cycle
+	if (cp%state == DEAD) cycle
 	call grid_interp(kcell, alfa)
 	ix = cp%site(1)
 	iy = cp%site(2)
@@ -490,7 +640,8 @@ cmax = 0
 !$omp parallel do private(cp, ix, iy, iz, alfa)
 do kcell = 1,nlist
 	cp => cell_list(kcell)
-	if (cp%state == DEAD .or. cp%state == DYING) cycle
+!	if (cp%state == DEAD .or. cp%state == DYING) cycle
+	if (cp%state == DEAD) cycle
 	call grid_interp(kcell, alfa)
 	ix = cp%site(1)
 	iy = cp%site(2)
@@ -551,7 +702,8 @@ cmin = 1.0e9
 cmax = -cmin
 do kcell = 1,nlist
 	cp => cell_list(kcell)
-	if (cp%state == DEAD .or. cp%state == DYING) cycle
+!	if (cp%state == DEAD .or. cp%state == DYING) cycle
+	if (cp%state == DEAD) cycle
 	call grid_interp(kcell, alfa)
 	ix = cp%site(1)
 	iy = cp%site(2)
@@ -595,7 +747,8 @@ csum = 0
 !!$omp parallel do
 do kcell = 1,nlist
 	cp => cell_list(kcell)
-	if (cp%state == DEAD .or. cp%state == DYING) cycle
+!	if (cp%state == DEAD .or. cp%state == DYING) cycle
+	if (cp%state == DEAD) cycle
 	if (chemo(DRUG_A)%present) then
 		call integrate_cell_Cin(DRUG_A,kcell,dt)
 		n = n+1
@@ -823,11 +976,11 @@ zmax = 0
 do kcell = 1,nlist
 	cp => cell_list(kcell)
 	if (cp%state == DEAD) cycle
-	if (cp%state == DYING) then
-		cp%dMdt(ichemo) = 0
-	else
-		cp%dMdt(ichemo) = Kin*cp%Cex(ichemo) - Kout*cp%Cin(ichemo)
-	endif
+!	if (cp%state == DYING) then
+!		cp%dMdt(ichemo) = 0
+!	else
+		cp%dMdt(ichemo) = (Kin*cp%Cex(ichemo) - Kout*cp%Cin(ichemo))
+!	endif
 !	total_flux = total_flux + cp%dMdt(ichemo)
 enddo
 !!$omp end parallel do
@@ -854,7 +1007,8 @@ n = 0
 avec = 0
 do kcell = 1,nlist
 	cp => cell_list(kcell)
-	if (cp%state == DEAD .or. cp%state == DYING) cycle
+!	if (cp%state == DEAD .or. cp%state == DYING) cycle
+	if (cp%state == DEAD) cycle
 	cnr = cp%cnr
 	wt = cp%wt
 	ix = cp%centre(1,1)/DELTA_X + 1
@@ -2074,12 +2228,12 @@ endif
 !write(*,*) 'update_IC: '
 area_factor = (average_volume)**(2./3.)
 
-
 ! Can't use $omp parallel with debug
 !$omp parallel do private(cp, alfa, ix, iy, iz, ic, ichemo, Cextra, tstart, dtt, Kin, Kout, ok)
 do kcell = 1,nlist
 	cp => cell_list(kcell)
-	if (cp%state == DEAD .or. cp%state == DYING) cycle
+!	if (cp%state == DEAD .or. cp%state == DYING) cycle
+	if (cp%state == DEAD) cycle
 	call grid_interp(kcell, alfa)
 	ix = cp%site(1)
 	iy = cp%site(2)
@@ -2176,7 +2330,8 @@ do nthreads = 1,npr
 !$omp parallel do private(tstart, dtt, ok)
 	do kcell = 1,nlist
 		cp => cell_list(kcell)
-		if (cp%state == DEAD .or. cp%state == DYING) cycle
+!		if (cp%state == DEAD .or. cp%state == DYING) cycle
+		if (cp%state == DEAD) cycle
 		tstart = 0
 		dtt = 2
 		call OGLSolver(kcell,tstart,dtt,ok)	
@@ -2208,7 +2363,8 @@ do im = 0,2
 enddo
 do kcell = 1,nlist
     cp => cell_list(kcell)
-	if (cp%state == DEAD .or. cp%state == DYING) cycle
+!	if (cp%state == DEAD .or. cp%state == DYING) cycle
+	if (cp%state == DEAD) cycle
 	cp%Cin(ichemo:ichemo+2) = 0
 	cp%Cex(ichemo:ichemo+2) = 0
 enddo

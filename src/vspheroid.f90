@@ -46,8 +46,9 @@ if (allocated(Cextra_all)) deallocate(Cextra_all)
 if (allocated(Caverage)) deallocate(Caverage)
 if (allocated(Cflux)) deallocate(Cflux)
 if (allocated(Cflux_prev)) deallocate(Cflux_prev)
-if (allocated(stencil)) deallocate(stencil)
+!if (allocated(stencil)) deallocate(stencil)
 if (allocated(gaplist)) deallocate(gaplist)
+if (allocated(nGridCells)) deallocate(nGridCells)
 call logger('did deallocation')
 allocate(cell_list(MAX_NLIST))
 allocate(gaplist(max_ngaps))
@@ -57,7 +58,8 @@ allocate(Cextra_all(NX,NY,NZ,NCONST))
 allocate(Caverage(NX,NY,NZ,NCONST))
 allocate(Cflux(NX,NY,NZ,NCONST))
 allocate(Cflux_prev(NX,NY,NZ,NCONST))
-allocate(stencil(NX,NY,NZ))
+!allocate(stencil(NX,NY,NZ))
+allocate(nGridCells(NX,NY,NZ))
 
 ncells = 0
 nlist = 0
@@ -1947,7 +1949,8 @@ type(cell_type), pointer :: cp
 
 do kcell = 1,nlist
 	cp => cell_list(kcell)
-	if (cp%state == DEAD .or. cp%state == DYING) cycle
+!	if (cp%state == DEAD .or. cp%state == DYING) cycle
+	if (cp%state == DEAD) cycle
 	mp => cp%metab
 	HIF1 = mp%HIF1
 	ityp = cp%celltype

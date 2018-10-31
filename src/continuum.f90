@@ -18,6 +18,9 @@ contains
 !    (ix-1)*DX <= x < ix*DX
 !    (iy-1)*DX <= y < iy*DX
 !    (iz-1)*DX <= z < iz*DX
+! where
+! DX = dxf = DELTA_X
+! Question: why not a cube centred on the grid point?
 !-----------------------------------------------------------------------------------------
 subroutine setup_grid_cells
 real(REAL_KIND) :: c(3)
@@ -26,6 +29,7 @@ type(cell_type), pointer :: cp
 
 !write(nflog,*) 'setup_grid_cells: istep: ',istep
 grid(:,:,:)%nc = 0
+nGridCells(:,:,:) = 0
 do kcell = 1,nlist
 	cp => cell_list(kcell)
 	if (cp%state == DEAD) cycle
@@ -40,6 +44,11 @@ do kcell = 1,nlist
 	grid(ix,iy,iz)%nc = grid(ix,iy,iz)%nc + 1
 	grid(ix,iy,iz)%cell(grid(ix,iy,iz)%nc) = kcell
 	cp%site = [ix,iy,iz]
+	! for a cube centred on the grid pt
+	ix = c(1)/DELTA_X + 1.5
+	iy = c(2)/DELTA_X + 1.5
+	iz = c(3)/DELTA_X + 1.5
+	nGridCells(ix,iy,iz) = nGridCells(ix,iy,iz) + 1
 enddo
 end subroutine
 
