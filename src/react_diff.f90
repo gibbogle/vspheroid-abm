@@ -52,7 +52,7 @@ contains
 !-------------------------------------------------------------------------------------------
 subroutine setup_react_diff(ok)
 logical :: ok
-integer :: ix, iy, iz, ic, maxnz, ichemo
+integer :: ix, iy, iz, ic, maxnz, ichemo, kcell
 real(REAL_KIND) :: C0
 character*(10) :: emapfile, bmapfile
 real(REAL_KIND), pointer :: Cprev(:,:,:), Fprev(:,:,:), Fcurr(:,:,:)
@@ -106,7 +106,15 @@ do ichemo = 1,MAX_CHEMO
 	chemo(ichemo)%medium_Cbnd = chemo(ichemo)%bdry_conc
 	write(nflog,*) 'ichemo, Caverage: ',ichemo,chemo(ichemo)%bdry_conc
 !	write(*,*) 'call update_Cex_Cin: ',ichemo
-	call update_Cex_Cin_const(ichemo)	! initialise with SS values
+    if (ichemo <= LACTATE) then
+	    call update_Cex_Cin_const(ichemo)	! initialise with SS values
+	else
+	    do kcell = 1,Nlist
+	        cell_list(kcell)%Cin(ichemo) = 0
+	        cell_list(kcell)%Cex(ichemo) = 0
+	    enddo
+	    Cflux(:,:,:,ichemo) = 0
+	endif
 	Fcurr => Cflux(:,:,:,ichemo)
 	call getF_const(ichemo,Fcurr)	! estimates all fine grid pt fluxes Cflux(:,:,:,:) from Cextra(:,:,:,:)
 ! Sum fine grid fluxes to initialise Fcurr_b, Fprev_b
@@ -237,7 +245,10 @@ real(REAL_KIND) :: Ktissue, Kmedium, Kdiff, alfa, Kr, Vex, Cbdry, Kdiff_sum
 integer :: i, k0, ip, np, ip0, kk, xyz(7,3), ncells(7)
 real(REAL_KIND) :: Vc   ! average cell volume
 real(REAL_KIND) :: V(7), Kd(7), Kdsum, Afsum, Esum, Af(7), E(7)   ! Af(i) = area/dxf^2 = fractional area
-logical :: cells_present
+logical :: cells_present, OXYGEN_exclusion
+logical, parameter :: oxygen_special = .false.   ! = .false. if oxygen is not a special case
+
+oxygen_exclusion = oxygen_special .and. (ichemo == OXYGEN)
 
 Vc = 0.75*Vdivide0
 Ktissue = chemo(ichemo)%diff_coef
@@ -265,8 +276,8 @@ do k = 1,nnz
         cells_present = .true.
     endif
     if (ip == np) then  ! all relevant grid points are known
+        ! For now, using a single diffusivity value Kdiff
         if (cells_present) then
-            ! For now, using a single diffusivity value Kdiff
             do i = 1,np
                 V(i) = dx3 - Vc*ncells(i)
             enddo
@@ -282,29 +293,36 @@ do k = 1,nnz
                 Kd(i) = alfa*Kmedium + (1-alfa)*Ktissue
                 Kdsum = Kdsum + Kd(i)
             enddo
-            Kdiff = Kdsum/(np-1)
-            Esum = 0
-            do i = 1,np
-                if (i == ip0) cycle
-                E(i) = Af(i)*Kd(i)/Kdiff
-                Esum = Esum + E(i)
-            enddo
-            do i = 1,np
-                kk = k0 + i - 1
-                if (i == ip0) then
-!                    a(kk) = Esum
-                    a(kk) = Afsum
-                else
-!                    a(kk) = -E(i)
-                    a(kk) = -Af(i)
-                endif
-            enddo
+!            Esum = 0
+!            do i = 1,np
+!                if (i == ip0) cycle
+!                E(i) = Af(i)*Kd(i)/Kdiff
+!                Esum = Esum + E(i)
+!            enddo
+            Kdiff = Kdsum/(np-1)               
+            if (oxygen_exclusion) then
+                do i = 1,np
+                    kk = k0 + i - 1
+                    a(kk) = amap(kk,0)
+                enddo
+            else
+                do i = 1,np
+                    kk = k0 + i - 1
+                    if (i == ip0) then
+!                        a(kk) = Esum
+                        a(kk) = Afsum
+                    else
+!                        a(kk) = -E(i)
+                        a(kk) = -Af(i)
+                    endif
+                enddo
+            endif
         else
+            Kdiff = Kmedium
             do i = 1,np
                 kk = k0 + i - 1
                 a(kk) = amap(kk,0)
             enddo
-            Kdiff = Kmedium
         endif
         ix = xyz(ip0,1)
         iy = xyz(ip0,2)
@@ -759,9 +777,9 @@ do kcell = 1,nlist
 	endif
 enddo
 !!$omp end parallel do
-if (n > 0) then
-    write(nflog,'(a,f8.4)') 'IC Drug A metab1: ',csum/n
-endif
+!if (n > 0) then
+!    write(nflog,'(a,f8.4)') 'IC Drug A metab1: ',csum/n
+!endif
 end subroutine
 
 !-------------------------------------------------------------------------------------------
@@ -830,7 +848,7 @@ do im = 0,imax
 	Km(im) = dp%Km(ictyp,im)
 	Vmax(im) = dp%Vmax(ictyp,im)
 	K1(im) = (1 - CC2 + CC2*KO2(im)**n_O2(im)/(KO2(im)**n_O2(im) + CO2**n_O2(im)))
-!	if (kcell == 1 .and. im==0) then
+!	if (kcell == 154) then
 !		write(*,'(a,2i2,3e12.3)') 'im,ichemo,Kin,Kout: ',im,ichemo,Kin(im),Kout(im)
 !		write(*,'(a,i2,3e12.3)') 'im,Kmet0,C2,KO2: ',im,Kmet0(im),CC2,KO2(im)
 !		write(*,'(a,2i2,3e12.3)') 'im,N_O2,Km,Vmax,K1: ',im,N_O2(im),Km(im),Vmax(im),K1(im)
@@ -1769,7 +1787,7 @@ integer :: ILUtype = 1
 integer :: nfinemap, finemap(MAX_CHEMO)
 integer :: im, im1, im2, ichemof, iy0, iz0
 logical :: zeroF(MAX_CHEMO), zeroC(MAX_CHEMO)
-logical :: done
+logical :: done, dbug
 logical :: do_fine = .true.
 logical :: use_const = .true.
 logical :: test_symmetry = .false.
@@ -1819,6 +1837,7 @@ tol = 1.0d-6
 tol_b = 1.0d-6
 im_krylov = 60	! dimension of Krylov subspace in (outer) FGMRES
 maxits = 50
+dbug = .false.
 
 ! Compute all steady-state grid point fluxes in advance from Cextra(:,:,:,:): Cflux(:,:,:,:)
 
@@ -1827,7 +1846,6 @@ t0 = mytimer()
 do ic = 1,nchemo
 	ichemo = chemomap(ic)
 	if (chemo(ichemo)%constant) cycle
-!	write(*,'(a,i2)') 'coarse grid: ichemo: ',ichemo
 	ichemo_curr = ichemo
 	icc = ichemo - 1
 	allocate(rhs(nrow_b))
@@ -1863,6 +1881,7 @@ do ic = 1,nchemo
 	call itsol_create_matrix(icc,nrow_b,nnz_b,a_b,ja_b,ia_b,ierr)
 	!write(nflog,*) 'itsol_create_matrix: ierr: ',ierr
 	if (ierr /= 0) then
+    	write(*,*) 'itsol_create_matrix: ierr: ',ierr
 		ok = .false.
 	endif
 	
@@ -1917,6 +1936,7 @@ do ic = 1,nchemo
 	!	write(*,*) 'itsol_create_precond_ARMS: ierr: ',ierr 
 	endif
 	if (ierr /= 0) then
+		write(*,*) 'itsol_create_precond_ILUK: ierr: ',ierr 
 		ok = .false.
 	endif
 
@@ -1929,15 +1949,11 @@ do ic = 1,nchemo
 		enddo
 	enddo
 	if (.not.zeroC(ichemo)) then
-	!	write(nflog,*) 'call itsol_solve_fgmr_ILU'
-!		if (istep == 25 .and. ichemo == 2) then
-!			write(nflog,*) 'glucose: rhs:'
-!			write(nflog,'(10e12.3)') rhs
-!		endif
 !		write(*,*) 'call itsol_solve_fgmr_ILU'
 		call itsol_solve_fgmr_ILU(icc, rhs, x, im_krylov, maxits, tol_b, iters, ierr)
 	!	write(nflog,*) 'itsol_solve_fgmr_ILU: Cave_b: ierr, iters: ',ierr,iters
 		if (ierr /= 0) then
+	    	write(*,*) 'itsol_solve_fgmr_ILU: Cave_b: ierr, iters: ',ierr,iters
 			ok = .false.
 		endif
 	else
@@ -2030,6 +2046,7 @@ do ic = 1,nfinemap
 		call itsol_create_matrix(icc,nrow,nnz,a,ja,ia,ierr)
 		!write(*,*) 'itsol_create_matrix: ierr: ',ierr
 		if (ierr /= 0) then
+		    write(*,*) 'finesolve: itsol_create_matrix: ierr: ',ierr
 			ok = .false.
 		endif
 		if (ILUtype == 1) then
@@ -2046,6 +2063,7 @@ do ic = 1,nfinemap
 		!	write(*,*) 'itsol_create_precond_ARMS: ierr: ',ierr 
 		endif
 		if (ierr /= 0) then
+    	    write(*,*) 'finesolve: itsol_create_precond_ILUK: ierr: ',ierr 
 			ok = .false.
 		endif
 
@@ -2072,6 +2090,7 @@ do ic = 1,nfinemap
 			if (ierr /= 0) then
 				write(logmsg,*) 'itsol_solve_fgmr_ILU failed with err: ',ierr
 				call logger(logmsg)
+				write(*,*) 'finesolve: itsol_solve_fgmr_ILU failed with err: ',ierr
 				ok = .false.
 			endif
 		else

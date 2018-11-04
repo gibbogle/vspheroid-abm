@@ -242,8 +242,8 @@ void MainWindow:: drawDistPlots(bool dummy)
                 expMean[2] = line_G2_MEAN_DELAY_1->text().toDouble();
             }
         } else if (j == 1) {
+            qp->setTitle("Type 2 division time (hrs)");
             if (use_lognormal) {
-                qp->setTitle("Type 2 division time (hrs)");
                 median_qstr = line_DIVIDE_TIME_2_MEDIAN->text();
                 shape_qstr = line_DIVIDE_TIME_2_SHAPE->text();
             } else {

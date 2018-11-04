@@ -65,7 +65,7 @@ Off-lattice model: Dimension of the fine grid (number of grid pts in X,Y and Z d
 "Initial number of tumour cells",
 "Initial number of tumour cells"},
 
-{"USE_LOGNORMAL_DIST", 1, 0, 1,
+{"USE_LOGNORMAL_DIST", 0, 0, 1,
 "Use lognormal cycle time distribution",
 "If ticked, the cycle time will be a random variate from a log-normal distribution, \n\
 otherwise times for phases G1, S, G2 will be fixed and exponential times for checkpoints generated at cell creation."},
@@ -556,7 +556,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "PL lesion creation rate",
      "Coefficient of rate of creation of potentially lethal lesions: eta_PL"},
 
-     {"RMR_ETA_IRL_1", 0.01, 0, 0,
+     {"RMR_ETA_IRL_1", 0.003, 0, 0,
      "IRL creation rate",
      "Coefficient of rate of creation of irrepairable lesions: eta_IRL"},
 
@@ -570,7 +570,7 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
      "Maximum coefficient of rate of repair of potentially lethal lesions: Krepair_max\n\
      The true repair rate varies linearly from Krepair_min to Krepair_max over the S phase"},
 
-     {"RMR_KMIS_1", 0.0001, 0, 0,
+     {"RMR_KMIS_1", 0.00003, 0, 0,
      "Lesion misrepair rate",
      "Coefficient of rate of misrepair of PL lesions to Ch1 and Ch2 lesions: Kmisrepair"},
 
@@ -1041,8 +1041,8 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
 "Hypoxia threshold 3"},
 
 {"HYPOXIA_THRESHOLD", 4.0, 0, 0,
-"Hypoxia threshold",
-"Hypoxia threshold"},
+"Hypoxia threshold (uM)",
+"Hypoxia threshold (uM)"},
 
 {"GROWTH_FRACTION_1", 0.25, 0, 0,
 "Growth fraction threshold 1",

@@ -597,6 +597,7 @@ do idrug = 1,Ndrugs_used
             drug(idrug)%KO2(ictyp,im) = 1.0e-3*drug(idrug)%KO2(ictyp,im)					! um -> mM
             drug(idrug)%kill_duration(ictyp,im) = 60*drug(idrug)%kill_duration(ictyp,im)	! min -> sec
 		enddo
+		drug(idrug)%phase_dependent = .false.
 	    if (drug(idrug)%name == 'EDU') then
 			drug(idrug)%nmetabolites = 1
 			drug(idrug)%phase_dependent = .true.
@@ -901,6 +902,10 @@ call setup_force_parameters
 call make_jumpvec
 call PlaceCells(ok)
 call logger('did PlaceCells')
+if (cell_list(154)%V == 0) then
+    write(*,*) 'setup: 1: cell 154 Vin = 0: istep: ',istep
+    stop
+endif
 call setTestCell(kcell_test)
 !do kcell = 1,nlist
 !	write(nflog,'(i6,3f8.1)') kcell,1.0e4*cp%centre(:,1)
@@ -969,6 +974,10 @@ use_permute = .true.
 !else
 !	ccp%tcp = 0
 !endif
+if (cell_list(154)%V == 0) then
+    write(*,*) 'setup: 2: cell 154 Vin = 0: istep: ',istep
+    stop
+endif
 
 end subroutine
 
@@ -1132,6 +1141,10 @@ else
 		kcell = initial_count
 	endif
 	deallocate(occup)
+endif
+if (cell_list(154)%V == 0) then
+    write(*,*) 'placecells: cell 154 Vin = 0: istep: ',istep
+    stop
 endif
 nlist = kcell
 ncells = kcell
@@ -1307,7 +1320,6 @@ phase_fraction = phase_time/Tdiv
 if (use_exponential_cycletime) then
     fsum = 0
     do iphase = 1,nphases
-        if (iphase == S_checkpoint) cycle
 	    if (fsum + phase_fraction(iphase) > x) then	! this is the phase
 		    y = (x - fsum)/phase_fraction(iphase)	! this is fractional progress through the phase
 		    z = 1 - y								! this is fraction phase left to complete, => time until phase transition
@@ -1418,6 +1430,10 @@ else
 	    endif
 	    fsum = fsum + phase_fraction(iphase)
     enddo
+endif
+if (cp%V == 0) then
+    write(*,*) 'SetInitialCellCycleStatus: V = 0: ',kcell,cp%phase
+    stop
 endif
 write(nflog,'(2i4,4f8.3,f8.0)') kcell,cp%phase,R,x,y,cp%V/V0,cp%t_divide_last
 cp%metab = metabolic
@@ -1660,6 +1676,10 @@ if (radiation_dose > 0) then
 	endif
 endif
 
+if (cell_list(154)%V == 0) then
+    write(*,*) 'simulate: cell 154 Vin = 0: istep: ',istep
+    stop
+endif
 call DrugChecks
 !call SetupChemomap
 

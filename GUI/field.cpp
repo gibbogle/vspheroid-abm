@@ -653,8 +653,8 @@ void Field::displayField(int hr, int *res)
         setCellColours(icolourscheme,statusColor);
     }
     for (i=0; i<fdata.ncells; i++) {
-        x = fdata.cell_data[i].centre[0];
-        y = fdata.cell_data[i].centre[1];
+        x = fdata.cell_data[i].centre[0]   + 0.5*dx;   // Try this to align cells with field
+        y = fdata.cell_data[i].centre[1]   + 0.5*dx;
         radius = fdata.cell_data[i].radius;
         xp = a*x + b;
         yp = a*y + b;

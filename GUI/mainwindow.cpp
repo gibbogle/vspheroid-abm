@@ -1969,6 +1969,8 @@ void MainWindow::showSummary(int hr)
         tag = grph->get_tag(i);
         double yscale = grph->get_yscale(i);
         pGraph[i]->redraw(newR->tnow, newR->pData[i], step+1, Global::casename, tag, yscale, false);
+
+        pGraph[i]->updateLayout();
     }
 
     // Profile plots
@@ -2058,6 +2060,8 @@ void MainWindow::updateProfilePlots()
             pGraph[i]->setAxisTitle(QwtPlot::xBottom, "Distance (microns)");
             pGraph[i]->setAxisTitle(QwtPlot::yLeft, grph->get_yAxisTitle(i));
             pGraph[i]->redraw(x, y, nc, Global::casename, tag, yscale, true);
+
+            pGraph[i]->updateLayout();
         }
     }
 //    sprintf(msg,"conc_nvars, conc_nc_ex: %d %d",Global::conc_nvars,Global::conc_nc_ex);

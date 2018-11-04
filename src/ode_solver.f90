@@ -548,11 +548,6 @@ do i = 1,neqn
 !	endif
 	dydt(i) = dCreact
 !	write(*,'(a,i4,5e12.3)') 'dydt: ',ichemo,dCreact,membrane_flux,rate,C,cp%Cex(ichemo)
-	if (isnan(dydt(i))) then
-		write(nflog,'(a,i2,4e12.3)') 'f_rkc_OGL: dydt isnan: ',ichemo,dydt(i),C,cp%Cex(ichemo),rate
-		write(*,'(a,i2,4e12.3)') 'f_rkc_OGL: dydt isnan: ',ichemo,dydt(i),C,cp%Cex(ichemo),rate
-		stop
-	endif	
 enddo
 end subroutine
 
