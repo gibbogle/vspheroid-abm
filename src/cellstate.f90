@@ -680,7 +680,11 @@ radiation_killed = .false.
 !			write(nflog,*) 'dVdt=0: kcell, phase: ',kcell,cp%phase 
 !		endif
 	    if (cp%dVdt > 0) then
-			call timestep(cp, ccp, dt)
+	        if (use_exponential_cycletime) then
+    			call exp_timestep(cp, ccp, dt)
+	        else
+    			call timestep(cp, ccp, dt)
+    		endif
 		endif
 !        if (.not.cp%radiation_tag .and.(cp%NL2(1) > 0 .or. cp%NL2(2) > 0)) then	! irrepairable damage
 !			! For now, tag for death at mitosis

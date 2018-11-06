@@ -882,7 +882,7 @@ if (use_exponential_cycletime) then
     fg = 1
 else
     Tgrowth0 = ccp%T_G1 + ccp%T_S + ccp%T_G2
-    Tfixed = ccp%T_M + ccp%G1_mean_delay + ccp%S_mean_delay + ccp%G2_mean_delay
+    Tfixed = ccp%T_M + ccp%G1_mean_delay + ccp%G2_mean_delay
 	Tdiv = DivideTime(ityp)
 	Tgrowth = Tdiv - Tfixed
 	fg = Tgrowth/Tgrowth0

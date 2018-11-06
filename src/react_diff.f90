@@ -1796,7 +1796,6 @@ real(REAL_KIND) :: tdiff, tmetab, t0, t1
 integer :: i1, i2
 real(REAL_KIND) :: aval
 
-if (dbug) write(*,'(a,L2,f8.2)') 'diff_solver: medium_change_step,dt: ',medium_change_step,dt
 ok = .true.
 ! Superceded by improved method for checking drug presence
 !do ichemo = 1,MAX_CHEMO

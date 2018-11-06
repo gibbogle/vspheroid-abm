@@ -25,6 +25,7 @@ contains
 ! Phase transitions are now based on cell volume, cp%V, to allow for delay
 ! when growth is slowed by starvation of oxygen and/or glucose.
 ! Note that the volumes required for the transitions (cp%G1_V,..)  never change.
+! Note: No S-phase checkpoint!
 !--------------------------------------------------------------------------
 subroutine timestep(cp, ccp, dt)
 type(cell_type), pointer :: cp

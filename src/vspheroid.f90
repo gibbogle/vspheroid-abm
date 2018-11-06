@@ -425,7 +425,7 @@ end subroutine
 
 !-----------------------------------------------------------------------------------------
 ! The cell cycle parameters include the parameters for radiation damage and repair, 
-! and for the associated checkpoint duration limits Tcp(:). 
+! and for the associated checkpoint duration limits Tcp(:).
 ! Time unit = hour
 !-----------------------------------------------------------------------------------------
 subroutine ReadCellCycleParameters(nf)
@@ -1310,7 +1310,7 @@ else
     phase_time(G1_phase)        = fg*ccp%T_G1
     phase_time(G1_checkpoint)   = ccp%G1_mean_delay
     phase_time(S_phase)         = fg*ccp%T_S
-    phase_time(S_checkpoint)    = 0
+    phase_time(S_checkpoint)    = 0     !ccp%S_mean_delay
     phase_time(G2_phase)        = fg*ccp%T_G2
     phase_time(G2_checkpoint)   = ccp%G2_mean_delay ! + ccp%T_M
     phase_time(M_phase)         = ccp%T_M
@@ -1432,7 +1432,10 @@ else
     enddo
 endif
 if (cp%V == 0) then
-    write(*,*) 'SetInitialCellCycleStatus: V = 0: ',kcell,cp%phase
+    write(*,*) 'SetInitialCellCycleStatus: V = 0: ',kcell,x,phase_fraction(iphase),fsum,cp%phase, y
+    write(*,*) 'Tdiv: ',Tdiv
+	write(*,'(a,8f9.1)') 'phase_time: ',phase_time
+	write(*,'(a,f9.1)') 'sum: ',sum(phase_time)
     stop
 endif
 write(nflog,'(2i4,4f8.3,f8.0)') kcell,cp%phase,R,x,y,cp%V/V0,cp%t_divide_last
