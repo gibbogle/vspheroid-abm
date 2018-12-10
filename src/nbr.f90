@@ -191,7 +191,7 @@ do kcell = 1,nlist
 	if (nbrs == 0) then
 !		write(*,*) 'setup_nbrlists: nbrs = 0: kcell: ',kcell
 	else
-		call qqsort(nbr_d,nbrs,t)     ! sort in increasing order
+		call qsort(nbr_d,nbrs,t)     ! sort in increasing order
 	endif
 	! Now the ith nearest is nbrlist(t(i))
 	! set cp1%nbrlist(:) as the closest #
@@ -305,7 +305,7 @@ do kcell = 1,nlist
 	if (nbrs == 0) then
 !		write(*,*) 'setup_nbrlists: nbrs = 0: kcell: ',kcell
 	else
-		call qqsort(nbr_d,nbrs,t)     ! sort in increasing order
+		call qsort(nbr_d,nbrs,t)     ! sort in increasing order
 	endif
 	! Now the ith nearest is nbrlist(t(i))
 	! set cp1%nbrlist(:) as the closest #
@@ -380,7 +380,7 @@ if (nbrs == 0) return
 do i = 1,nbrs
     t(i) = i
 enddo
-call qqsort(nbr_d,nbrs,t)     ! sort in increasing order
+call qsort(nbr_d,nbrs,t)     ! sort in increasing order
 ! Now the ith nearest is nbrlist(t(i))
 ! set cp1%nbrlist(:) as the closest #
 cp1%nbrs = min(nbrs,NBR_LIST_MAX)
@@ -446,6 +446,7 @@ nbrlist(nbrs) = knbr
 nbr_d(nbrs) = d
 end subroutine
 
+#if 0
 !--------------------------------------------------------------------------------
 !     NON-RECURSIVE STACK VERSION OF QUICKSORT FROM N.WIRTH'S PASCAL
 !     BOOK, 'ALGORITHMS + DATA STRUCTURES = PROGRAMS'.
@@ -539,5 +540,6 @@ IF (s.NE.0) GO TO 10
 
 RETURN
 END SUBROUTINE qqsort
+#endif
 
 end module
