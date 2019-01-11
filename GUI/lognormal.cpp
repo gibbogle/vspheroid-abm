@@ -278,7 +278,6 @@ void MainWindow:: drawDistPlots(bool dummy)
             curve_list[j]->setSamples(x, prob, n);
         }
         qp->replot();
-
     }
     delete [] x;
     x = NULL;
