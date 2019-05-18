@@ -596,6 +596,9 @@ void MyVTK::process_Tcells()
     xmax = 0;
     for (i=0; i<np; i++) {
         cp = TCpos_list[i];
+
+//        if (cp.z > Global::droppedcentre[2]) continue;
+
         tag = cp.tag;
         if (USE_CELLTYPE_COLOUR) {
             if (!display_celltype[cp.celltype]) {

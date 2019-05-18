@@ -781,6 +781,10 @@ After contact is made the force is non-zero until x > xc2 - this is the effect o
       "Pyruvate Michaelis-Menten Km (uM)",
       "Pyruvate Michaelis-Menten Km (uM). fMM = C_P/(Km + C_P) is a multiple of pyruvate oxidation rate, ensuring that the rate -> 0 as C_P -> 0"},
 
+      {"F_GP_SOLVER",1,0,0,
+       "f_GP solver (1,2,3)",
+       "Choices for f_GP solver: 1 = max ATP (tandem), 2 = max ATP (staged), 3 = survival (staged)"},
+
 //      {"N_GA_2", 2, 0, 0,
 //      "ATP moles produced per glucose mole",
 //      "Number of ATP moles produced by the glycolysis of one glucose mole"},

@@ -529,6 +529,7 @@ read(nf,*) f_ATPramp
 read(nf,*) K_PL
 read(nf,*) K_LP
 read(nf,*) Hill_Km_P
+read(nf,*) fgp_solver
 PDKmin = 0.3
 Hill_N_P = 1
 Hill_Km_P = Hill_Km_P/1000		! uM -> mM
