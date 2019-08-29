@@ -44,6 +44,10 @@ logical :: chemo_active(2*MAX_CHEMO)    ! flags necessity to solve for the const
 !real(REAL_KIND),allocatable :: dMdt_L_lookup(:,:,:)
 
 !real(REAL_KIND) :: dt_rkc
+
+integer :: idrug_rkc		! drug number for f_rkc_drug
+logical :: use_drugsolver	! choose whether to use drugsolver (with RKC) or integrate_Cin
+
 contains
 
 !----------------------------------------------------------------------------------
@@ -70,7 +74,7 @@ real(REAL_KIND) :: C0, C1, Cex, dC, r0, r1, a, b, Kmem	! these are OXYGEN
 type(cell_type), pointer :: cp
 type(metabolism_type), pointer :: mp
 
-!write(*,'(a,2i6,6f8.4)') 'OGLSolver: Cin,Cex: ',istep,kcell,cp%Cin(1:3),cp%Cex(1:3)
+!write(*,'(a,2i6,6f8.4)') 'CellSolver: Cin,Cex: ',istep,kcell,cp%Cin(1:3),cp%Cex(1:3)
 cp => cell_list(kcell)
 mp => cp%metab
 ict = cp%celltype
@@ -92,6 +96,24 @@ Kmem = area_factor*chemo(OXYGEN)%membrane_diff_in
 C = Cex - a/(Kmem - b)
 end function
 
+
+!----------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------
+subroutine CellSolver(kcell,tstart,dt,ok)
+integer :: kcell
+real(REAL_KIND) :: tstart, dt
+logical :: ok
+
+call OGLSolver(kcell,tstart,dt,ok)
+if (.not.use_drugsolver) return
+if (chemo(DRUG_A)%present) then
+	call DrugSolver(kcell,DRUG_A,tstart,dt,1,ok)
+endif
+if (chemo(DRUG_B)%present) then
+	call DrugSolver(kcell,DRUG_B,tstart,dt,2,ok)
+endif
+end subroutine
+
 !----------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------
 subroutine OGLSolver(kcell,tstart,dt,ok)
@@ -111,7 +133,7 @@ type(rkc_comm) :: comm_rkc(1)
 real(REAL_KIND) :: work_rkc(8+5*3*2)
 logical :: use_SS_CO2 = .false.
 
-!write(*,'(a,2i6,6f8.4)') 'OGLSolver: Cin,Cex: ',istep,kcell,cp%Cin(1:3),cp%Cex(1:3)
+!write(*,'(a,2i6,6f8.4)') 'CellSolver: Cin,Cex: ',istep,kcell,cp%Cin(1:3),cp%Cex(1:3)
 cp => cell_list(kcell)
 kcell_now = kcell
 
@@ -123,7 +145,7 @@ if (use_SS_CO2) then
 	cp%Cin(1) = get_CO2_SS(kcell)
 	Cin(1) = Cin(2)		! glucose and lactate become 1 and 2 for RKC
 	Cin(2) = Cin(3)
-!	write(*,'(a,2e12.3)') 'OGLsolver: cp%Cex(1), cp%Cin(1): ',cp%Cex(1),cp%Cin(1)
+!	write(*,'(a,2e12.3)') 'CellSolver: cp%Cex(1), cp%Cin(1): ',cp%Cex(1),cp%Cin(1)
 else
 	neqn = 3
 endif
@@ -160,6 +182,70 @@ endif
 ict = cp%celltype
 mp => cp%metab
 call get_metab_rates(mp,cp%Cin(1:3))
+
+end subroutine
+
+!----------------------------------------------------------------------------------
+! For phase-dependent drug, e.g. EDU, calls DrugPhaseSolver
+!----------------------------------------------------------------------------------
+subroutine DrugSolver(kcell,iparent,tstart,dt,idrug,ok)
+integer :: iparent, idrug
+real(REAL_KIND) :: tstart, dt
+logical :: ok
+integer :: ichemo, k, neqn, i, kcell, im
+real(REAL_KIND) :: t, tend
+real(REAL_KIND) :: C(3*N1D+3), Csum
+real(REAL_KIND) :: timer1, timer2
+type(cell_type), pointer :: cp
+! Variables for RKC
+integer :: info(4), idid
+real(REAL_KIND) :: rtol, atol(1)
+real(REAL_KIND) :: work_rkc(8+5*3*2)
+type(rkc_comm) :: comm_rkc(1)
+
+!if (drug(idrug)%phase_dependent) then
+!	call DrugPhaseSolver(kcell,iparent,tstart,dt,idrug,ok)
+!	return
+!endif
+
+!write(nflog,*) 'DrugSolver: ',istep
+cp => cell_list(kcell)
+kcell_now = kcell
+idrug_rkc = idrug
+
+k = 0
+do im = 0,2
+	ichemo = iparent + im
+	if (.not.chemo(ichemo)%present) cycle
+	k = k+1
+	C(k) = cp%Cin(ichemo)		! IC 
+enddo
+
+neqn = k
+
+info(1) = 1
+info(2) = 1		! = 1 => use spcrad() to estimate spectral radius, != 1 => let rkc do it
+info(3) = 1
+info(4) = 0
+rtol = 1d-5
+atol = rtol
+
+idid = 0
+t = tstart
+tend = t + dt
+call rkc(comm_rkc(1),neqn,f_rkc_drug,C,t,tend,rtol,atol,info,work_rkc,idid,kcell)
+if (idid /= 1) then
+	write(logmsg,*) 'Solver: Failed at t = ',t,' with idid = ',idid
+	call logger(logmsg)
+	ok = .false.
+	return
+endif
+
+do im = 0,2
+    ichemo = iparent + im
+	if (.not.chemo(ichemo)%present) cycle
+    cp%Cin(ichemo) = C(k)
+enddo
 
 end subroutine
 
@@ -553,6 +639,95 @@ end subroutine
 
 !----------------------------------------------------------------------------------
 !----------------------------------------------------------------------------------
+subroutine f_rkc_drug(neqn,t,y,dydt,icase)
+integer :: neqn, icase
+real(REAL_KIND) :: t, y(neqn), dydt(neqn)
+integer :: k, kk, i, ichemo, idrug, iparent, im, ict, Nmetabolisingcells
+real(REAL_KIND) :: dCsum, dCdiff, dCreact, vol_cm3, Cex
+real(REAL_KIND) :: decay_rate, C, membrane_kin, membrane_kout, membrane_flux, area_factor, n_O2(0:2)
+logical :: metabolised(MAX_CELLTYPES,0:2)
+real(REAL_KIND) :: metab, cell_flux, dMdt, KmetC, vcell_actual, dC, CO2, Kd
+!real(REAL_KIND) :: A, d, dX, dV, KdAVX
+type(drug_type), pointer :: dp
+type(cell_type), pointer :: cp
+real(REAL_KIND) :: average_volume = 1.2
+logical :: use_average_volume = .true.
+logical :: is_metab1
+
+!ict = icase
+cp => cell_list(icase)
+ict = cp%celltype
+CO2 = cp%Cex(OXYGEN)
+idrug = idrug_rkc
+!A = well_area
+!d = total_volume/A
+!dX = d/N1D
+!dV = A*dX
+if (use_average_volume) then
+    vol_cm3 = Vcell_cm3*average_volume	  ! not accounting for cell volume change
+    area_factor = (average_volume)**(2./3.)
+endif
+Nmetabolisingcells = Ncells - (Ndying(1) + Ndying(2))
+iparent = DRUG_A + 3*(idrug-1)
+dp => drug(idrug)
+metabolised(:,:) = (dp%Kmet0(:,:) > 0)
+n_O2(:) = dp%n_O2(ict,:)
+
+k = 0
+do im = 0,2
+	! Process IC reactions
+	k = k+1
+	C = y(k)
+	ichemo = iparent + im
+!	Cex = y(k+1)
+	Cex = cp%Cex(ichemo)
+	Kd = chemo(ichemo)%medium_diff_coef
+    decay_rate = chemo(ichemo)%decay_rate
+    membrane_kin = chemo(ichemo)%membrane_diff_in
+    membrane_kout = chemo(ichemo)%membrane_diff_out
+	membrane_flux = area_factor*(membrane_kin*Cex - membrane_kout*C)
+	dCreact = 0
+    if (im == 0) then
+        if (metabolised(ict,0) .and. C > 0) then
+		    KmetC = dp%Kmet0(ict,0)*C
+		    if (dp%Vmax(ict,0) > 0) then
+			    KmetC = KmetC + dp%Vmax(ict,0)*C/(dp%Km(ict,0) + C)
+		    endif
+		    dCreact = -(1 - dp%C2(ict,0) + dp%C2(ict,0)*dp%KO2(ict,0)**n_O2(0)/(dp%KO2(ict,0)**n_O2(0) + CO2**n_O2(0)))*KmetC
+	    endif
+!		write(nflog,'(a,3e12.3)') 'dCreact, flux, decay: ',dCreact,membrane_flux/vol_cm3,-C*decay_rate
+	    dCreact = dCreact + membrane_flux/vol_cm3
+    elseif (im == 1) then	! kk=1 is the PARENT drug
+		kk = 1
+	    if (metabolised(ict,0) .and. y(kk) > 0) then
+		    dCreact = (1 - dp%C2(ict,0) + dp%C2(ict,0)*dp%KO2(ict,0)**n_O2(0)/(dp%KO2(ict,0)**n_O2(0) + CO2**n_O2(0)))*dp%Kmet0(ict,0)*y(kk)
+	    endif
+	    if (metabolised(ict,1) .and. C > 0) then
+		    dCreact = dCreact - (1 - dp%C2(ict,1) + dp%C2(ict,1)*dp%KO2(ict,1)**n_O2(1)/(dp%KO2(ict,1)**n_O2(1) + CO2**n_O2(1)))*dp%Kmet0(ict,1)*C
+	    endif
+	    dCreact = dCreact + membrane_flux/vol_cm3
+    elseif (im == 2) then	! kk=N1D+2 is the METAB1
+		kk = N1D+2
+	    if (metabolised(ict,1) .and. y(kk) > 0) then
+		    dCreact = (1 - dp%C2(ict,1) + dp%C2(ict,1)*dp%KO2(ict,1)**n_O2(1)/(dp%KO2(ict,1)**n_O2(1) + CO2**n_O2(1)))*dp%Kmet0(ict,1)*y(kk)
+	    endif
+	    if (metabolised(ict,2) .and. C > 0) then
+		    dCreact = dCreact - (1 - dp%C2(ict,2) + dp%C2(ict,2)*dp%KO2(ict,2)**n_O2(2)/(dp%KO2(ict,2)**n_O2(2) + CO2**n_O2(2)))*dp%Kmet0(ict,2)*C
+	    endif
+	    dCreact = dCreact + membrane_flux/vol_cm3
+    endif
+	dydt(k) = dCreact - C*decay_rate
+!	write(nflog,'(a,i4,e12.3)') 'dydt: ',im,dydt(k)
+	if (isnan(dydt(k))) then
+		write(nflog,*) 'f_rkc_drug: dydt isnan: ',im,dydt(k)
+		write(*,*) 'f_rkc_drug: dydt isnan: ',im,dydt(k)
+		stop
+	endif
+enddo
+end subroutine
+
+!----------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------
 subroutine testOGL1
 real(REAL_KIND) :: dt
 integer :: ichemo, it, ityp, kcell
@@ -571,7 +746,7 @@ cp%metab%HIF1 = 0.3
 cp%metab%PDK1 = 1.0
 do it = 1,10
 	dt = it*1
-	call OGLSolver(kcell,tstart,dt,ok)	
+	call CellSolver(kcell,tstart,dt,ok)	
 	do ichemo = OXYGEN,LACTATE
 		Kin = chemo(ichemo)%membrane_diff_in
 		Kout = chemo(ichemo)%membrane_diff_out
@@ -595,7 +770,7 @@ cp%metab%HIF1 = 0.0
 cp%metab%PDK1 = 1.0
 do it = 1,10
 	dt = it*1
-	call OGLSolver(kcell,tstart,dt,ok)	
+	call CellSolver(kcell,tstart,dt,ok)	
 	do ichemo = OXYGEN,LACTATE
 		Kin = chemo(ichemo)%membrane_diff_in
 		Kout = chemo(ichemo)%membrane_diff_out

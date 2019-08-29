@@ -1138,7 +1138,7 @@ end subroutine
 ! This valid for steady-state with any constituent, with decay, when Cex is known
 ! In fact it is currently valid for oxygen and glucose.
 ! This is effectively the same as getCin() with dCexdt = 0
-! NOT USED WITH METABOLISM
+! NOT USED WITH METABOLISM except at initialisation
 !-------------------------------------------------------------------------------------------
 function getCin_SS(kcell,ichemo, Vin, Cex) result(Cin)
 integer :: kcell, ichemo
@@ -1839,12 +1839,15 @@ maxits = 50
 dbug = .false.
 
 ! Compute all steady-state grid point fluxes in advance from Cextra(:,:,:,:): Cflux(:,:,:,:)
-
+!write(*,*) 'SOLVING FOR GLUCOSE ONLY !!!!!!!!!!!!!!!!!!!!!!!!'
 t0 = mytimer()
 !$omp parallel do private(Cave, Fcurr, Cave_b, Cprev_b, Fprev_b, Fcurr_b, a_b, x, rhs, ix, iy, iz, ixb, iyb, izb, it, done, ichemo, icc, k, dCsum, msum, iters, ierr)
 do ic = 1,nchemo
 	ichemo = chemomap(ic)
 	if (chemo(ichemo)%constant) cycle
+	
+!	if (ichemo /= GLUCOSE) cycle
+	
 	ichemo_curr = ichemo
 	icc = ichemo - 1
 	allocate(rhs(nrow_b))
@@ -1952,7 +1955,7 @@ do ic = 1,nchemo
 		call itsol_solve_fgmr_ILU(icc, rhs, x, im_krylov, maxits, tol_b, iters, ierr)
 	!	write(nflog,*) 'itsol_solve_fgmr_ILU: Cave_b: ierr, iters: ',ierr,iters
 		if (ierr /= 0) then
-	    	write(*,*) 'itsol_solve_fgmr_ILU: Cave_b: ierr, iters: ',ierr,iters
+	    	write(*,*) 'itsol_solve_fgmr_ILU: Cave_b: ichemo, ierr, iters: ',ichemo,ierr,iters
 			ok = .false.
 		endif
 	else
@@ -1985,6 +1988,8 @@ do ic = 1,nchemo
 	! interpolate Cave_b on fine grid boundary
 	call interpolate_Cave(ichemo, Cave, Cave_b)
 	deallocate(a_b, x, rhs)
+!	write(*,*) 'Cave_b solution on Z:'
+!	write(*,'(8f10.6)') Cave_b(NX/2,NY/2,13:20)
 enddo
 !$omp end parallel do
 
@@ -2012,6 +2017,9 @@ endif
 do ic = 1,nfinemap
 	ichemof = finemap(ic)
 !	if (chemo(ichemof)%constant) cycle  !try removing this - we want only bdry of fine grid constant
+
+!	if (ichemof /= GLUCOSE) cycle
+
 	allocate(rhs(nrow))
 	allocate(x(nrow))
 !	allocate(a(MAX_CHEMO*nrow))
@@ -2152,31 +2160,26 @@ enddo
 t1 = mytimer()
 tdiff = t1 - t0
 
+use_drugsolver = .true.
 ! This updates Cex, Cin and dMdt, grid fluxes
-if (use_metabolism) then
-	call update_IC
+call update_IC
 !	if (Ncells > nspeedtest) then
 !		call speedtest
 !		nspeedtest = nspeedtest + 10000
 !	endif
-endif
 
 tmetab = mytimer() - t1
 !write(logmsg,'(a,3f8.4)') 'tdiff,tmetab,tmetab/(tdiff+tmetab): ',tdiff,tmetab,tmetab/(tdiff+tmetab)
 !call logger(logmsg)
 
-if (chemo(DRUG_A)%present .or. chemo(DRUG_B)%present) then
+if (.not.use_drugsolver .and. (chemo(DRUG_A)%present .or. chemo(DRUG_B)%present)) then
 	! solve for Cin and dMdt for drug + metabolites by integrating them together
 	call integrate_Cin(dt)
 endif
 do ic = 1,nchemo
 	ichemo = chemomap(ic)
 	Fcurr => Cflux(:,:,:,ichemo)
-	if (ichemo < DRUG_A) then
-		if (.not.use_metabolism) then
-			call getF_const(ichemo, Fcurr)	! this computes dMdt (SS cell fluxes) then calls make_grid_flux
-		endif
-	else
+	if (.not.use_drugsolver) then
 		! use the cell fluxes dMdt previously computed in integrate_Cin
 		call make_grid_flux(ichemo,Fcurr)
 	endif
@@ -2227,7 +2230,7 @@ subroutine update_IC
 integer :: kcell, ic, ichemo, ix, iy, iz, it, nt=10
 integer :: k_P_min, k_P_max, k_I_min, k_I_max
 real(REAL_KIND) :: alfa(3), dCdt(3), Kin, Kout, dtt, area_factor, vol_cm3, tstart, y(3), rate(3)
-real(REAL_KIND) :: r_P, r_I, r_P_min, r_P_max, r_I_min, r_I_max
+real(REAL_KIND) :: r_P, r_I, r_P_min, r_P_max, r_I_min, r_I_max, totalflux(3)
 type(cell_type), pointer :: cp
 type(metabolism_type), pointer :: mp
 real(REAL_KIND), pointer :: Cextra(:,:,:), Fcurr(:,:,:)
@@ -2246,6 +2249,7 @@ endif
 !write(*,*) 'update_IC: '
 area_factor = (average_volume)**(2./3.)
 
+totalflux = 0
 ! Can't use $omp parallel with debug
 !$omp parallel do private(cp, alfa, ix, iy, iz, ic, ichemo, Cextra, tstart, dtt, Kin, Kout, ok)
 do kcell = 1,nlist
@@ -2271,21 +2275,35 @@ do kcell = 1,nlist
 	enddo
 	tstart = 0
 	dtt = 2
-	call OGLSolver(kcell,tstart,dtt,ok)
+	call CellSolver(kcell,tstart,dtt,ok)
 !	do while (cp%Cin(OXYGEN) > cp%Cex(OXYGEN))
 !		tstart = tstart + dtt
 !		dtt = 0.5
-!		call OGLSolver(kcell,tstart,dtt,ok)
+!		call CellSolver(kcell,tstart,dtt,ok)
 !	enddo
-	ichemo = GLUCOSE
+!	ichemo = GLUCOSE
 !	if (cp%Cin(ichemo) > cp%Cex(ichemo)) then
 !		write(nflog,*) 'Cin > Cex: ',kcell,ichemo,cp%Cin(ichemo),cp%Cex(ichemo)
 !	endif
-	do ichemo = OXYGEN,LACTATE
+
+!	do ichemo = OXYGEN,LACTATE
+! Testing for comparison with vspheroid-fem
+!	if (kcell == 1) then
+!		write(*,*) '!!!!!!!!!!!!!!!!!! FIXED Cex,Cin,dMdt !!!!!!!!!!!!!!!!!!!'
+!	endif
+!	cp%Cex(1:3) = [0.18, 5.5, 3.0]
+!	cp%Cin(1:3) = [0.18, 5.5, 3.0]
+	do ic = 1,nchemo
+		ichemo = chemomap(ic)
 		Kin = chemo(ichemo)%membrane_diff_in
 		Kout = chemo(ichemo)%membrane_diff_out
 		cp%dMdt(ichemo) = area_factor*(Kin*cp%Cex(ichemo) - Kout*cp%Cin(ichemo))
+!		cp%dMdt(1:3) = [0.0, 0.28e-9, 0.0]
+!		if (kcell == 1) then
+!			write(*,'(a,2i6,2f9.5,e12.3)') 'Cex,Cin,dMdt: ',kcell,ichemo,cp%Cex(ichemo),cp%Cin(ichemo),cp%dMdt(ichemo)
+!		endif
 	enddo
+!	totalflux = totalflux + cp%dMdt(1:3)
 	if (debug) then
 		r_P = cp%metab%P_rate/r_P_norm
 		r_I = cp%metab%I_rate/r_I_norm
@@ -2316,9 +2334,14 @@ enddo
 !	write(nflog,'(a,4e12.3)') 'r_P_min,r_P_max,r_I_min,r_I_max: ',r_P_min,r_P_max,r_I_min,r_I_max
 !endif
 
-do ichemo = OXYGEN,LACTATE
-	Fcurr => Cflux(:,:,:,ichemo)
-	call make_grid_flux(ichemo,Fcurr)
+!write(*,'(a,3e12.3)') 'totalflux: ',totalflux
+!do ichemo = OXYGEN,LACTATE
+do ic = 1,nchemo
+	ichemo = chemomap(ic)
+	if (ichemo <= LACTATE .or. use_drugsolver) then
+		Fcurr => Cflux(:,:,:,ichemo)
+		call make_grid_flux(ichemo,Fcurr)
+	endif
 enddo
 end subroutine
 
@@ -2348,14 +2371,13 @@ do nthreads = 1,npr
 !$omp parallel do private(tstart, dtt, ok)
 	do kcell = 1,nlist
 		cp => cell_list(kcell)
-!		if (cp%state == DEAD .or. cp%state == DYING) cycle
 		if (cp%state == DEAD) cycle
 		tstart = 0
 		dtt = 2
-		call OGLSolver(kcell,tstart,dtt,ok)	
+		call CellSolver(kcell,tstart,dtt,ok)	
 	enddo
 !$omp end parallel do
-	write(logmsg,'(a,i2,e12.4)') 'OGLsolver speed test: nthreads,time: ',nthreads,mytimer() - t0
+	write(logmsg,'(a,i2,e12.4)') 'CellSolver speed test: nthreads,time: ',nthreads,mytimer() - t0
 	call logger(logmsg)
 enddo
 deallocate(cell_save)

@@ -627,14 +627,13 @@ void MainWindow::sc_textEdited(QString text)
     COLOUR_SCHEME *cs = &field->colScheme[icset];
     QObject *obj = sender();
     QString name = obj->objectName();
-    QString numstr = name[12];
-    int num = numstr.toInt();
-    QString colstr = name[13];
-    if (colstr.compare("R") == 0) {
+    int num = name.at(12).digitValue();
+    char colch = name.toStdString().c_str()[13];
+    if (colch == "R"[0]) {
         cs->color[num].setRed(text.toInt());
-    } else if (colstr.compare("G") == 0) {
+    } else if (colch == "G"[0]) {
         cs->color[num].setGreen(text.toInt());
-    } else if (colstr.compare("B") == 0) {
+    } else if (colch == "B"[0]) {
         cs->color[num].setBlue(text.toInt());
     }
     showColours(icset);

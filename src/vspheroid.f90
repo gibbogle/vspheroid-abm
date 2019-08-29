@@ -203,7 +203,6 @@ read(nfcell,*) chemo(LACTATE)%max_cell_rate
 chemo(LACTATE)%max_cell_rate = chemo(LACTATE)%max_cell_rate*1.0e6					! mol/cell/s -> mumol/cell/s
 read(nfcell,*) chemo(LACTATE)%MM_C0
 read(nfcell,*) chemo(LACTATE)%Hill_N
-
 read(nfcell,*) iuse_tracer		!chemo(TRACER)%used
 read(nfcell,*) chemo(TRACER)%diff_coef
 read(nfcell,*) chemo(TRACER)%medium_diff_coef
@@ -903,10 +902,10 @@ call setup_force_parameters
 call make_jumpvec
 call PlaceCells(ok)
 call logger('did PlaceCells')
-if (cell_list(154)%V == 0) then
-    write(*,*) 'setup: 1: cell 154 Vin = 0: istep: ',istep
-    stop
-endif
+!if (cell_list(154)%V == 0) then
+!    write(*,*) 'setup: 1: cell 154 Vin = 0: istep: ',istep
+!    stop
+!endif
 call setTestCell(kcell_test)
 !do kcell = 1,nlist
 !	write(nflog,'(i6,3f8.1)') kcell,1.0e4*cp%centre(:,1)
@@ -975,10 +974,10 @@ use_permute = .true.
 !else
 !	ccp%tcp = 0
 !endif
-if (cell_list(154)%V == 0) then
-    write(*,*) 'setup: 2: cell 154 Vin = 0: istep: ',istep
-    stop
-endif
+!if (cell_list(154)%V == 0) then
+!    write(*,*) 'setup: 2: cell 154 Vin = 0: istep: ',istep
+!    stop
+!endif
 
 end subroutine
 
@@ -1143,10 +1142,10 @@ else
 	endif
 	deallocate(occup)
 endif
-if (cell_list(154)%V == 0) then
-    write(*,*) 'placecells: cell 154 Vin = 0: istep: ',istep
-    stop
-endif
+!if (cell_list(154)%V == 0) then
+!    write(*,*) 'placecells: cell 154 Vin = 0: istep: ',istep
+!    stop
+!endif
 nlist = kcell
 ncells = kcell
 end subroutine
@@ -1439,7 +1438,7 @@ if (cp%V == 0) then
 	write(*,'(a,f9.1)') 'sum: ',sum(phase_time)
     stop
 endif
-write(nflog,'(2i4,4f8.3,f8.0)') kcell,cp%phase,R,x,y,cp%V/V0,cp%t_divide_last
+!write(nflog,'(2i4,4f8.3,f8.0)') kcell,cp%phase,R,x,y,cp%V/V0,cp%t_divide_last
 cp%metab = metabolic
 !write(*,*)
 !write(*,'(a,3f8.3)') 'Tdiv, Tmean, fg: ',Tdiv/3600,Tmean/3600,fg
@@ -1680,10 +1679,10 @@ if (radiation_dose > 0) then
 	endif
 endif
 
-if (cell_list(154)%V == 0) then
-    write(*,*) 'simulate: cell 154 Vin = 0: istep: ',istep
-    stop
-endif
+!if (cell_list(154)%V == 0) then
+!    write(*,*) 'simulate: cell 154 Vin = 0: istep: ',istep
+!    stop
+!endif
 call DrugChecks
 !call SetupChemomap
 
@@ -1799,6 +1798,7 @@ call system_clock(count_1, count_rate, count_max)
 t_fmover = 0
 nit = 0
 done = .false.
+!write(*,*) '!!!!!!!!!!!!!!!!!!!!!!!!  NO GROWTH !!!!!!!!!!!!!!!!!!!!!!!!!'
 do while (.not.done)
 	nit = nit + 1
 	t0 = mytimer()
@@ -1817,6 +1817,7 @@ do while (.not.done)
 	endif
 	t_fmover = t_fmover + dt
 	ncells0 = ncells
+	ok = .true.
 	call GrowCells(dt,changed,ok)
 	if (.not.ok) then
 		call logger('grower error')
@@ -2452,6 +2453,7 @@ else
 	res = 1
 	return
 endif
+call logger('finished execute')
 execute_t1 = wtime()
 end subroutine
 

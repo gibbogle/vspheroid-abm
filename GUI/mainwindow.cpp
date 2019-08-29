@@ -1810,9 +1810,6 @@ void MainWindow::initializeGraphs(RESULT_SET *R)
 	mdiArea->show();
     setGraphsActive();
     int non_ts = 0;
-//    if (field->isConcPlot()) non_ts++;
-//    if (field->isVolPlot()) non_ts++;
-//    if (field->isOxyPlot()) non_ts++;
     grph->makeGraphList(non_ts);
     nGraphs = grph->nGraphs;
     if (nGraphCases > 0) {
@@ -1834,8 +1831,6 @@ void MainWindow::initializeGraphs(RESULT_SET *R)
             pGraph[i] = new Plot(tag,R->casename);
             pGraph[i]->setTitle(title);
             pGraph[i]->setAxisTitle(QwtPlot::yLeft, yAxisTitle);
-//            LOG_QMSG(title);
-//            LOG_QMSG(tag);
         }
     }
 
@@ -1852,14 +1847,6 @@ void MainWindow::initializeGraphs(RESULT_SET *R)
 		mdiArea->addSubWindow(box_outputData);	// Need another way of creating this window - should be floating
 		box_outputData->show();
 	}
-/*
-    if (field->isConcPlot())
-        field->makeConcPlot(mdiArea);
-    if (field->isVolPlot())
-        field->makeVolPlot(mdiArea);
-    if (field->isOxyPlot())
-        field->makeOxyPlot(mdiArea);
-*/
     mdiArea->tileSubWindows();
 
 	for (int i=0; i<nGraphs; i++) {
