@@ -249,7 +249,7 @@ logical :: cells_present, OXYGEN_exclusion
 logical, parameter :: oxygen_special = .false.   ! = .false. if oxygen is not a special case
 
 oxygen_exclusion = oxygen_special .and. (ichemo == OXYGEN)
-
+write(*,*) 'make_csr_SS'
 Vc = 0.75*Vdivide0
 Ktissue = chemo(ichemo)%diff_coef
 Kmedium = chemo(ichemo)%medium_diff_coef
@@ -268,14 +268,17 @@ do k = 1,nnz
     ip = ip+1
     xyz(ip,:) = amap(k,1:3)
 !	a(k) = amap(k,0)
+    write(*,*) 'k: ',k
     if (amap(k,0) == 6.0) then
         ip0 = ip     ! centre point
+        write(*,*) 'k,ip0: ',k,ip0
     endif
     ncells(ip) = nGridCells(xyz(ip,1),xyz(ip,2),xyz(ip,3))
     if (ncells(ip) > 0) then
         cells_present = .true.
     endif
     if (ip == np) then  ! all relevant grid points are known
+        write(*,*) 'ip = np: ',np,ip0
         ! For now, using a single diffusivity value Kdiff
         if (cells_present) then
             do i = 1,np
@@ -328,11 +331,11 @@ do k = 1,nnz
         iy = xyz(ip0,2)
         iz = xyz(ip0,3)
 		rhs(krow) = -Fcurr(ix,iy,iz)/(dxf*Kdiff)
-!        write(*,'(a,i8,8e12.3)') 'krow,a,rhs: ',krow,a(k0:k0+np-1),rhs(krow)
+        write(*,'(a,i8,8e12.3)') 'krow,a,rhs: ',krow,a(k0:k0+np-1),rhs(krow)
     endif
 !	write(*,'(3i8,2x,i4,2x,4i4)') k,krow,kcol,np,int(amap(k,1:3)),amap(k,0)
 enddo
-!stop
+stop
 ix = 2
 do iy = 2,NY-1
 	do iz = 1,NZ-1
